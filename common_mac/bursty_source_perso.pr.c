@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char bursty_source_perso_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44158D59 44158D59 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char bursty_source_perso_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4421CE3F 4421CE3F 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -284,6 +284,7 @@ bursty_source_perso (void)
 				
 				//only if start is over-passed (One interarrival pk has surely changed)
 				if (time_start < op_sim_time()){
+				
 					//PK creation
 					pksize = floor ((SimT_Pk_Size) op_dist_outcome (packet_size_dist_handle));
 					pksize *= 8;

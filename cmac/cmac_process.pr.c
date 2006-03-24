@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 441DFBB2 441DFBB2 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44246C93 44246C93 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -38,8 +38,8 @@ FSM_EXT_DECS
 //				INTER-FRAME TIME
 //-----------------------------------------------
 
-#define		SIFS							20E-6
-#define		CIFS							25E-6
+#define		SIFS							10E-6
+#define		PIFS							30E-6
 #define		DIFS							50E-6
 #define		EIFS							(2*SIFS + 1500 / operational_speed)
 
@@ -56,13 +56,13 @@ FSM_EXT_DECS
 
 //backoff
 #define		MAX_BACKOFF						32
+#define		MAX_EXPO_BACKOFF				1024
 
 //Power
 #define		POWER_TX						0.001
-#define		ALPHA							3.5
 #define		MAX_BORDER_DIST					10
 
-
+#define		PI								3.141592653589793238462 
 
 //-----------------------------------------------
 //				TIMEOUTS
@@ -72,10 +72,6 @@ FSM_EXT_DECS
 #define		PROPAGATION_DELAY				(2E-6)
 
 #define		MAX_NB_RETRY					7
-
-
-//Hellos - neighbors
-#define		TIMEOUT_NEIGHBOR				5.1
 
 
 //To avoid farmes duplication
@@ -112,11 +108,20 @@ FSM_EXT_DECS
 #define		PRIVILEGED_MIN_TIME				(PRIVILEGED_MAX_TIME * 0.9)
 //#define		PRIVILEGED_MAX_TIME				0.015
 
-#define		BETA							4
 
 
 //Maximum number of branches for the AP
 #define		MAX_NB_BRANCHES					4
+
+
+
+
+//-----------------------------------------------
+//				ROUTING
+//-----------------------------------------------
+
+#define		ROUTING_BORDER					0
+#define		ROUTING_SHORT					1
 
 
 
@@ -127,10 +132,16 @@ FSM_EXT_DECS
 #define		STREAM_TO_UP					5
 #define		STREAM_FROM_UP					5
 #define		STREAM_TO_RADIO					0
+#define		STREAM_TO_DIRECT_SYNC			1
+#define		STREAM_TO_BUSY_TONE				2
 #define		STREAM_FROM_RADIO				0
+#define		STREAM_FROM_BUSY_TONE			1
 
 #define		STAT_FROM_RX					0
+#define		STAT_FROM_RX_BUSY_TONE			4
 #define		STAT_FROM_TX					1
+#define		STAT_FROM_TX_DIREC_SYNC			2
+#define		STAT_FROM_TX_BUSY_TONE			3
 
 
 
@@ -196,11 +207,15 @@ FSM_EXT_DECS
 #define		IS_FRAME_TIMEOUT				((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == FRAME_TIMEOUT_CODE))
 
 
+//Is the medium busy ? (transmission / reception / reservation)
+#define		IS_MEDIUM_BUSY					((is_rx_busy) || ((is_busy_tone) && (!is_border_node)) || (is_tx_busy) || (my_nav > op_sim_time()))
+
+
 //We must defer in any of these conditions: 
 //- a CTR msut be transmitted 
 //- a packet was received and we must reply (ACK, CTS, CTR...) 
 //- the medium is busy (We must get another backoff) 
-#define		IS_BACK_TO_DEFER				((next_frame_to_send.type == CTR_PK_TYPE) || (IS_FRAME_RECEIVED && IS_REPLY_TO_SEND) || (IS_BACKOFF_FINISHED && is_rx_busy))
+#define		IS_BACK_TO_DEFER				((next_frame_to_send.type == CTR_PK_TYPE) || (IS_FRAME_RECEIVED && IS_REPLY_TO_SEND) || (IS_BACKOFF_FINISHED && IS_MEDIUM_BUSY))
 
 
 //We must transmit one packet: our data buffer is not empty OR we have already prepared a frame to send
@@ -222,9 +237,6 @@ FSM_EXT_DECS
 #define		PRIVILEGED_MEDIUM_LIMIT			((is_node_privileged) && (is_data_frame_buffer_empty()) && (time_start_privileged + PRIVILEGED_MIN_TIME <= op_sim_time()))
 #define		PRIVILEGED_HIGH_LIMIT			((is_node_privileged) && (op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == PRIVILEGED_MAX_CODE))
 
-
-//Is the medium busy ? (transmission / reception / reservation)
-#define		IS_MEDIUM_BUSY					((is_rx_busy) || (is_tx_busy) || (my_nav > op_sim_time()))
 
 
 
@@ -392,7 +404,8 @@ typedef struct{
 	int		dist_sink;
 	int		dist_border;
 	double	sync_rx_power;
-	List	*border_nodes_list;
+	int		branch;
+	List	*border_nodes_list;	
 	Boolean	stability[MAX_STAB];
 	double	timeout;
 } neigh_struct;
@@ -434,7 +447,8 @@ typedef struct{
 	int		addr;
 	double	pow;
 	short	stab;
-}addr_pow_couple;
+	short	branch;
+}election_struct;
 
 
 int	MAX_BRANCH_LENGTH = 0;
@@ -459,7 +473,6 @@ double	max_ratio_traffic_time = 0;
 //debug
 void	debug_print(const int level, const int type , const char* fmt, ...);
 char* 	pk_type_to_str(short pk_type , char *msg);
-void 	print_neigborhood_table();
 double 	convert_double(double value);
 int	 	convert_int(int value);
 
@@ -473,6 +486,9 @@ int 	get_new_frame_id();
 
 //Hellos
 void 	print_neighborhood_table(int debug_type);
+void  	generate_hello();
+void 	update_neighborhood_table(int source , int dist_sink , int dist_border, double sync_rx_power, int branch , List *bn_list_tmp);
+char* 	print_border_nodes(char *msg);
 
 //Stability
 int 	compute_stability(int stab[]);
@@ -485,6 +501,14 @@ double 	compute_rts_cts_data_ack_time(int data_pk_size);
 double 	compute_cts_data_ack_time(int data_pk_size);
 double 	compute_data_ack_time(int data_pk_size);
 
+
+//Busy tone
+void 	maintain_busy_tone(double time);
+
+
+//antennas
+void 	change_antenna_direction(int stream , int branch);
+void 	change_tx_power(double power , int stream);
 
 /* End of Header Block */
 
@@ -511,8 +535,6 @@ typedef struct
 	Objid	                  		my_objid;
 	Objid	                  		my_node_objid;
 	Objid	                  		my_subnet_objid;
-	Objid	                  		tx_objid;
-	Objid	                  		rx_objid;
 	double	                 		operational_speed;
 	int	                    		instrm_from_mac_if;
 	int	                    		outstrm_to_mac_if;
@@ -543,7 +565,7 @@ typedef struct
 	int	                    		DEBUG;
 	Evhandle	               		defer_intrpt;
 	double	                 		my_sync_rx_power;
-	int	                    		ctr_next_branch;
+	int	                    		ctr_last_branch;
 	double	                 		last_rx_power;
 	FILE*	                  		my_debug_file;
 	int	                    		my_stat_id;
@@ -556,6 +578,15 @@ typedef struct
 	Boolean	                		is_ctr_activated;
 	Boolean	                		strict_privileged_mode;
 	double	                 		PRIVILEGED_MAX_TIME;
+	List*	                  		bn_list;
+	int	                    		BETA;
+	int	                    		ROUTING;
+	int	                    		is_sync_direct_antenna;
+	int	                    		sync_last_branch;
+	int	                    		my_branch;
+	int	                    		cw;
+	Boolean	                		is_busy_tone;
+	double	                 		busy_tone_speed;
 	} cmac_process_state;
 
 #define pr_state_ptr            		((cmac_process_state*) SimI_Mod_State_Ptr)
@@ -563,8 +594,6 @@ typedef struct
 #define my_objid                		pr_state_ptr->my_objid
 #define my_node_objid           		pr_state_ptr->my_node_objid
 #define my_subnet_objid         		pr_state_ptr->my_subnet_objid
-#define tx_objid                		pr_state_ptr->tx_objid
-#define rx_objid                		pr_state_ptr->rx_objid
 #define operational_speed       		pr_state_ptr->operational_speed
 #define instrm_from_mac_if      		pr_state_ptr->instrm_from_mac_if
 #define outstrm_to_mac_if       		pr_state_ptr->outstrm_to_mac_if
@@ -595,7 +624,7 @@ typedef struct
 #define DEBUG                   		pr_state_ptr->DEBUG
 #define defer_intrpt            		pr_state_ptr->defer_intrpt
 #define my_sync_rx_power        		pr_state_ptr->my_sync_rx_power
-#define ctr_next_branch         		pr_state_ptr->ctr_next_branch
+#define ctr_last_branch         		pr_state_ptr->ctr_last_branch
 #define last_rx_power           		pr_state_ptr->last_rx_power
 #define my_debug_file           		pr_state_ptr->my_debug_file
 #define my_stat_id              		pr_state_ptr->my_stat_id
@@ -608,6 +637,15 @@ typedef struct
 #define is_ctr_activated        		pr_state_ptr->is_ctr_activated
 #define strict_privileged_mode  		pr_state_ptr->strict_privileged_mode
 #define PRIVILEGED_MAX_TIME     		pr_state_ptr->PRIVILEGED_MAX_TIME
+#define bn_list                 		pr_state_ptr->bn_list
+#define BETA                    		pr_state_ptr->BETA
+#define ROUTING                 		pr_state_ptr->ROUTING
+#define is_sync_direct_antenna  		pr_state_ptr->is_sync_direct_antenna
+#define sync_last_branch        		pr_state_ptr->sync_last_branch
+#define my_branch               		pr_state_ptr->my_branch
+#define cw                      		pr_state_ptr->cw
+#define is_busy_tone            		pr_state_ptr->is_busy_tone
+#define busy_tone_speed         		pr_state_ptr->busy_tone_speed
 
 /* This macro definition will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
@@ -664,61 +702,6 @@ void add_frame_timeout(int data_pk_size){
 
 }
 
-
-
-
-
-
-//-----------------------------------------------------------
-//
-//					RADIO  POWER
-//
-//-----------------------------------------------------------
-
-
-//Changes the radio power for tranmissions
-void change_tx_power(double power){
-	//id
-	int			tx_id , chan_id , sub_chan_id;
-	int			num_chan;
-	int			i;
-	
-	//gets the id of the tansmitter + channel attributes
-	tx_id = op_topo_child(op_topo_parent(op_id_self()), OPC_OBJTYPE_RATX, 0);
-	op_ima_obj_attr_get (tx_objid, "channel", &chan_id);
-
-	//Sets the channel attributes
-	//NB: I have normally one single channel, but .....
-	num_chan = op_topo_child_count(chan_id, OPC_OBJTYPE_RATXCH);		
-	for(i=0 ; i<num_chan ; i++){
-		sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
-		op_ima_obj_attr_set (sub_chan_id, "power", power);
-	}
-
-	printf("--> NEW power %f\n", power);
-}
-
-
-//-----------------------------------------------------------
-//
-//					ANTENNA POINTING
-//
-//-----------------------------------------------------------
-
-
-//Changes the radio power for tranmissions
-void change_antenna_direction(double theta){
-	//id
-	int			antenna_id;
-	
-	//gets the antenna !
-	antenna_id = op_topo_child(op_topo_parent(op_id_self()), OPC_OBJTYPE_ANT, 0);
-	
-	//and point it
-	op_ima_obj_attr_set (antenna_id, "pointing ref. phi", theta);
-
-	debug_print(LOW , DEBUG_SEND , "New direction for the antenna: %f\n", theta);
-}
 
 
 
@@ -1049,7 +1032,7 @@ void print_data_frame_buffer(int debug_type){
 //Comares stab / prio (stab is more important
 Boolean compare_stab_prio(compar_struct val , short stab, short prio){
 
-debug_print(LOW , DEBUG_NODE , "%d %d %d %d\n", val.stab , val.prio , stab , prio);
+	debug_print(MAX , DEBUG_NODE , "stab prio %d %d %d %d\n", val.stab , val.prio , stab , prio);
 
 	if (val.stab > stab + STAB_STEP)
 		return(OPC_FALSE);
@@ -1072,41 +1055,61 @@ int get_next_hop(){
 	next.prio = 0;
 	next.addr = BROADCAST;
 	next.stab = 0;
-	
-	//Walks in the list
-	for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+	switch (ROUTING){
+		case ROUTING_BORDER:
+			//Walks in the list
+			for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
+				neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
-		//Border node
-		if ((neigh_ptr->dist_border == 0) && (neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 4))){
-			next.addr	= neigh_ptr->address;
-			next.prio	= 5;
-			next.stab	= compute_stability(neigh_ptr->stability);
-		}
+				//Border node
+				if ((neigh_ptr->dist_border == 0) && (neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 4))){
+					next.addr	= neigh_ptr->address;
+					next.prio	= 5;
+					next.stab	= compute_stability(neigh_ptr->stability);
+				}
 				   
-		//Other node -> to the borders	   
-		if ((neigh_ptr->dist_border < my_dist_border) && (neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 4))){
-			next.addr	= neigh_ptr->address;
-			next.prio	= 4;
-			next.stab	= compute_stability(neigh_ptr->stability);
-		}
+				//Other node -> to the borders	   
+				if ((neigh_ptr->dist_border < my_dist_border) && (neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 4))){
+					next.addr	= neigh_ptr->address;
+					next.prio	= 4;
+					next.stab	= compute_stability(neigh_ptr->stability);
+				}
 		
-		//Other node -> to the borders	   
-		if ((neigh_ptr->dist_border < my_dist_border) && (!is_border_node) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 3))){
-			next.addr	= neigh_ptr->address;
-			next.prio	= 3;
-			next.stab	= compute_stability(neigh_ptr->stability);
-		}
+				//Other node -> to the borders (there must be an improvement toward the sink) 
+				if ((neigh_ptr->dist_sink <= my_dist_sink) && (neigh_ptr->dist_border < my_dist_border) && (!is_border_node) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 3))){
+					next.addr	= neigh_ptr->address;
+					next.prio	= 3;
+					next.stab	= compute_stability(neigh_ptr->stability);
+					}
 		
-		//Other node -> to the sink if no border node		   
-		if ((neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 2))){
-			next.addr	= neigh_ptr->address;
-			next.prio	= 2;
-			next.stab	= compute_stability(neigh_ptr->stability);
-		}
-		debug_print(LOW , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
+				//Other node -> to the sink if no border node		   
+				if ((neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 2))){
+					next.addr	= neigh_ptr->address;
+					next.prio	= 2;
+					next.stab	= compute_stability(neigh_ptr->stability);
+				}
+				debug_print(MAX , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
+			}
+		break;
+		case ROUTING_SHORT:
+			//Walks in the list
+			for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
+				neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+		
+				//Shortest route to the sink
+				if ((neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 2))){
+					next.addr	= neigh_ptr->address;
+					next.prio	= 2;
+					next.stab	= compute_stability(neigh_ptr->stability);
+				}
+				
+				debug_print(MAX , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
+			}
+		break;
+		default:
+			op_sim_end("Unknown routing type" , "" , "" , "");
+		break;
 	}
-	
 	debug_print(LOW , DEBUG_NODE , "next hop %d (%d %d)\n", next.addr , next.prio , next.stab);
 	print_neighborhood_table(DEBUG_NODE);
 	return(next.addr);
@@ -1115,99 +1118,11 @@ int get_next_hop(){
 
 
 
-//-----------------------------------------------------------
-//
-//					NB BRANCHES (for a SINK)
-//
-//-----------------------------------------------------------
-
-
-//returns the nb of current branches (number of border nodes father than I am from the sink)
-int get_nb_branches(){
-	int				i;
-	neigh_struct	*neigh_ptr;
-	int				nb_branches = 0;
-	
-	//Walks in the list
-	for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-
-		if ((neigh_ptr->dist_sink > my_dist_sink) && (neigh_ptr->dist_border == 0))
-			nb_branches++;
-		
-
-	}
-	
-	return(nb_branches);
-}
-
-//Returns the child of the current branch
-int get_child_from_sink(int current_branch){
-	int				i;
-	neigh_struct	*neigh_ptr;
-	int				nb_branches = 0;
-	
-	//Walks in the list
-	for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-
-		if ((neigh_ptr->dist_sink > my_dist_sink) && (neigh_ptr->dist_border == 0)){
-		
-			//That what I am searching for !
-			if (nb_branches == current_branch)
-				return(neigh_ptr->address);
-			
-			//nb of branches incremented
-			nb_branches++;
-		}
-
-	}
-	return(-1);
-}
-/*
-//returns the id of my child (and border node)
-int get_child_border_node(){
-	int				i;
-	neigh_struct	*neigh_ptr;
-	
-	//Walks in the list
-	for(i=0; i<op_prg_list_size(my_neighborhood_table) ; i++){
-		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-		if ((neigh_ptr->dist_border == 0) && (neigh_ptr->dist_sink == 1 + my_dist_sink))
-			return(neigh_ptr->address);
-	}
-	
-	//default behavior
-	return(-1);
-}
-*/
-
-
-//returns the id of my father (and border node)
-int get_father_border_node(){
-	int				i;
-	neigh_struct	*neigh_ptr;
-	
-	//Walks in the list
-	for(i=0; i<op_prg_list_size(my_neighborhood_table) ; i++){
-		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-		if ((neigh_ptr->dist_border == 0) && (neigh_ptr->dist_sink + 1 == my_dist_sink))
-			return(neigh_ptr->address);
-	}
-	
-	//default behavior
-	return(-1);
-}
-
 
 
 //-----------------------------------------------------------
 //
-//					BORDER NODES ELECTION
+//					IS BORDER status
 //
 //-----------------------------------------------------------
 
@@ -1216,9 +1131,9 @@ Boolean	get_is_border_node(){
 	int				i , j;
 	neigh_struct	*neigh_ptr;
 	int				*addr_ptr;
-	int				max_stab_in_neigh;
+	int				max_stab_in_neigh=0;
 	int				stab_my_parent = 0;
-	
+	int				stab_tmp;
 	
 /*	int				x_int , y_int , x_sink , y_sink;
 	
@@ -1239,22 +1154,24 @@ Boolean	get_is_border_node(){
 	if (is_sink)
 		return(OPC_TRUE);
 	
+		
 	//Walks in the list
-	for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
+	for(i=op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+		stab_tmp = compute_stability(neigh_ptr->stability);
 		
 		//I am in its list of border nodes
 		for(j=0 ; j < op_prg_list_size(neigh_ptr->border_nodes_list) ; j++){
 			addr_ptr = op_prg_list_access(neigh_ptr->border_nodes_list , j);
 			
 			//It is one parent -> store its stability
-			if ((*addr_ptr == my_address) && (compute_stability(neigh_ptr->stability) > stab_my_parent))
-				stab_my_parent = compute_stability(neigh_ptr->stability);
+			if ((*addr_ptr == my_address) && (stab_tmp > stab_my_parent))
+				stab_my_parent = stab_tmp;
 		}
-		
 		//The max stability
-		if (compute_stability(neigh_ptr->stability) > max_stab_in_neigh)
-				max_stab_in_neigh = compute_stability(neigh_ptr->stability);
+		if (stab_tmp > max_stab_in_neigh)
+				max_stab_in_neigh = stab_tmp;
+
 	}
 	
 	//No one
@@ -1285,7 +1202,6 @@ void empty_list(List *ll){
 Boolean update_is_border_node(){
 	int		old_value;
 
-	
 	old_value = is_border_node;
 	is_border_node = get_is_border_node();
 	
@@ -1295,9 +1211,6 @@ Boolean update_is_border_node(){
 		//updates the border distance
 		if (is_border_node)
 			my_dist_border = 0;
-		/*else
-			my_dist_border = pow (2, 4) - 1;
-		*/
 	
 		//debug
 		debug_print(LOW , DEBUG_NODE , "changed the border_node status: %d -> %d\n", old_value , is_border_node);
@@ -1369,7 +1282,7 @@ void update_dist(){
 			}
 		}
 		
-		debug_print(LOW , DEBUG_HELLO , "	-> %d:   %d/%d   %d/%d  %d/%d\n", neigh_ptr->address , compute_stability(neigh_ptr->stability) , current_stab , neigh_ptr->dist_border , current_dist_border , neigh_ptr->dist_sink , current_dist_sink);
+		debug_print(MEDIUM , DEBUG_HELLO , "	-> %d:   %d/%d   %d/%d  %d/%d\n", neigh_ptr->address , compute_stability(neigh_ptr->stability) , current_stab , neigh_ptr->dist_border , current_dist_border , neigh_ptr->dist_sink , current_dist_sink);
 	}
 	
 	//particular case
@@ -1380,8 +1293,14 @@ void update_dist(){
 	my_dist_border	= current_dist_border;
 	
 	debug_print(MAX , DEBUG_HELLO , "Distances update\n");
-	print_neighborhood_table(DEBUG_HELLO);
+	if (DEBUG >= MEDIUM)
+		print_neighborhood_table(DEBUG_HELLO);
 }
+
+
+
+
+
 
 
 
@@ -1427,17 +1346,26 @@ List *create_bn_list_from_packet(Packet *pk){
 }
 
 //Compares to couples addr/power 
-int compare_addr_pow_stab_couple(void *value_a, void * value_b){
-	addr_pow_couple	a , b;
+int compare_election_struct(void *value_a, void * value_b){
+	election_struct	a , b;
 	
-	a = *(addr_pow_couple*)value_a;
-	b = *(addr_pow_couple*)value_b;
+	a = *(election_struct*)value_a;
+	b = *(election_struct*)value_b;
+	
 	
 	//null power -> bad
 	if (b.pow == 0)
 		return(1);
 	else if (a.pow == 0)
 		return(-1);
+	
+	//0° criterium: branch nb (for the sink, else no particular interest)
+	if ((is_sink) && (is_sync_direct_antenna)){
+		if (a.branch < b.branch)
+			return(1);
+		else if (a.branch > b.branch)
+			return(-1);
+	}
 	
 	//First criterium: the stability
 	else if (a.stab > b.stab + STAB_STEP)
@@ -1460,267 +1388,163 @@ int compare_addr_pow_stab_couple(void *value_a, void * value_b){
 	}
 }
 
-//Prints the list of the current border nodes
-char* print_border_nodes(char *msg){
-	int				i;
-	neigh_struct	*neigh_ptr;
-	//To store all the power, sorted, in a list
-	List			*max_sync_rx_power;
-	addr_pow_couple	*ptr;
-	//Control
-	Boolean			end;
-	int				nb_borders;
-	
-	
-   	sprintf(msg , "");
-
-	
-	//--------------------------------------------------
-	//				NO BORDER NODE
-	//--------------------------------------------------
-	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_border_node) || (my_dist_sink > MAX_BRANCH_LENGTH))){
-	}
-
-	else{
-		//initialization
-		max_sync_rx_power = op_prg_list_create();
-	
-		//--------------------------------------------------
-		//	Stores all the power of my neighbors (sorted)
-		//--------------------------------------------------
-		for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-			//Adds the power if the node is farther from the sink
-			if (neigh_ptr->dist_sink > my_dist_sink){ // && (ptr->pow < my_sync_rx_power)){
-				ptr = op_prg_mem_alloc(sizeof(addr_pow_couple));
-				ptr->addr 	= neigh_ptr->address;
-				ptr->pow 	= neigh_ptr->sync_rx_power;
-				ptr->stab	= compute_stability(neigh_ptr->stability);
-				op_prg_list_insert_sorted(max_sync_rx_power , ptr , compare_addr_pow_stab_couple);
-			}
-		}
-	
-	
-		//no node in the list
-		if (op_prg_list_size(max_sync_rx_power) == 0){
-			nb_borders = 0;
-		}
-	
-		//--------------------------------------------------
-		//		For the sink -> places the N min power
-		//--------------------------------------------------
-		else if (is_sink){
-			nb_borders = 0;
-			end = OPC_FALSE;
-			while ((nb_borders < MAX_NB_BRANCHES) && (nb_borders < op_prg_list_size(max_sync_rx_power)) && (!end)){
-				ptr = op_prg_list_access(max_sync_rx_power , nb_borders);
-			
-				//Eliminates nodes nearer from the sink than I am
-				if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0)){
-					sprintf(msg , "%s %d", msg , ptr->addr);
-					nb_borders++;
-				}
-			
-				//The list is sorted -> no more interesting node
-				else
-					end = OPC_TRUE;
-			}
-		}	
-		//------------------------------------------------------
-		//	For a normal border node, chooses only the lowest
-		//------------------------------------------------------
-		else{
-			ptr = op_prg_list_access(max_sync_rx_power , 0);
-			if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0)){
-				sprintf(msg , "%s %d", msg , ptr->addr);
-				nb_borders = 1;
-			}
-			else
-				nb_borders = 0;
-		
-		}
-		//--------------------------------------------------
-		//			release memory
-		//--------------------------------------------------
-		while(op_prg_list_size(max_sync_rx_power) > 0){
-			ptr = op_prg_list_remove(max_sync_rx_power , 0);
-			op_prg_mem_free(ptr);
-		}
-		op_prg_mem_free(max_sync_rx_power);
-	}
-
-	return(msg);
+//returns the min value
+int	min_int(int a , int b){
+	if (a < b)
+		return(a);
+	else
+		return(b);
 }
 
-//fills the packet with the list of my border nodes
-void fill_border_nodes_fields(Packet *pk){
+//compare two int_ptr
+int	compare_int(void *a1 , void *a2){
+	int	a,b;
+	
+	a = *(int*)a1;
+	b = *(int*)a2;
+	
+	if (a < b)
+		return(1);
+	else if (a > b )
+		return(-1);
+	else return(0);
+
+}
+	
+//returns true if the lists are identical
+Boolean compare_bn_list(List *l1, List * l2){
+	int		i;
+	int		*a , *b;
+
+
+	if (op_prg_list_size(l1) != op_prg_list_size(l2))
+		return(OPC_FALSE);
+
+	//sorts the lists
+	op_prg_list_sort(l1, compare_int);
+	op_prg_list_sort(l2, compare_int);
+	
+	//Compare it
+	for (i=0 ; i < op_prg_list_size(l1) ; i++){
+		a = op_prg_list_access(l1 , i);
+		b = op_prg_list_access(l2 , i);
+		
+		if (*a != *b)
+			return(OPC_FALSE);
+	}
+	return(OPC_TRUE);
+}
+
+//returns the list of current border nodes
+void compute_current_bn_list(List **ll){
 	int				i;
 	neigh_struct	*neigh_ptr;
 	//To store all the power, sorted, in a list
 	List			*max_sync_rx_power;
-	addr_pow_couple	*ptr;
+	election_struct	*ptr;
 	//Control
-	Boolean			end;
-	char			field_name[50];
-	int				nb_borders;
+	int				*int_ptr;
+	int				branch_tmp = -1;
+	//conditions
+	Boolean			direct_and_new;
+	Boolean			no_direct_and_new;
 
 	
+	//empty the old list
+	while(op_prg_list_size(*ll) > 0){
+		int_ptr = op_prg_list_remove(*ll , 0);
+		op_prg_mem_free(int_ptr);
+	}
+
 	//--------------------------------------------------
 	//				NO BORDER NODE
 	//--------------------------------------------------
-	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_border_node) || (my_dist_sink > MAX_BRANCH_LENGTH))){
-		nb_borders = 0;
+	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_border_node) || (my_dist_sink > MAX_BRANCH_LENGTH)))
 		debug_print(MAX , DEBUG_NODE , "No border node: %d %d %d\n", my_sync_rx_power == 0 , !is_border_node , my_dist_sink > MAX_BRANCH_LENGTH);
-	}
 
 	else{
 		//initialization
 		max_sync_rx_power = op_prg_list_create();
 	
+		
+		
 		//--------------------------------------------------
 		//	Stores all the power of my neighbors (sorted)
 		//--------------------------------------------------
 		for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-			//Adds the power if the node is farther from the sink
-			if (neigh_ptr->dist_sink > my_dist_sink){ // && (ptr->pow < my_sync_rx_power)){
-				ptr = op_prg_mem_alloc(sizeof(addr_pow_couple));
-				ptr->addr 	= neigh_ptr->address;
-				ptr->pow 	= neigh_ptr->sync_rx_power;
-				ptr->stab	= compute_stability(neigh_ptr->stability);
-				op_prg_list_insert_sorted(max_sync_rx_power , ptr , compare_addr_pow_stab_couple);
-			}
-		}
-	
-	
-		//no node in the list
-		if (op_prg_list_size(max_sync_rx_power) == 0){
-			nb_borders = 0;
-		}
-	
-		//--------------------------------------------------
-		//		For the sink -> places the N min power
-		//--------------------------------------------------
-		else if (is_sink){
-			nb_borders = 0;
-			end = OPC_FALSE;
-			debug_print(LOW , DEBUG_NODE , "Border nodes: \n");
-			while ((nb_borders < MAX_NB_BRANCHES) && (nb_borders < op_prg_list_size(max_sync_rx_power)) && (!end)){
-				ptr = op_prg_list_access(max_sync_rx_power , nb_borders);
 			
-				//Eliminates nodes nearer from the sink than I am
-				if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0)){
-					sprintf(field_name , "BORDER_%d", nb_borders++);
-					op_pk_nfd_set(pk , field_name , ptr->addr);				
-					debug_print(LOW , DEBUG_NODE , "	->%d\n", ptr->addr);
-				}
-			
-				//The list is sorted -> no more interesting node
-				else
-					end = OPC_TRUE;
-			}
-		}	
-		//------------------------------------------------------
-		//	For a normal border node, chooses only the lowest
-		//------------------------------------------------------
-		else{
-			ptr = op_prg_list_access(max_sync_rx_power , 0);
-			if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0)){
-				op_pk_nfd_set(pk , "BORDER_0" , ptr->addr);
-				nb_borders = 1;
-				debug_print(LOW , DEBUG_NODE , "node %d chosen as border node\n", ptr->addr);
-				print_neighborhood_table(DEBUG_NODE);
-			}
-			else{
-				nb_borders = 0;
-				debug_print(MAX , DEBUG_NODE , "no border node : %d\n", ptr->pow < my_sync_rx_power , ptr->pow != 0);
-			}
-		
-		}
-		//--------------------------------------------------
-		//			release memory
-		//--------------------------------------------------
-		while(op_prg_list_size(max_sync_rx_power) > 0){
-			ptr = op_prg_list_remove(max_sync_rx_power , 0);
-			op_prg_mem_free(ptr);
-		}
-		op_prg_mem_free(max_sync_rx_power);
-	}	
-	
-	
-	
-	//--------------------------------------------------
-	//				finalization
-	//--------------------------------------------------
-	op_pk_nfd_set(pk , "NB_BORDERS" , nb_borders);
-	for(i=nb_borders ; i < MAX_NB_BRANCHES ; i++){
-		sprintf(field_name , "BORDER_%d", i);
-		if (op_pk_nfd_is_set(pk, field_name))
-			op_pk_nfd_strip(pk , field_name);
-	}
-	print_neighborhood_table(DEBUG_NODE);
-}
-
-
-//Returns the border node (not for the sink)
-int get_child_border_node(){
-	int				i;
-	neigh_struct	*neigh_ptr;
-	//To store all the power, sorted, in a list
-	List			*max_sync_rx_power;
-	addr_pow_couple	*ptr;
-	//Control
-	Boolean			end;
-	int				nb_borders;
-	int				border_node_result;
-	
-	
-	//--------------------------------------------------
-	//				NO BORDER NODE
-	//--------------------------------------------------
-	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_border_node) || (my_dist_sink > MAX_BRANCH_LENGTH))){
-		return(BROADCAST);
-	}
-
-	else{
-		//initialization
-		max_sync_rx_power = op_prg_list_create();
-	
-		//--------------------------------------------------
-		//	Stores all the power of my neighbors (sorted)
-		//--------------------------------------------------
-		for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
 			//Adds the power if the node is farther from the sink
 			if (neigh_ptr->dist_sink > my_dist_sink){
-				ptr = op_prg_mem_alloc(sizeof(addr_pow_couple));
+				ptr = op_prg_mem_alloc(sizeof(election_struct));
 				ptr->addr 	= neigh_ptr->address;
 				ptr->pow 	= neigh_ptr->sync_rx_power;
 				ptr->stab	= compute_stability(neigh_ptr->stability);
-				op_prg_list_insert_sorted(max_sync_rx_power , ptr , compare_addr_pow_stab_couple);
+				ptr->branch	= neigh_ptr->branch;
+				op_prg_list_insert_sorted(max_sync_rx_power , ptr , compare_election_struct);
 			}
 		}
 	
-	
-		//no node in the list
+		//--------------------------------------------------
+		//			No node in the list
+		//--------------------------------------------------
 		if (op_prg_list_size(max_sync_rx_power) == 0){
-			border_node_result = BROADCAST;
 		}
 	
+		//--------------------------------------------------
+		//		For the sink -> places the N min power
+		//--------------------------------------------------
+		else if (is_sink){
+			debug_print(LOW , DEBUG_NODE , "Border nodes: \n");
+
+			//Firt branch to deal with
+			branch_tmp = -1;
+			
+			//Walks in the sorted list of my neighbors
+			for(i=0 ; i < op_prg_list_size(max_sync_rx_power) ; i++){
+				ptr = op_prg_list_access(max_sync_rx_power , i);
+				
+				debug_print(MAX , DEBUG_NODE , "	ptr (%d : %d %f) current (%d)\n", ptr->addr , ptr->branch , ptr->pow , branch_tmp);
+				
+				//Eliminates nodes nearer from the sink than I am
+				direct_and_new		= (is_sync_direct_antenna) && (ptr->branch > branch_tmp);
+				no_direct_and_new	= (!is_sync_direct_antenna) && (i < MAX_NB_BRANCHES);
+				
+				if ((ptr->pow != 0) && (direct_and_new || no_direct_and_new)){
+					branch_tmp = ptr->branch;
+				
+					//creates a list of current border nodes
+					int_ptr = op_prg_mem_alloc(sizeof(int));
+					*int_ptr = ptr->addr;
+					op_prg_list_insert(*ll , int_ptr , OPC_LISTPOS_TAIL);
+					
+					debug_print(MAX , DEBUG_NODE , "	->%d\n", ptr->addr);					
+				}
+			}
+		}	
 		//------------------------------------------------------
 		//	For a normal border node, chooses only the lowest
 		//------------------------------------------------------
 		else{
+
 			ptr = op_prg_list_access(max_sync_rx_power , 0);
-			if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0))
-				border_node_result = ptr->addr;
+			
+			if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0)){
+				debug_print(MAX , DEBUG_NODE , "node %d chosen as border node\n", ptr->addr);
+					
+				//creates a list of current border nodes
+				int_ptr = op_prg_mem_alloc(sizeof(int));
+				*int_ptr = ptr->addr;
+				op_prg_list_insert(*ll , int_ptr , OPC_LISTPOS_TAIL);
+			}
 			else
-				border_node_result = BROADCAST;
+				debug_print(MAX , DEBUG_NODE , "no border node : %d\n", ptr->pow < my_sync_rx_power , ptr->pow != 0);
+			
 		
 		}
+			
+
 		//--------------------------------------------------
 		//			release memory
 		//--------------------------------------------------
@@ -1730,13 +1554,128 @@ int get_child_border_node(){
 		}
 		op_prg_mem_free(max_sync_rx_power);
 	}
+	
+	/*debug_print(LOW , DEBUG_NODE , "FINAL_LIST\n");
+	for(i=0 ; i < op_prg_list_size(bn_list) ; i++){
+		int_ptr = op_prg_list_access(bn_list , i);
+		debug_print(LOW , DEBUG_NODE , "  : %d\n", *int_ptr);
+	}
+	*/
+	
+}
 
-	return(border_node_result);
+	
+//fills the packet with the list of my border nodes
+void fill_border_nodes_fields(Packet *pk){
+	int				*int_ptr;
+	//Control
+	int				i;
+	char			field_name[50];
+
+
+	//Current border node list
+	compute_current_bn_list(&bn_list);
+	
+	//Nb of border nodes
+	op_pk_nfd_set(pk , "NB_BORDERS" , op_prg_list_size(bn_list));
+	
+	
+	//Fills border fields
+	for(i=0 ; i < MAX_NB_BRANCHES ; i++){
+		sprintf(field_name , "BORDER_%d", i);
+		
+		//Border fields
+		if (i < op_prg_list_size(bn_list)){
+			int_ptr = op_prg_list_access(bn_list , i);
+			op_pk_nfd_set(pk, field_name , *int_ptr);
+		}
+		//No more border fields
+		else if (op_pk_nfd_is_set(pk, field_name))
+			op_pk_nfd_strip(pk , field_name);
+	
+	}
+	
+	print_neighborhood_table(DEBUG_NODE);
+}
+
+
+
+
+//-----------------------------------------------------------
+//
+//				BORDER NODES (neighbors...)
+//
+//-----------------------------------------------------------
+
+
+
+//Returns the border node (not for the sink, it have several border nodes !)
+int get_child_border_node(){
+	int		*int_ptr;
+	
+	if ((!is_border_node) || (op_prg_list_size(bn_list) == 0))
+		return(BROADCAST);
+	
+	int_ptr = op_prg_list_access(bn_list , 0);
+	return(*int_ptr);
+}
+
+
+//Returns the child of the current branch
+int get_child_from_sink(int current_branch){
+	int		*int_ptr;
+	
+	if ((!is_border_node) || (op_prg_list_size(bn_list) == 0))
+		return(BROADCAST);
+	
+	
+	int_ptr = op_prg_list_access(bn_list , current_branch);
+	return(*int_ptr);
+}
+
+
+//Prints the list of the current border nodes
+char* print_border_nodes(char *msg){
+	int		*int_ptr;
+	int		i;
+
+	sprintf(msg , "");
+	for(i=0; i < op_prg_list_size(bn_list) ; i++){
+		int_ptr = op_prg_list_access(bn_list , i);
+		sprintf(msg , "%s %d" , msg , *int_ptr);
+	}
+	return(msg);
 }
 	
+//returns the nb of current branches (number of border nodes father than I am from the sink)
+int get_nb_branches(){
+	return(op_prg_list_size(bn_list));
+}
+
+
+//returns the id of my father (and border node)
+int get_father_border_node(){
+	int				i;
+	neigh_struct	*neigh_ptr;
 	
+	//Walks in the list
+	for(i=0; i<op_prg_list_size(my_neighborhood_table) ; i++){
+		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+		
+		if ((neigh_ptr->dist_border == 0) && (neigh_ptr->dist_sink + 1 == my_dist_sink))
+			return(neigh_ptr->address);
+	}
 	
-	
+	//default behavior
+	return(-1);
+}
+
+
+
+
+
+
+
 
 
 //-----------------------------------------------------------
@@ -1815,8 +1754,8 @@ void  generate_hello(){
 	add_in_data_frame_buffer(frame , OPC_LISTPOS_HEAD);
 	is_hello_to_send = OPC_TRUE;
 	
-	debug_print(MEDIUM , DEBUG_HELLO , "HELLO generated\n");
-	debug_print(MEDIUM , DEBUG_NODE , "HELLO generated\n");
+	debug_print(MAX , DEBUG_HELLO , "HELLO generated\n");
+	debug_print(MAX , DEBUG_NODE , "HELLO generated\n");
 }
 
 
@@ -1861,11 +1800,10 @@ void delete_timeouted_neighbors(Vartype*ptr , int code){
 	
 	//Modification in the neighborhood table !
 	if (is_modif_required){
-	
 		//Border node
-		if ((is_border_node) && (update_is_border_node()))
+		if (update_is_border_node())
 			generate_hello();
-		
+
 		//Distances
 		update_dist();
 	}
@@ -1880,11 +1818,12 @@ void delete_timeouted_neighbors(Vartype*ptr , int code){
 
 
 //updates the neighborhood table with one new entry !
-void update_neighborhood_table(int source , int dist_sink , int dist_border, double sync_rx_power, List *bn_list){
+void update_neighborhood_table(int source , int dist_sink , int dist_border, double sync_rx_power, int branch , List *bn_list_tmp){
 	int				i;
 	neigh_struct	*neigh_ptr;
 	Boolean			neighbor_updated 	= OPC_FALSE;
 	Boolean			hello_required 		= OPC_FALSE;
+	
 	
 	//---------------------------
 	//	DIST SINK / BORDER
@@ -1914,8 +1853,9 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 			neigh_ptr->dist_sink			= dist_sink;
 			neigh_ptr->dist_border			= dist_border;
 			neigh_ptr->sync_rx_power		= sync_rx_power;
+			neigh_ptr->branch				= branch;
 			neigh_ptr->timeout				= op_sim_time() + INTERVALL_HELLO;			
-			neigh_ptr->border_nodes_list	= bn_list;
+			neigh_ptr->border_nodes_list	= bn_list_tmp;
 			update_stability(neigh_ptr->stability , OPC_TRUE);
 			neighbor_updated = OPC_TRUE;
 				
@@ -1925,22 +1865,23 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 		}	
 	}
 	
-	
+
 	//---------------------------
 	//		LIST ADD
 	//---------------------------
 	if (!neighbor_updated){
 		//We add one entry -> we must schedule the timeout verification
 		if (op_prg_list_size(my_neighborhood_table) == 0)
-			op_intrpt_schedule_call(op_sim_time() + TIMEOUT_NEIGHBOR * INTERVALL_HELLO , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
+			op_intrpt_schedule_call(op_sim_time() + INTERVALL_HELLO , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
 
 		neigh_ptr = op_prg_mem_alloc(sizeof(neigh_struct));
 		neigh_ptr->address				= source;
 		neigh_ptr->dist_sink			= dist_sink;
 		neigh_ptr->dist_border			= dist_border;
 		neigh_ptr->sync_rx_power		= sync_rx_power;
+		neigh_ptr->branch				= branch;
 		neigh_ptr->timeout				= op_sim_time() +INTERVALL_HELLO;
-		neigh_ptr->border_nodes_list	= bn_list;
+		neigh_ptr->border_nodes_list	= bn_list_tmp;
 		init_stability(neigh_ptr->stability , OPC_TRUE);
 		op_prg_list_insert(my_neighborhood_table , neigh_ptr , OPC_LISTPOS_TAIL);	  
 		
@@ -1954,10 +1895,10 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 	//---------------------------
 	//NB: I must verify for each reception 
 	//the source may have change the list of its border nodes
+	
 	if (update_is_border_node())
 		hello_required = OPC_TRUE;
 		
-	
 	//---------------------------
 	//		IS BORDER NODE ?
 	//---------------------------
@@ -1968,6 +1909,7 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 	//I changed by border node status or my distance to sink / border
 	if (hello_required)
 		generate_hello();
+	
 }
 
 
@@ -1985,7 +1927,7 @@ void print_neighborhood_table(int debug_type){
 	debug_print(LOW , debug_type , "------------------------------------------------------------------------------------------------------------\n");
 	debug_print(LOW , debug_type , "\n");
 	
-	debug_print(LOW , debug_type , "    ADDR	|	DIST_SINK	|	DIST_BORDER	|	SYNC_POWER		|	TIMEOUT		|	STABILITY	|	BN_LIST\n");
+	debug_print(LOW , debug_type , "    ADDR	|	DIST_SINK	|	DIST_BORDER	|  BRANCH	|	TIMEOUT		| STABILITY	|BN_LIST	|	SYNC_POWER\n");
 	
 	for (i=0 ; i< op_prg_list_size(my_neighborhood_table) ; i++){
 		ptr = op_prg_list_access(my_neighborhood_table , i);
@@ -1998,12 +1940,12 @@ void print_neighborhood_table(int debug_type){
 		}
 			
 		//the whole info
-		debug_print(LOW , debug_type , "%8d	|	%3d		|	%3d		|	%10f	|	%f		|	%d		|	%s\n", ptr->address , convert_int(ptr->dist_sink) , convert_int(ptr->dist_border) , convert_double(ptr->sync_rx_power) , ptr->timeout , compute_stability(ptr->stability) , msg);
+		debug_print(LOW , debug_type , "%8d	|	%3d		|	%3d		|	%d	|	%f		|	%d	|	%s	|	%8.0f\n", ptr->address , convert_int(ptr->dist_sink) , convert_int(ptr->dist_border) , ptr->branch , ptr->timeout , compute_stability(ptr->stability) , msg ,  convert_double(ptr->sync_rx_power));
 	}
 	debug_print(LOW , debug_type , "\n");
-	debug_print(LOW , debug_type , "ME: 	DIST_SINK 		= %d 		DIST_BORDER 	= %d\n", 	my_dist_sink , 	my_dist_border );
-	debug_print(LOW , debug_type , "	 	IS_BORDER_NODE 	= %d 		SYNC_RX_POWER 	= %f\n", 	is_border_node, convert_double(my_sync_rx_power));
-	debug_print(LOW , debug_type , "		BORDER NODES 	=	%s\n" , print_border_nodes(msg));
+	debug_print(LOW , debug_type , "ME: 	DIST_SINK 			= %d 		DIST_BORDER 	= %d\n", 	my_dist_sink , 	my_dist_border );
+	debug_print(LOW , debug_type , "	 	IS_BORDER_NODE 		= %d 		SYNC_RX_POWER 	= %f\n", 	is_border_node, convert_double(my_sync_rx_power));
+	debug_print(LOW , debug_type , "		BORDER NODES(last sent)	= %s\n" , print_border_nodes(msg));
 	debug_print(LOW , debug_type , "\n");
 }
 
@@ -2064,6 +2006,7 @@ Packet* create_packet(frame_struct frame){
 			op_pk_nfd_set(pk , "DIST_SINK" , 	my_dist_sink);
 			op_pk_nfd_set(pk , "DIST_BORDER" ,	my_dist_border);
 			op_pk_nfd_set(pk , "SYNC_POWER" ,	my_sync_rx_power);
+			op_pk_nfd_set(pk , "BRANCH" ,		my_branch);
 			fill_border_nodes_fields(pk);
 		break;
 		case RTS_PK_TYPE:
@@ -2086,6 +2029,7 @@ Packet* create_packet(frame_struct frame){
 		break;
 		case SYNC_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_sync");
+			op_pk_nfd_set(pk , "BRANCH" , 		sync_last_branch);
 		break;
 		default:
 			sprintf(msg, "Packet type %d unknown");
@@ -2324,9 +2268,10 @@ void generate_ctr(){
 	
 	//Destination
 	if (is_sink){
-		if (ctr_next_branch >= get_nb_branches())
-			ctr_next_branch = 0;
-		destination = get_child_from_sink(ctr_next_branch++);	
+		ctr_last_branch++;
+		if (ctr_last_branch >= get_nb_branches())
+			ctr_last_branch = 0;
+		destination = get_child_from_sink(ctr_last_branch);	
 	}
 	else
 		destination = get_child_border_node();
@@ -2595,8 +2540,8 @@ void receive_packet_from_radio(){
 	short			frame_type;
 	int				frame_id;
 	//hellos
-	int				dist_sink , dist_border;
-	List			*bn_list;
+	int				dist_sink , dist_border , branch;
+	List			*bn_list_tmp;
 	double			sync_power;
 	//RTS / CTS / DATA / ACK for nav
 	int				duration;
@@ -2618,10 +2563,14 @@ void receive_packet_from_radio(){
 	op_pk_nfd_get(frame , "Data Packet ID" ,&frame_id);
 	
 	
-	
-	//op_pk_print(cmac_frame);
-	debug_print(LOW , DEBUG_RECEIVE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , my_nav);
+
+	//DEBUG
 	debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , my_nav);
+	if ((my_address == destination) || (destination == BROADCAST))
+		debug_print(LOW , DEBUG_RECEIVE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , my_nav);
+	else
+	if ((my_address == destination) || (destination == BROADCAST))
+		debug_print(MAX , DEBUG_RECEIVE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , my_nav);
 	
 	
 	
@@ -2816,9 +2765,8 @@ void receive_packet_from_radio(){
 					time_start_privileged	= op_sim_time();
 					
 					//Error
-					if (!is_border_node){
+					if (!is_border_node)
 						update_is_border_node();
-					}
 					//	op_sim_end("An error occured : a node which is not a border node" , "becomes privileged after the reception of a CTR" , "please correct the bug" , "");
 						
 					
@@ -2845,6 +2793,7 @@ void receive_packet_from_radio(){
 			
 			//Updates the neighborhood table
 			case HELLO_PK_TYPE:
+				op_pk_nfd_get(frame , "BRANCH" , 	&branch);
 			
 				if (destination != BROADCAST)
 					op_sim_end("An hello is sent in broadcast" , "not in unicast", "please correct the bug", "");
@@ -2852,17 +2801,19 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , "DIST_SINK" , 	&dist_sink);
 				op_pk_nfd_get(frame , "DIST_BORDER" , 	&dist_border);
 				op_pk_nfd_get(frame , "SYNC_POWER" , 	&sync_power);
-				bn_list = create_bn_list_from_packet(frame);
-				update_neighborhood_table(source , dist_sink , dist_border , sync_power , bn_list);
+				bn_list_tmp = create_bn_list_from_packet(frame);
+				update_neighborhood_table(source , dist_sink , dist_border , sync_power , branch , bn_list_tmp);
 			
 			break;
 				
 			//Reception of a sync frame from the sink 
 			//in order to select border nodes
 			case SYNC_PK_TYPE:			
+				op_pk_nfd_get(frame , "BRANCH" , 	&my_branch);
 			
 				my_sync_rx_power = last_rx_power * 1E14;
-				debug_print(LOW , DEBUG_NODE , "%d -> SYNC Level reception : %f\n", my_address , my_sync_rx_power);
+				debug_print(LOW , DEBUG_NODE , "%d -> SYNC Level reception : %f , branch %d\n", my_address , my_sync_rx_power , my_branch);
+				//printf("%d -> SYNC Level reception : %f , branch %d\n", my_address , my_sync_rx_power , my_branch);
 				
 			break;
 				
@@ -2924,45 +2875,7 @@ void receive_packet_from_radio(){
 //
 //-----------------------------------------------------------
 
-//For debug purpose : what default interruption ?
-void print_interruptions(int code){
-	
-	return;
-	printf("%d -> CODE %d ", my_address , code);
-	
-	switch(op_intrpt_type()){
-		case OPC_INTRPT_STRM :
-			printf("STREAM from %d\n", op_intrpt_strm());
-		break;
-		case OPC_INTRPT_SELF:
-			printf("SELF code ");
-			switch(op_intrpt_code()){
-				case FRAME_TIMEOUT_CODE :
-					printf("FRAME_TIMEOUT\n");
-				break;
-				case SINK_CTR_CODE:
-					printf("SINK_CTR\n");
-				break;
-				case DEFER_CODE:
-					printf("DEFER\n");
-				break;
-				case CTR_PK_CODE:
-					printf("CTR_PK\n");
-				break;
-				default:
-					printf("UNKNOWN\n");
-				
-			}
-		break;
-		case OPC_INTRPT_STAT :
-			printf("STAT from %d\n", op_intrpt_stat());
-		break;
-		default :
-			printf("UNKNOWN\n");
-		break;
-	
-	}
-}
+
 
 //handle all interruptions when It does not depend on the state machine
 void interrupt_process(){
@@ -2972,8 +2885,6 @@ void interrupt_process(){
 	Boolean		old;
 	//reception power 
 	double		new_rx_power;
-
-	
 	
 	switch (op_intrpt_type()){
 	
@@ -2999,7 +2910,6 @@ void interrupt_process(){
 			
 			switch(op_intrpt_stat()){
 				case STAT_FROM_RX :
-				
 					new_rx_power = op_stat_local_read(op_intrpt_stat()); 
 					old = 	is_rx_busy;
 
@@ -3011,20 +2921,40 @@ void interrupt_process(){
 					else
 						is_rx_busy 		= OPC_FALSE;
 				
-					debug_print(MAX , DEBUG_RADIO , "rx_busy %d -> %d (rx pow %f)\n", old , is_rx_busy , new_rx_power * 1E14);
+					debug_print(MEDIUM , DEBUG_RADIO , "rx_busy %d -> %d (rx pow %f)\n", old , is_rx_busy , new_rx_power * 1E14);
 				break;
 				
+				//Signal from my busy tone receiver	
+				case STAT_FROM_RX_BUSY_TONE :
+				
+					new_rx_power = op_stat_local_read(op_intrpt_stat()); 
+					old = is_busy_tone;
+					is_busy_tone 	= (new_rx_power > rx_power_threshold);	
+					if (old != is_busy_tone)
+						debug_print(LOW , DEBUG_RADIO , "rx_busy %d -> %d (busy tone, power %f, threshold %f)\n", old , is_busy_tone , new_rx_power*1E14 , rx_power_threshold*1E14);
+					
+				break;
+				
+				//2 transmitters but considered logicaly as one single transmitter with a different antenna
+				case STAT_FROM_TX_DIREC_SYNC:
 				case STAT_FROM_TX :
 					old = is_tx_busy ;				
 				
-					if (op_stat_local_read(op_intrpt_stat()) == 1.0)
-						is_tx_busy = OPC_TRUE;
-					else
-						is_tx_busy = OPC_FALSE;
+					is_tx_busy = (op_stat_local_read(op_intrpt_stat()) == 1.0);
 				
-					debug_print(MAX , DEBUG_RADIO , "tx_busy %d -> %d\n", old , is_tx_busy);
+					debug_print(MEDIUM , DEBUG_RADIO , "tx_busy %d -> %d\n", old , is_tx_busy);
 				break;
 				
+				//End of busy tone -> we send another packet
+				case STAT_FROM_TX_BUSY_TONE:
+				
+				
+					if (op_stat_local_read(op_intrpt_stat()) != 1.0){
+						//maintain_busy_tone(NULL , 0);				
+						//debug_print(LOW , DEBUG_RADIO , "tx_busy tone, state %d (=> new packet sent to maintain the busy state)\n" , op_stat_local_read(op_intrpt_stat()) == 1.0);
+					}
+				break;
+					
 				default :
 					sprintf(msg, "We are not configured to handle the stat from the line %d\n", op_intrpt_stat());
 					op_sim_end(msg, "" , "" , "");
@@ -3037,6 +2967,12 @@ void interrupt_process(){
 			//CTR from the sink
 			if (op_intrpt_code() == SINK_CTR_CODE){
 				generate_ctr();
+				
+				//The busy tone changes when the branch changes (only for the sink)
+				//change_antenna_direction(STREAM_TO_BUSY_TONE , ctr_last_branch);
+				//debug_print(LOW , DEBUG_RADIO , "busy tone direction has changed, pointing now to branch %d\n", ctr_last_branch);
+				//maintain_busy_tone(PRIVILEGED_MAX_TIME * BETA - 0.0001);
+				
 				
 				//The next CTR from the sink
 				op_intrpt_schedule_self(op_sim_time() + PRIVILEGED_MAX_TIME * BETA , SINK_CTR_CODE);
@@ -3308,7 +3244,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 	
 	if (level <= DEBUG)	{			
 		//Normal debug
-		if ((type != DEBUG_STATE) && (type != DEBUG_RADIO)){
+		if ((type != DEBUG_STATE)){ // && (type != DEBUG_RADIO)){
 			fprintf(pfile , "[%4ds , "	, (int) floor(op_sim_time()));
 			fprintf(pfile , "%4dms , "	, (int) (floor(op_sim_time() * 1E3) - 1E3 * floor(op_sim_time())));
 			fprintf(pfile , "%4dus , "	, (int) (floor(op_sim_time() * 1E6) - 1E3 * floor(op_sim_time() * 1E3)));
@@ -3422,6 +3358,99 @@ void end_sim(){
 
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//-----------------------------------------------------------
+//
+//					ANTENNAS & BUSY TONE
+//
+//-----------------------------------------------------------
+
+
+//Changes the radio power for tranmissions
+void change_tx_power(double power , int stream){
+	//id
+	int			tx_id , chan_id , sub_chan_id;
+	int			num_chan;
+	int			i;
+	
+	//gets the id of the tansmitter + channel attributes
+	tx_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , stream);
+	op_ima_obj_attr_get (tx_id, "channel", &chan_id);
+
+	//Sets the channel attributes
+	//NB: I have normally one single channel, but .....
+	num_chan = op_topo_child_count(chan_id, OPC_OBJTYPE_RATXCH);		
+	for(i=0 ; i<num_chan ; i++){
+		sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
+		op_ima_obj_attr_set (sub_chan_id, "power", power);
+	}
+
+	debug_print(LOW , DEBUG_RADIO , "New power transmission %f\n", power);
+	debug_print(LOW , DEBUG_SEND , "New power transmission %f\n", power);
+	printf("--> NEW power %f\n", power);
+}
+
+
+
+//Changes the radio power for tranmissions
+void change_antenna_direction(int stream , int branch){
+	int			antenna_id;
+	int			tx_id;
+	double		theta;
+	double		x , y;
+	
+	//Transmitter id (I am connected via a stream to it)
+	tx_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , stream);
+	
+	//One single antenna per transmitter
+	antenna_id	= op_topo_assoc(tx_id , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_ANT , 0);
+	
+	
+	//Direction
+	theta = 2 * PI * branch / MAX_NB_BRANCHES;
+	x = cos(theta);
+	y = sin(theta);
+
+	//printf("theta %f (%f) cos %f sin %f\n", theta , (double)branch / MAX_NB_BRANCHES , cos(theta) , sin(theta));	
+	//printf("branch %d -> %f %f\n", branch , x , y);
+	
+	
+	//and point it
+	op_ima_obj_attr_set (antenna_id, "target latitude", 	x);
+	op_ima_obj_attr_set (antenna_id, "target longitude", 	y);
+
+	debug_print(LOW , DEBUG_RADIO , "New direction for the antenna: %f\n", theta);
+}
+
+
+
+
+//sends a packet to the busy tone radio (to maintain a busy state)
+void maintain_busy_tone(double time){
+	Packet	*pkptr;
+
+	//Create a packet with the required size (in bits)
+	pkptr = op_pk_create(busy_tone_speed * time);
+	debug_print(LOW , DEBUG_RADIO , "new busy tone for %fs (packet size %f)\n", time , op_pk_total_size_get(pkptr));
+
+	//transmission
+	op_pk_send(pkptr , STREAM_TO_BUSY_TONE);	
+}
+
 /* End of Function Block */
 
 /* Undefine optional tracing in FIN/FOUT/FRET */
@@ -3477,11 +3506,12 @@ cmac_process (void)
 				double	frequency;
 				double	bandwidth;
 				//transmitters
-				int		nb_radio;
+				int		nb_tx;
 				//Channels
 				int		num_chann;
 				Objid	chann_objid;
 				Objid	sub_chann_objid;
+				Objid	tx_id , rx_id;
 				//Control
 				int		i;
 				char	str[300];
@@ -3531,10 +3561,13 @@ cmac_process (void)
 				
 				//Parameters
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "DEBUG",					&DEBUG);
+				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BETA",					&BETA);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BLOCKED_MODE",			&strict_privileged_mode);
 				op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&PRIVILEGED_MAX_TIME);
+				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING",				&ROUTING);
+				op_ima_sim_attr_get(OPC_IMA_INTEGER , "SYNC_DIRECT_ANTENNA",	&is_sync_direct_antenna);
 				
 				
 				
@@ -3546,6 +3579,8 @@ cmac_process (void)
 				//Parameters
 				op_ima_obj_attr_get (params_attr_objid, "Data Rate", 			&operational_speed);
 				
+				//Power reception (to detect radio activity)
+				op_ima_obj_attr_get (params_attr_objid, "Packet Reception-Power Threshold", &rx_power_threshold);
 				
 				//Channel
 				op_ima_obj_attr_get (params_attr_objid, "Channel Settings", &chann_params_comp_attr_objid);
@@ -3553,8 +3588,7 @@ cmac_process (void)
 				op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 		&bandwidth);	
 				op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 	&frequency);	
 				
-				op_ima_obj_attr_get (params_attr_objid, "Packet Reception-Power Threshold", &rx_power_threshold);
-					
+				
 				
 				if ((!is_ctr_activated) && (strict_privileged_mode))
 					op_sim_end("We can not desactivate the CTR" , "and function in BLOCKED_MODE" , "" , "");
@@ -3573,12 +3607,15 @@ cmac_process (void)
 				data_frame_buffer		= op_prg_list_create();
 				my_neighborhood_table	= op_prg_list_create();
 				my_frame_id_seen		= op_prg_list_create();
+				bn_list					= op_prg_list_create();
+				
 				
 				//No reservation
 				my_nav	= 0;
 				
 				//Backoff distribution initialization
-				backoff_dist = op_dist_load("uniform_int" , 0 , MAX_BACKOFF);
+				cw 				= MAX_BACKOFF;
+				backoff_dist 	= op_dist_load("uniform_int" , 0 , cw);
 				
 				//no reservation
 				is_reply_required = OPC_FALSE;
@@ -3595,6 +3632,12 @@ cmac_process (void)
 				//Verification of the next start time for data frames (in the source process)
 				next_start_time				= 0;
 				last_next_start_time_verif 	= 0;
+				
+				//Branches id
+				ctr_last_branch 			= 0;
+				sync_last_branch			= 0;
+				my_branch					= -1;
+				
 				
 				
 				
@@ -3692,16 +3735,19 @@ cmac_process (void)
 				//		  	 	TRANSMISSION
 				//-----------------------------------------------
 				
+				//normal radios (first and second radios)
+				if (is_sink)
+					nb_tx = 2;
+				else
+					nb_tx = 1;
+				for (i=0; i < nb_tx ; i++){
 				
-				nb_radio = op_topo_assoc_count(my_objid , OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX);
-				for (i=0; i<nb_radio ; i++){
-				
-					tx_objid = op_topo_assoc (my_objid, OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, i);
-					if (tx_objid == OPC_OBJID_INVALID)
+					tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, i);
+					if (tx_id == OPC_OBJID_INVALID)
 						op_sim_end("No attached transmitter\n", "" , "" , "");
 				
 					//Channels nb
-					op_ima_obj_attr_get (tx_objid, "channel", &chann_objid);
+					op_ima_obj_attr_get (tx_id, "channel", &chann_objid);
 				
 					//id access
 					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
@@ -3713,6 +3759,27 @@ cmac_process (void)
 				}
 				
 				
+				//Busy tone configuration
+				if (is_sink){
+					change_tx_power(1E-3 , STREAM_TO_BUSY_TONE);
+					change_antenna_direction(STREAM_TO_BUSY_TONE , ctr_last_branch);
+					
+					
+					tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, STREAM_TO_BUSY_TONE);
+					if (tx_id == OPC_OBJID_INVALID)
+						op_sim_end("No attached transmitter\n", "" , "" , "");
+				
+					//Channels nb
+					op_ima_obj_attr_get (tx_id, "channel", &chann_objid);
+				
+					//id access
+					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
+				
+					//Speed
+					op_ima_obj_attr_get (sub_chann_objid, "data rate", 		&busy_tone_speed);
+					printf("speed -> %f\n", busy_tone_speed);
+				
+				}
 				
 				
 				
@@ -3720,18 +3787,18 @@ cmac_process (void)
 				//		   			RECEPTION
 				//-----------------------------------------------
 				
-				//Receiver
-				rx_objid = op_topo_assoc (my_objid, OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, 0);
-				if (rx_objid == OPC_OBJID_INVALID)
+				//Principal radio receiver
+				rx_id = op_topo_assoc (my_objid, OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, STREAM_FROM_RADIO);
+				if (rx_id == OPC_OBJID_INVALID)
 					op_sim_end("No attached receiver\n", "" , "" , "");
 				
 				
 				//Nb channels
-				op_ima_obj_attr_get (rx_objid, "channel", &chann_objid);
+				op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
 				num_chann = op_topo_child_count (chann_objid, OPC_OBJTYPE_RARXCH);
 					
 				
-				//Frequency + bandwidth
+				//Frequency + bandwidth of the first received
 				for (i = 0; i < num_chann; i++){ 	
 					//Id
 					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, i);
@@ -3752,6 +3819,7 @@ cmac_process (void)
 				//		   			STATWIRES
 				//-----------------------------------------------
 				
+				//for all statswirs (tx, rx, busy tone, normal ...)
 				num_statwires = op_topo_assoc_count (my_objid, OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STATWIRE);
 				for (i = 0; i < num_statwires; i++){
 					//Id														*/
@@ -3760,10 +3828,6 @@ cmac_process (void)
 					
 					//value
 					op_ima_obj_attr_set (statwire_objid, "high threshold trigger", rx_power_threshold);	
-					//If the trigger is not disabled then the statwire is from the 
-					//receiver. Overwrite the attribute value unless they are already same.
-					//if (threshold != OPC_BOOLDBL_DISABLED && threshold != rx_power_threshold)
-							
 				}
 				
 				
@@ -3835,7 +3899,7 @@ cmac_process (void)
 			/** state (IDLE) exit executives **/
 			FSM_STATE_EXIT_UNFORCED (1, "IDLE", "cmac_process () [IDLE exit execs]")
 				{
-				debug_print(MAX , DEBUG_STATE , "ENTER - IDLE2 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "ENTER - IDLE2 - %d\n", my_address);
 				
 				//printf("Type %d Code %d (%d %d %d)\n", op_intrpt_type() , op_intrpt_code() , OPC_INTRPT_STRM , OPC_INTRPT_SELF , OPC_INTRPT_STAT);
 				
@@ -3844,7 +3908,7 @@ cmac_process (void)
 				interrupt_process();
 				
 				
-				debug_print(MAX , DEBUG_STATE , "EXIT - IDLE2 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "EXIT - IDLE2 - %d\n", my_address);
 				}
 
 
@@ -3856,7 +3920,7 @@ cmac_process (void)
 			FSM_TRANSIT_SWITCH
 				{
 				FSM_CASE_TRANSIT (0, 4, state4_enter_exec, ;, "IS_PK_TO_SEND || PRIVILEGED_END", "", "IDLE", "DEFER")
-				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, print_interruptions(5);, "default", "print_interruptions(5)", "IDLE", "IDLE")
+				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, ;, "default", "", "IDLE", "IDLE")
 				}
 				/*---------------------------------------------------------*/
 
@@ -3890,7 +3954,7 @@ cmac_process (void)
 				
 				
 				if (my_stat_id == 0)
-					MAX_BRANCH_LENGTH = (int)(pow(nb_mac_nodes , 0.5) / 2) - 1;
+					MAX_BRANCH_LENGTH = min_int(BETA + 1 , (int)(pow(nb_mac_nodes , 0.5) / 2) - 1);
 				
 				
 				
@@ -3920,8 +3984,9 @@ cmac_process (void)
 				//NB: let the routing info converge (dist_sink and dist_border)
 				if (is_sink){
 					if (is_ctr_activated)
-						op_intrpt_schedule_self(INTERVALL_HELLO * 1.1 + op_sim_time() , SINK_CTR_CODE); 
-					op_intrpt_schedule_self(op_dist_uniform(0.5)  + op_sim_time() , SINK_SYNC_CODE); 
+						op_intrpt_schedule_self(op_sim_time() + 5.0 + INTERVALL_HELLO * 1.1 , SINK_CTR_CODE); 
+				
+					op_intrpt_schedule_self(op_sim_time() + 0.1 , SINK_SYNC_CODE); 
 				}
 				
 				
@@ -3931,8 +3996,8 @@ cmac_process (void)
 				//					HELLOS 
 				//----------------------------------------------
 				
-				//periodical hello for everyone
-				op_intrpt_schedule_self(op_sim_time() + op_dist_uniform(INTERVALL_HELLO) , HELLO_PK_CODE);
+				//periodical hello for everyone (initally, shorter hello_interval to decrease convergence delays)
+				op_intrpt_schedule_self(op_sim_time() + 5.0 + op_dist_uniform(3.0) , HELLO_PK_CODE);
 				}
 
 
@@ -3960,7 +4025,7 @@ cmac_process (void)
 				//Packet
 				Packet*		frame_pk;
 				
-				debug_print(MAX , DEBUG_STATE , "ENTER - EMISSION1 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "ENTER - EMISSION1 - %d\n", my_address);
 				
 				
 				//------------------------------------------
@@ -3988,15 +4053,26 @@ cmac_process (void)
 					is_reply_required = OPC_TRUE;
 				
 					
+						
 					//Increases power (to 10W, that is enormous and all the nodes will get it)
 					//If a node does not receive the SYNC it is not a problem: the branch will not expand to the network extremities
-					if (next_frame_to_send.type == SYNC_PK_TYPE)
-						change_tx_power(1000);
+					if (next_frame_to_send.type == SYNC_PK_TYPE){
 					
+						if (is_sync_direct_antenna){		
+							change_antenna_direction(STREAM_TO_DIRECT_SYNC , sync_last_branch);
+							op_pk_send(frame_pk , STREAM_TO_DIRECT_SYNC);
+						}
+						else{
+							change_tx_power(1000 , STREAM_TO_RADIO);
+							op_pk_send(frame_pk , STREAM_TO_RADIO);
+						}
+							
+					}
 					//transmission
-					op_pk_send(frame_pk , STREAM_TO_RADIO);
-					
+					else
+						op_pk_send(frame_pk , STREAM_TO_RADIO);
 				
+					
 					//Registers the frame as sent (if a reply is required: ACK/CTS/...
 					last_frame_sent = next_frame_to_send;
 					last_frame_sent.released = OPC_FALSE;
@@ -4019,7 +4095,7 @@ cmac_process (void)
 				
 				//Timeouts -> an interruption will be scheduled when we finished the transmission (the medium becomes idle)
 				
-				debug_print(MAX , DEBUG_STATE , "EXIT - EMISSION1 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "EXIT - EMISSION1 - %d\n", my_address);
 				}
 
 
@@ -4036,7 +4112,7 @@ cmac_process (void)
 				
 				
 				//Handles the possible interruptions (STREAM || STAT)
-				debug_print(MAX , DEBUG_STATE , "EMISSION\n");
+				debug_print(LOW , DEBUG_STATE , "EMISSION\n");
 				interrupt_process();
 				
 				
@@ -4046,6 +4122,7 @@ cmac_process (void)
 					
 				//Transmission finished !
 				if (!is_tx_busy){
+					debug_print(LOW , DEBUG_SEND , "transmission ended\n");
 				
 				
 					//-----------------------------------------------------
@@ -4054,15 +4131,26 @@ cmac_process (void)
 				
 				
 					//Decrease the power to a normal value
-					if (last_frame_sent.type == SYNC_PK_TYPE)
-						change_tx_power(POWER_TX);
-				
-				
-					
+					if (last_frame_sent.type == SYNC_PK_TYPE){
+						
+						//normal power transmission
+						if (!is_sync_direct_antenna)
+							change_tx_power(POWER_TX , STREAM_TO_RADIO);
+						
+						//Next sync if we have a directional antenna
+						if ((sync_last_branch != MAX_NB_BRANCHES - 1) && (is_sync_direct_antenna)){
+							sync_last_branch++;
+							generate_sync();
+						}
+						else
+							sync_last_branch = 0;
+					}
+						
+						
+						
 					//-----------------------------------------------------
 					//	Must the node wait a reply for this frame ?
 					//-----------------------------------------------------
-					debug_print(LOW , DEBUG_SEND , "transmission ended\n");
 				
 					//BROADCAST Frame 
 					if (last_frame_sent.destination == BROADCAST)
@@ -4121,7 +4209,7 @@ cmac_process (void)
 					
 				
 				}
-				debug_print(MAX , DEBUG_STATE , "EXIT - EMISSION2 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "EXIT - EMISSION2 - %d\n", my_address);
 				}
 
 
@@ -4133,7 +4221,7 @@ cmac_process (void)
 			FSM_TRANSIT_SWITCH
 				{
 				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "!is_tx_busy", "", "EMISSION", "END_TRANSMIT")
-				FSM_CASE_TRANSIT (1, 3, state3_enter_exec, print_interruptions(3);, "default", "print_interruptions(3)", "EMISSION", "EMISSION")
+				FSM_CASE_TRANSIT (1, 3, state3_enter_exec, ;, "default", "", "EMISSION", "EMISSION")
 				}
 				/*---------------------------------------------------------*/
 
@@ -4152,7 +4240,7 @@ cmac_process (void)
 				char			msg[200];
 				
 				
-				debug_print(MAX , DEBUG_STATE , "ENTER - DEFER1 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "ENTER - DEFER1 - %d\n", my_address);
 				
 				
 				//------------------------------------------
@@ -4256,7 +4344,7 @@ cmac_process (void)
 				//The medium becomes free -> we must wait the inter_frame time
 				if (!IS_MEDIUM_BUSY){
 					if ((is_node_privileged) && ((next_frame_to_send.type == CTR_PK_TYPE) || (next_frame_to_send.type == CTR_END_PK_TYPE)) )
-						next_frame_to_send.ifs = CIFS;
+						next_frame_to_send.ifs = PIFS;
 					else if (is_node_privileged)
 						next_frame_to_send.ifs = SIFS;
 					else if ((next_frame_to_send.type == RTS_PK_TYPE) || ((next_frame_to_send.type == DATA_PK_TYPE) && (next_frame_to_send.destination == BROADCAST)))
@@ -4272,7 +4360,7 @@ cmac_process (void)
 				
 				
 				
-				debug_print(MAX , DEBUG_STATE , "EXIT - DEFER1 - %d - timeout %f\n", my_address , (op_sim_time() + next_frame_to_send.ifs) *1E6);
+				debug_print(LOW , DEBUG_STATE , "EXIT - DEFER1 - %d - timeout %f\n", my_address , (op_sim_time() + next_frame_to_send.ifs) *1E6);
 				}
 
 
@@ -4295,7 +4383,7 @@ cmac_process (void)
 				
 				
 				
-				debug_print(MAX , DEBUG_STATE , "ENTER - DEFER2 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "ENTER - DEFER2 - %d\n", my_address);
 				
 				
 				//Handles the possible interruptions (STREAM || STAT)
@@ -4320,7 +4408,6 @@ cmac_process (void)
 				// -> No reception
 				// -> The medium was not previously reserved (verify the value of my NAV)
 				//
-				//if ((!is_rx_busy) && (!is_tx_busy) && (my_nav <= op_sim_time())){
 				if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 					
 					if (!IS_MEDIUM_BUSY){
@@ -4333,7 +4420,7 @@ cmac_process (void)
 							backoff_intrpt = op_intrpt_schedule_self(op_sim_time() + SLOT_BACKOFF * my_backoff , BACKOFF_CODE);
 					
 							//debug
-							debug_print(MEDIUM , DEBUG_BACKOFF , "new backoff %d\n", my_backoff);
+							debug_print(LOW , DEBUG_BACKOFF , "new backoff %d\n", my_backoff);
 						}
 						else{
 							my_backoff = 0;
@@ -4343,7 +4430,7 @@ cmac_process (void)
 						
 					}
 					else
-						debug_print(LOW , DEBUG_SEND , "the medium is busy, we must wait\n");
+						debug_print(MEDIUM , DEBUG_SEND , "the medium is busy, we must wait\n");
 				
 				
 					//The medium is busy and we have the priority -> that is not regular !
@@ -4393,7 +4480,7 @@ cmac_process (void)
 				
 				
 				
-				debug_print(MAX , DEBUG_STATE , "EXIT - DEFER2 - %d (%d, %d)\n", my_address, IS_MEDIUM_BUSY , my_backoff);
+				debug_print(LOW , DEBUG_STATE , "EXIT - DEFER2 - %d (%d, %d)\n", my_address, IS_MEDIUM_BUSY , my_backoff);
 				}
 
 
@@ -4411,7 +4498,7 @@ cmac_process (void)
 				FSM_CASE_TRANSIT (1, 5, state5_enter_exec, ;, "GO_TO_BACKOFF && !END_SIMULATION", "", "DEFER", "BACKOFF")
 				FSM_CASE_TRANSIT (2, 1, state1_enter_exec, ;, "TRANSMISSION_CANCELED && !END_SIMULATION", "", "DEFER", "IDLE")
 				FSM_CASE_TRANSIT (3, 8, state8_enter_exec, ;, "END_SIMULATION", "", "DEFER", "END")
-				FSM_CASE_TRANSIT (4, 4, state4_enter_exec, print_interruptions(1);, "default", "print_interruptions(1)", "DEFER", "DEFER")
+				FSM_CASE_TRANSIT (4, 4, state4_enter_exec, ;, "default", "", "DEFER", "DEFER")
 				}
 				/*---------------------------------------------------------*/
 
@@ -4421,7 +4508,7 @@ cmac_process (void)
 			FSM_STATE_ENTER_UNFORCED (5, state5_enter_exec, "BACKOFF", "cmac_process () [BACKOFF enter execs]")
 				{
 				
-				debug_print(LOW , DEBUG_BACKOFF , "Enter in backoff state\n");
+				debug_print(LOW , DEBUG_STATE , "Enter in backoff state\n");
 				
 				
 				}
@@ -4437,7 +4524,7 @@ cmac_process (void)
 				//Inter frame time
 				double		time_to_wait;
 				
-				debug_print(MAX , DEBUG_STATE , "ENTER - BACKOFF2 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "ENTER - BACKOFF2 - %d\n", my_address);
 				
 				
 				
@@ -4448,7 +4535,7 @@ cmac_process (void)
 				
 				//The backoff is finished
 				if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == BACKOFF_CODE)){
-					debug_print(LOW, DEBUG_BACKOFF , "the backoff is finished, we can transmit our frame\n");
+					debug_print(MEDIUM, DEBUG_BACKOFF , "the backoff is finished, we can transmit our frame\n");
 					my_backoff = 0;
 				}
 				
@@ -4545,7 +4632,7 @@ cmac_process (void)
 				
 				
 				
-				debug_print(MAX , DEBUG_STATE , "EXIT - BACKOFF2 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "EXIT - BACKOFF2 - %d\n", my_address);
 				}
 
 
@@ -4561,7 +4648,7 @@ cmac_process (void)
 				FSM_CASE_TRANSIT (0, 3, state3_enter_exec, ;, "my_backoff == 0  && !TRANSMISSION_CANCELED", "", "BACKOFF", "EMISSION")
 				FSM_CASE_TRANSIT (1, 4, state4_enter_exec, ;, "!TRANSMISSION_CANCELED && IS_BACK_TO_DEFER && my_backoff != 0", "", "BACKOFF", "DEFER")
 				FSM_CASE_TRANSIT (2, 1, state1_enter_exec, ;, "TRANSMISSION_CANCELED", "", "BACKOFF", "IDLE")
-				FSM_CASE_TRANSIT (3, 5, state5_enter_exec, print_interruptions(2);, "default", "print_interruptions(2)", "BACKOFF", "BACKOFF")
+				FSM_CASE_TRANSIT (3, 5, state5_enter_exec, ;, "default", "", "BACKOFF", "BACKOFF")
 				}
 				/*---------------------------------------------------------*/
 
@@ -4634,7 +4721,7 @@ cmac_process (void)
 				is_reply_bad = OPC_FALSE;
 				
 				
-				debug_print(MAX , DEBUG_STATE , "ENTER - WAIT_NEXT2 - %d\n", my_address);
+				debug_print(LOW , DEBUG_STATE , "ENTER - WAIT_NEXT2 - %d\n", my_address);
 				
 				
 				//Handles the possible interruptions (STREAM || STAT)
@@ -4671,6 +4758,14 @@ cmac_process (void)
 					
 					if (!is_node_privileged)
 						update_nav_time(EIFS , my_address , -1);
+					
+					//New backoff
+					/*if ((!is_node_privileged) && (cw <= MAX_EXPO_BACKOFF / 2)){
+						cw *= 2;
+						backoff_dist 	= op_dist_load("uniform_int" , 0 , cw);
+						printf("double backoff for %d\n", my_address);
+					}
+					*/
 				}
 				
 				
@@ -4679,12 +4774,22 @@ cmac_process (void)
 				if ((is_reply_received) || (IS_FRAME_TIMEOUT) || is_reply_bad) {
 					is_reply_required = OPC_FALSE;
 					
-					
+					//normal backoff
+					/*if (cw != MAX_BACKOFF){
+						cw = MAX_BACKOFF;
+						backoff_dist 	= op_dist_load("uniform_int" , 0 , cw);
+					}
+					*/
 				}
 				
 				
 				
 				
+				
+				
+				
+				
+				debug_print(LOW , DEBUG_STATE , "EXIT - WAIT_NEXT2 - %d\n", my_address);
 				
 				}
 
@@ -4697,7 +4802,7 @@ cmac_process (void)
 			FSM_TRANSIT_SWITCH
 				{
 				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad", "", "WAIT_NEXT", "END_TRANSMIT")
-				FSM_CASE_TRANSIT (1, 7, state7_enter_exec, print_interruptions(4);, "default", "print_interruptions(4)", "WAIT_NEXT", "WAIT_NEXT")
+				FSM_CASE_TRANSIT (1, 7, state7_enter_exec, ;, "default", "", "WAIT_NEXT", "WAIT_NEXT")
 				}
 				/*---------------------------------------------------------*/
 
@@ -4820,8 +4925,6 @@ cmac_process_terminate (void)
 #undef my_objid
 #undef my_node_objid
 #undef my_subnet_objid
-#undef tx_objid
-#undef rx_objid
 #undef operational_speed
 #undef instrm_from_mac_if
 #undef outstrm_to_mac_if
@@ -4852,7 +4955,7 @@ cmac_process_terminate (void)
 #undef DEBUG
 #undef defer_intrpt
 #undef my_sync_rx_power
-#undef ctr_next_branch
+#undef ctr_last_branch
 #undef last_rx_power
 #undef my_debug_file
 #undef my_stat_id
@@ -4865,6 +4968,15 @@ cmac_process_terminate (void)
 #undef is_ctr_activated
 #undef strict_privileged_mode
 #undef PRIVILEGED_MAX_TIME
+#undef bn_list
+#undef BETA
+#undef ROUTING
+#undef is_sync_direct_antenna
+#undef sync_last_branch
+#undef my_branch
+#undef cw
+#undef is_busy_tone
+#undef busy_tone_speed
 
 
 
@@ -4900,16 +5012,6 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 	if (strcmp ("my_subnet_objid" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->my_subnet_objid);
-		FOUT;
-		}
-	if (strcmp ("tx_objid" , var_name) == 0)
-		{
-		*var_p_ptr = (char *) (&prs_ptr->tx_objid);
-		FOUT;
-		}
-	if (strcmp ("rx_objid" , var_name) == 0)
-		{
-		*var_p_ptr = (char *) (&prs_ptr->rx_objid);
 		FOUT;
 		}
 	if (strcmp ("operational_speed" , var_name) == 0)
@@ -5062,9 +5164,9 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 		*var_p_ptr = (char *) (&prs_ptr->my_sync_rx_power);
 		FOUT;
 		}
-	if (strcmp ("ctr_next_branch" , var_name) == 0)
+	if (strcmp ("ctr_last_branch" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ctr_next_branch);
+		*var_p_ptr = (char *) (&prs_ptr->ctr_last_branch);
 		FOUT;
 		}
 	if (strcmp ("last_rx_power" , var_name) == 0)
@@ -5125,6 +5227,51 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 	if (strcmp ("PRIVILEGED_MAX_TIME" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->PRIVILEGED_MAX_TIME);
+		FOUT;
+		}
+	if (strcmp ("bn_list" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->bn_list);
+		FOUT;
+		}
+	if (strcmp ("BETA" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->BETA);
+		FOUT;
+		}
+	if (strcmp ("ROUTING" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->ROUTING);
+		FOUT;
+		}
+	if (strcmp ("is_sync_direct_antenna" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->is_sync_direct_antenna);
+		FOUT;
+		}
+	if (strcmp ("sync_last_branch" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->sync_last_branch);
+		FOUT;
+		}
+	if (strcmp ("my_branch" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->my_branch);
+		FOUT;
+		}
+	if (strcmp ("cw" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->cw);
+		FOUT;
+		}
+	if (strcmp ("is_busy_tone" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->is_busy_tone);
+		FOUT;
+		}
+	if (strcmp ("busy_tone_speed" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->busy_tone_speed);
 		FOUT;
 		}
 	*var_p_ptr = (char *)OPC_NIL;

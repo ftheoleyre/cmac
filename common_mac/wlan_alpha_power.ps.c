@@ -19,7 +19,7 @@
 #define C					3.0E+08		/* speed of light (m/s) */
 #define SIXTEEN_PI_SQ		157.91367	/* 16 times pi-squared 	*/
 #define	PI					3.141592653589793238462
-#define	ALPHA				2.5			/* attenuation coefficient */
+#define	ALPHA				4.0			/* attenuation coefficient */
 
 static const char*	PowI_Err_Hdr = "Error in radio power computation pipeline stage (dra_power):";
 
@@ -30,7 +30,7 @@ static const char*	PowI_Err_Hdr = "Error in radio power computation pipeline sta
 extern "C"
 #endif
 void
-wlan_alpha35_power (Packet * pkptr)
+wlan_alpha_power (Packet * pkptr)
 	{
 	double		prop_distance, rcvd_power, path_loss;
 	double		tx_power, tx_base_freq, tx_bandwidth, tx_center_freq;
@@ -75,7 +75,8 @@ wlan_alpha35_power (Packet * pkptr)
 			{
 			//path_loss = (lambda * lambda) / (SIXTEEN_PI_SQ * prop_distance * prop_distance);
 			//path_loss = pow (lambda / (4 * PI * prop_distance) , ALPHA);
-			path_loss = 1 / (pow(prop_distance, 4));
+			//path_loss = 1 / (pow(prop_distance, 4));
+			path_loss = (lambda * lambda) / (SIXTEEN_PI_SQ * pow(prop_distance, ALPHA));
 			}
 		else
 			path_loss = 1.0;

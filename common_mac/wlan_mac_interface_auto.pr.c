@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char wlan_mac_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 441DF93E 441DF93E 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char wlan_mac_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 442478CF 442478CF 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -75,8 +75,6 @@ static void			wlan_mac_higher_layer_register_as_arp ();
 //
 //--------------------------------------
 
-//Radio range (in meters)
-#define		PHYSIC_RADIO_RANGE			220
 
 //Addresses
 #define		MIN_ADDRESS					101
@@ -92,7 +90,7 @@ static void			wlan_mac_higher_layer_register_as_arp ();
 //--------------------------------------
 
 //STats and adaptation every PK_ID_MODULO packets
-#define		PK_ID_MODULO				500
+#define		PK_ID_MODULO				1000
 
 //We consider a capacity achievable if its delivery ratio is superior to MIN_DELIVERY_RATIO
 #define		MIN_DELIVERY_RATIO			0.95
@@ -250,7 +248,6 @@ typedef struct
 	int	                    		pk_destination;
 	int	                    		routing_type;
 	int	                    		range;
-	int	                    		self_position;
 	int	                    		my_stat_id;
 	int	                    		rate_adaptation;
 	int	                    		alpha;
@@ -258,6 +255,7 @@ typedef struct
 	Boolean	                		is_border_node;
 	int	                    		mac_backoff_type;
 	List*	                  		id_list;
+	int	                    		DEBUG_INTF;
 	} wlan_mac_interface_auto_state;
 
 #define pr_state_ptr            		((wlan_mac_interface_auto_state*) SimI_Mod_State_Ptr)
@@ -272,7 +270,6 @@ typedef struct
 #define pk_destination          		pr_state_ptr->pk_destination
 #define routing_type            		pr_state_ptr->routing_type
 #define range                   		pr_state_ptr->range
-#define self_position           		pr_state_ptr->self_position
 #define my_stat_id              		pr_state_ptr->my_stat_id
 #define rate_adaptation         		pr_state_ptr->rate_adaptation
 #define alpha                   		pr_state_ptr->alpha
@@ -280,6 +277,7 @@ typedef struct
 #define is_border_node          		pr_state_ptr->is_border_node
 #define mac_backoff_type        		pr_state_ptr->mac_backoff_type
 #define id_list                 		pr_state_ptr->id_list
+#define DEBUG_INTF              		pr_state_ptr->DEBUG_INTF
 
 /* This macro definition will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
@@ -650,8 +648,6 @@ int get_next_hop_via_xy_routing(int range_tmp , int destination_tmp){
 		while (next_hop_tmp > pk_destination)
 			next_hop_tmp --;
 	}
-	else
-		printf("erreur -> aucun cas pour %d %d\n", mac_address , pk_destination);
 		
 	//Final result !
 	return(next_hop_tmp);
@@ -833,7 +829,7 @@ double compute_max_delay(List* ll, int id1, int id2){
 	
 	//Error
 	if (id2 > op_prg_list_size(ll))
-		return(0);
+		return((double)0.0);
 	
 	for(i=0 ; i < op_prg_list_size(ll) ; i++){
 		elem = op_prg_list_access(ll , i);
@@ -904,6 +900,54 @@ void debug_write_pk_info(){
 //-----------------------------------------------------------
 
 
+//Prints parameters, etc ...
+void print_headers_stat_file(FILE *pfile){
+	//Simulation parameters
+	int		CTR;
+	int		BLOCKED_MODE;
+	int		RTS;
+	double	PRIVILEGED_MAX_TIME;
+	double	GRID_RANGE;
+
+	
+	
+	
+	//-------------------------------------------
+	//				PARAMETERS
+	//-------------------------------------------
+	
+	op_ima_sim_attr_get(OPC_INTEGER , 		"CTR" , 					&CTR);
+	op_ima_sim_attr_get(OPC_INTEGER , 		"BLOCKED_MODE" , 			&BLOCKED_MODE);
+	op_ima_sim_attr_get(OPC_DOUBLE , 		"PRIVILEGED_MAX_TIME" , 	&PRIVILEGED_MAX_TIME);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 					&RTS);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"GRID_RANGE",				&GRID_RANGE);
+		
+
+
+	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
+	fprintf(pfile , "|                                           SIMULATION PARAMETERS                                            |\n");
+	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
+
+	fprintf(pfile , "------------------------------------------------  GENERAL ---------------------------------------------------\n");
+	fprintf(pfile , "Number of nodes							:	%d\n", 			nb_nodes);
+	fprintf(pfile , "Radio Range								:	%d\n", 			range);
+	fprintf(pfile , "Grid Range								:	%f\n", 				GRID_RANGE);
+	fprintf(pfile , "Duration								:	%f\n", 				op_sim_time());
+	fprintf(pfile , "RTS									:	%d\n", 				RTS);
+	fprintf(pfile , "CTR									:	%d\n", 				CTR);
+	fprintf(pfile , "Blocked Mode							:	%d\n", 				BLOCKED_MODE);
+	fprintf(pfile , "Privileged Max Time						:	%f\n", 			PRIVILEGED_MAX_TIME);
+	fprintf(pfile , "Inter Packet Time							:	%f\n", 			current_inter_pk_time);
+	fprintf(pfile , "\n");
+	fprintf(pfile , "------------------------------------------------  FLOWS ---------------------------------------------------\n");
+	fprintf(pfile , "Is rate dynamical ?						:	%d\n", 			rate_adaptation);
+	fprintf(pfile , "Rate adapted every 						:	%d\n", 			PK_ID_MODULO);
+	fprintf(pfile , "Maximal Difference valid / bad				:	%f\n", 			PRECISION_REQUIRED);
+	fprintf(pfile , "Valid Capacity if dlivery ratio >				:	%f\n", 		MIN_DELIVERY_RATIO);
+	fprintf(pfile , "Time between tests						:	%f\n", 				INTERVALL_RATES_TEST);
+}
+
+
 
 //Write delivery ratio, delay, max_delay
 void write_intermediary_stats(int low_pk_id , int high_pk_id){
@@ -911,73 +955,12 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 	double	delivery_ratio;
 	double	delay;
 	double	max_delay;
-	//topo
-	int		node_id;
 	//control
-	int		i;
 	FILE	*pfile;
-	char	backoff_type_str[20], routing_type_str[20] , filename[200];
 	char	msg[500];
-	//Simulation parameters
-	int		CTR;
-	int		BLOCKED_MODE;
-	int		RTS;
-	double	PRIVILEGED_MAX_TIME;
+	char	filename[150];
 	
-	//-------------------------------------------
-	//				FILENAME
-	//-------------------------------------------
 
-	switch(mac_backoff_type){
-		case 0: 
-			sprintf(backoff_type_str , "ORIGINAL");
-		break;
-		case 1: 
-			sprintf(backoff_type_str , "TRAFFIC");
-		break;
-		case 2: 
-			sprintf(backoff_type_str , "BORDER");
-		break;
-		case 3: 
-			sprintf(backoff_type_str , "LENGTH");
-		break;
-		default:
-			sprintf(backoff_type_str, "UNKNOWN");
-		break;
-	}
-	
-	switch(routing_type){
-		case 0: 
-			sprintf(routing_type_str , "XY");
-		break;
-		case 1: 
-			sprintf(routing_type_str , "OPT_CORNER");
-		break;
-		case 2: 
-			sprintf(routing_type_str , "SHORT");
-		break;
-		case 3: 
-			sprintf(routing_type_str , "SIDES");
-		break;
-		case 4: 
-			sprintf(routing_type_str , "ALPHA_%d" , alpha);
-		break;
-		default:
-			sprintf(routing_type_str, "UNKNOWN");
-		break;
-	}
-	
-	
-	//-------------------------------------------
-	//				PARAMETERS
-	//-------------------------------------------
-	
-	op_ima_sim_attr_get(OPC_INTEGER , "CTR" , 					&CTR);
-	op_ima_sim_attr_get(OPC_INTEGER , "BLOCKED_MODE" , 			&BLOCKED_MODE);
-	op_ima_sim_attr_get(OPC_DOUBLE , "PRIVILEGED_MAX_TIME" , 	&PRIVILEGED_MAX_TIME);
-
-
-	
 	//-------------------------------------------
 	//				STATS
 	//-------------------------------------------
@@ -995,7 +978,7 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 	//-------------------------------------------
 	//					WRITING
 	//-------------------------------------------
-	sprintf(filename , "results_80211/%d-nodes_%d-range_%d-_%s_%s_stats.txt", timestamp , nb_nodes , range , backoff_type_str , routing_type_str);
+	sprintf(filename , "results_80211/%d-nodes_%d-range_%d-stats.txt", timestamp , nb_nodes , range);
 	pfile = fopen(filename , "w");
 
 
@@ -1005,26 +988,10 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 		op_sim_end(msg, "" , "" , "");
 	}
 	
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS" , &RTS);
+	//Simulation parameters
+	print_headers_stat_file(pfile);
+	
 		
-		
-	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
-	fprintf(pfile , "|                                           SIMULATION PARAMETERS                                            |\n");
-	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
-
-	fprintf(pfile , "Radio Range								:	%d\n", 			range);
-	fprintf(pfile , "Self-Positionning							:	%d\n", 			self_position);
-	fprintf(pfile , "Routing Type							:	%s\n", 				routing_type_str);
-	fprintf(pfile , "Backoff Type							:	%s\n", 				backoff_type_str);
-	fprintf(pfile , "Inter packet time							:	%f\n", 			current_inter_pk_time);
-	fprintf(pfile , "Duration								:	%f\n", 				op_sim_time());
-	fprintf(pfile , "RTS									:	%d\n", 				RTS);
-	fprintf(pfile , "CTR									:	%d\n", 				CTR);
-	fprintf(pfile , "Blocked Mode							:	%d\n", 				BLOCKED_MODE);
-	fprintf(pfile , "Privileged Max Time					:	%f\n", 				PRIVILEGED_MAX_TIME);
-	
-	
-	
 	fprintf(pfile , "\n\n\n ------------------------------------------------------------------------------------------------------------\n");
 	fprintf(pfile , "|                                                  RESULTS                                                   |\n");
 	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
@@ -1044,15 +1011,31 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 //-----------------------------------------------------------
 
 
+//Updates the parameter value in the source process
+void update_packet_arrival_in_source_process(double inter_pk_time , double start_time){
+	//topo
+	int		node_id;
+	//control
+	int		i;
+	
+	//Sets the new inter pk time for all the nodes (execpt the sink :-)
+	for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
+   	
+		node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
+		if (op_ima_obj_attr_exists(node_id , "source.Packet Interarrival Arg1"))
+			op_ima_obj_attr_set(node_id , "source.Packet Interarrival Arg1" , inter_pk_time);
+		
+		if (op_ima_obj_attr_exists(node_id , "source.Start Time Packet Generation"))
+			op_ima_obj_attr_set(node_id , "source.Start Time Packet Generation" , start_time);
+	}
+}
+
+//adapt the inter packet time
 void adapt_rate(void *arg , int code){
 	//stats
 	int		pk_id;
 	double	delivery_ratio;
 	double	next_start_time;
-	//topo
-	int		node_id;
-	//control
-	int		i;
 
 	//pk_id_tmp
 	pk_id = *(int*)arg;
@@ -1063,14 +1046,14 @@ void adapt_rate(void *arg , int code){
 
 	
 	//delivery ratio
-	delivery_ratio = compute_delivery_ratio(pk_list , lowest_pk_id_authorized + PK_ID_MODULO / 10 , pk_id);
-	printf(" %f - %d %d\n", delivery_ratio , lowest_pk_id_authorized + PK_ID_MODULO / 10 , pk_id);
-	if (lowest_pk_id_authorized + PK_ID_MODULO / 10 > pk_id)
+	delivery_ratio = compute_delivery_ratio(pk_list , lowest_pk_id_authorized + PK_ID_MODULO / 100 , pk_id);
+	printf(" %f - %d %d\n", delivery_ratio , lowest_pk_id_authorized + PK_ID_MODULO /100 , pk_id);
+	if (lowest_pk_id_authorized + PK_ID_MODULO /100  > pk_id)
 		return;
 	
 	//Other packets in transit must be dropped
 	lowest_pk_id_authorized 	= current_pk_id;
-	
+	last_pk_id_stats			= current_pk_id;
 	
 	//Inter packet time change -> Is the delivery ratio sufficient ?
 	if (delivery_ratio > MIN_DELIVERY_RATIO){
@@ -1090,22 +1073,16 @@ void adapt_rate(void *arg , int code){
 	else
 		next_start_time = OPC_DBL_INFINITY;
 			
-			
+	
+	//updates the values in the source process
+	update_packet_arrival_in_source_process(current_inter_pk_time , next_start_time);
+
+
 	//DEBUG
 	//debug_write_pk_info();	
 	printf("NEW RATE : %f (delivery ratio %f) (best %f) (worst %f) (%f)\n", current_inter_pk_time , delivery_ratio, achievable_inter_pk_time , bad_inter_pk_time , (achievable_inter_pk_time - bad_inter_pk_time) / 2);
 	
 	
-	//Sets the new inter pk time for all the nodes (execpt the sink :-)
-	for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
-   	
-		node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
-		if (op_ima_obj_attr_exists(node_id , "source.Packet Interarrival Arg1"))
-			op_ima_obj_attr_set(node_id , "source.Packet Interarrival Arg1" , current_inter_pk_time);
-		
-		if (op_ima_obj_attr_exists(node_id , "source.Start Time Packet Generation"))
-			op_ima_obj_attr_set(node_id , "source.Start Time Packet Generation" , next_start_time);
-	}
 
 }
 
@@ -1272,18 +1249,14 @@ wlan_mac_interface_auto (void)
 				//--------------------------------------------
 				
 				
-				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"ROUTING" , 						&routing_type);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"RADIO_RANGE" , 					&range);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"ALPHA" , 							&alpha);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"SELF_POSITION",					&self_position);
 				op_ima_obj_attr_get(op_id_self(), 		"Destination" , 					&pk_destination);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"BACKOFF_TYPE" , 					&mac_backoff_type);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RATE_ADAPTATION" , 				&rate_adaptation);
+				op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"DEBUG" , 							&DEBUG_INTF);
 				
 				
 				if (current_inter_pk_time == 0)
 					op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"INITIAL_INTER_PK_TIME" , 		&current_inter_pk_time);
-				
 				
 				
 				
@@ -1316,7 +1289,7 @@ wlan_mac_interface_auto (void)
 				
 				
 				//Sets this value for all the nodes (if self_position)
-				if (self_position){
+				if (rate_adaptation){
 					for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
 				  	
 						node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
@@ -1419,23 +1392,7 @@ wlan_mac_interface_auto (void)
 			/** state (appl layer arrival) enter executives **/
 			FSM_STATE_ENTER_FORCED (2, state2_enter_exec, "appl layer arrival", "wlan_mac_interface_auto () [appl layer arrival enter execs]")
 				{
-				/*
-				{
-					curr_dest_addr = destination_address;
 				
-					oms_aa_dest_addr_get (oms_aa_handle, &curr_dest_addr);
-					while (curr_dest_addr == mac_address)
-						{
-						curr_dest_addr = destination_address;
-						oms_aa_dest_addr_get (oms_aa_handle, &curr_dest_addr);
-						}
-					
-					}
-				else
-					{
-					curr_dest_addr = destination_address;
-					}
-				*/
 				
 				pk_info	*info_ptr;
 				
@@ -1447,9 +1404,6 @@ wlan_mac_interface_auto (void)
 				
 				//Next hop to the mac layer
 				curr_dest_addr = next_hop;
-				
-				
-				
 				
 				//Stats
 				info_ptr = (pk_info*) op_prg_mem_alloc(sizeof(pk_info));
@@ -1561,11 +1515,8 @@ wlan_mac_interface_auto (void)
 					//-----------------------------------
 					//NB: 4th condition to avoid several modifications (two packets are received by the sink, and current_pk_id did not change)
 				
-					//if (pk_id_tmp > 500)
-					//printf("%d %d %d\n", rate_adaptation , my_stat_id == 0 , (last_pk_id_stats + PK_ID_MODULO < pk_id_tmp));
-					
-					
-					if ((pk_destination == mac_address) && (last_pk_id_stats + PK_ID_MODULO < pk_id_tmp)){
+					//if ((pk_destination == mac_address) && (last_pk_id_stats + PK_ID_MODULO < pk_id_tmp)){
+					if (last_pk_id_stats + PK_ID_MODULO < pk_id_tmp){
 						
 						//NB: new packets keeps on be transmitted: the load must remain constant in order to have valid measures
 				
@@ -1579,7 +1530,7 @@ wlan_mac_interface_auto (void)
 								*int_ptr = pk_id_tmp;
 								op_intrpt_schedule_call(op_sim_time() + MAX_DELAY , RATE_ADAPT_CODE , adapt_rate , int_ptr); 
 								rate_adapt_scheduled = OPC_TRUE;
-								//op_intrpt_schedule_self(op_sim_time() + MAX_DELAY , RATE_ADAPT_CODE + pk_id_tmp);
+								
 							}
 					
 						}
@@ -1594,6 +1545,10 @@ wlan_mac_interface_auto (void)
 								op_intrpt_schedule_call(op_sim_time() + MAX_DELAY , RATE_ADAPT_CODE , stop_rate , int_ptr); 
 								rate_adapt_scheduled = OPC_TRUE;
 							}
+				
+							//Stop temporay any transmission
+							//printf("CUT !!!!!!!!!\n");
+							//update_packet_arrival_in_source_process(current_inter_pk_time , op_sim_time() + MAX_DELAY + 1.0);
 						}
 					}
 				
@@ -1685,10 +1640,19 @@ wlan_mac_interface_auto (void)
 				int		*int_ptr;
 				//Mac process name
 				char	mac_name[400];
+				//The range for the grid (-1 if disabled)
+				double	GRID_RANGE;
 				
 				
 				
 				
+				
+				
+				//--------------------------------------------
+				//
+				//			MAC COHABITATION
+				//
+				//--------------------------------------------
 				
 				
 				
@@ -1706,6 +1670,9 @@ wlan_mac_interface_auto (void)
 				/* must be a valid match							*/
 				record_handle_list_size = op_prg_list_size (proc_record_handle_list_ptr);
 					
+				
+				
+				
 				
 				//--------------------------------------------
 				//
@@ -1756,175 +1723,22 @@ wlan_mac_interface_auto (void)
 				//
 				//--------------------------------------------
 				
-				y_int = mac_address /  100;
-				x_int = mac_address - y_int * 100;
+				op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"GRID_RANGE",		&GRID_RANGE);
+				if (GRID_RANGE !=  -1){
 				
-				y_sink = (int)(pk_destination /  100);
-				x_sink = (int)(pk_destination - y_sink * 100);
+					y_int = mac_address /  100;
+					x_int = mac_address - y_int * 100;
 				
-				x = (double)x_int * PHYSIC_RADIO_RANGE / (double)range;
-				y = (double)y_int * PHYSIC_RADIO_RANGE / (double)range;
+					y_sink = (int)(pk_destination /  100);
+					x_sink = (int)(pk_destination - y_sink * 100);
 				
-				if (self_position){
+					x = (double)x_int * GRID_RANGE / (double)range;
+					y = (double)y_int * GRID_RANGE / (double)range;
+				
 					op_ima_obj_attr_set(op_id_parent(op_id_self()) , "x position" , x);
 					op_ima_obj_attr_set(op_id_parent(op_id_self()) , "y position" , y);
 				}
 				
-				
-				
-				
-				//--------------------------------------------
-				//
-				//					NEXT HOP
-				//
-				//--------------------------------------------
-				
-				
-				//X and y deviation
-				y_dev = (int) (mac_address / 100) - (int) (pk_destination /100);
-				x_dev = mac_address - pk_destination - y_dev*100;
-				
-				switch(routing_type){
-				
-					//----------------------------------------
-					//				XY ROUTING
-					//----------------------------------------
-					case 0 :
-						next_hop = get_next_hop_via_xy_routing(range , pk_destination);
-					break;
-					
-					//----------------------------------------
-					//		   	OPTIMAL CORNER ROUTING
-					//----------------------------------------
-					case 1 :
-						radius = (double)alpha * range / 2;
-						x_center = x_sink + alpha * range / (2 * sqrt(2));
-						y_center = y_sink + alpha * range / (2 * sqrt(2));
-						
-						//The sink MUST be in the corner
-						if (pk_destination != MIN_ADDRESS){
-							sprintf(msg , "Min address (%d) != destination (%d)" , MIN_ADDRESS , pk_destination);
-							//op_sim_end(msg , "This is an error in the OPTIMAL_CORNER Routing !" , "" , "");
-						}
-						//printf("!! %d %d %f %f\n", x_int , y_int , radius , get_distance(x_center , y_center , (double)x_int , (double)y_int));
-						
-					
-						//Shortest path (in the maximum clique)
-						if (get_distance(x_center , y_center , (double)x_int , (double)y_int) <= radius)
-							next_hop = get_next_hop_via_shortest_routing(range , pk_destination); 
-						//SIDES - modified (to avoid the interferences circle)
-						else
-							next_hop = get_next_hop_via_opt_corner_sides_routing(range , pk_destination , x_center , y_center , radius); 
-						
-					if (mac_address == pk_destination){
-						printf("SINK %d %d\n", x_sink , y_sink);
-						printf("CENTER : %f %f\n",x_center , y_center);
-					}
-					
-					break;
-				
-						
-				   	//----------------------------------------
-					//		   	SHORTEST ROUTES
-					//----------------------------------------
-					case 2 :
-						
-						next_hop = get_next_hop_via_shortest_routing(range , pk_destination); 
-					
-					break;
-						
-				   	//------------------------------------------------
-					//	SHORTEST ROUTES VIA THE SIDES OF THE SQUARE
-					//------------------------------------------------
-					case 3 :
-						
-						next_hop = get_next_hop_via_sides_routing(range , pk_destination); 
-					
-					break;
-				
-				   	//------------------------------------------------
-					//				'F_alpha' ROUTES
-					//------------------------------------------------
-					case 4 :
-						radius = (double)alpha * (double)range;
-						x_center = x_sink;
-						y_center = y_sink;		
-				
-						//printf("%f %f %d %d %f > %f\n",  x_center , y_center , x_int , y_int , radius , get_distance(x_center , y_center , (double)x_int , (double)y_int));
-						
-						//Shortest path (in the alpha-center)
-						if (get_distance(x_center , y_center , (double)x_int , (double)y_int) <= (double)radius){
-							//printf("IN  ");
-							next_hop = get_next_hop_via_shortest_routing(range , pk_destination); 
-						}
-						//SIDES
-						else{
-							//printf("OUT  ");
-							next_hop = get_next_hop_via_sides_routing(range , pk_destination); 
-						}
-					//if (mac_address == pk_destination){
-					//	printf("SINK %d %d\n", x_sink , y_sink);
-					//	printf("CENTER : %f %f\n",x_center , y_center);
-					//}
-					
-					break;
-				
-						
-				   	//----------------------------------------
-					//		   			ERROR
-					//----------------------------------------
-					default:
-						sprintf(msg , "The routing type %d", routing_type);
-						op_sim_end(msg , "is unknown", "Please change it" , "");
-					break;
-						
-						
-				}
-				
-				
-				//printf("Next hop %d -> %d\n" , mac_address , next_hop);
-				
-				
-				
-				//----------------------------------------
-				//		   			BORDER NODE
-				//----------------------------------------
-				
-				if ((x_int == x_sink) || (y_int == y_sink))
-					is_border_node = OPC_TRUE;
-				else
-					is_border_node = OPC_FALSE;
-				
-				
-				//----------------------------------------
-				//		   			ROUTES
-				//----------------------------------------
-				
-				
-				//My route : me, next_hop, and must be continued
-				my_route_tmp	= op_prg_list_create();
-				
-				//Size
-				int_ptr			= op_prg_mem_alloc( sizeof(int) );
-				if (mac_address == next_hop)
-					*int_ptr		= 0;
-				else
-					*int_ptr		= 1;
-				op_prg_list_insert(my_route_tmp, int_ptr , OPC_LISTPOS_TAIL);
-					
-				//Source
-				int_ptr			= op_prg_mem_alloc( sizeof(int) );
-				*int_ptr		= mac_address;
-				op_prg_list_insert(my_route_tmp, int_ptr , OPC_LISTPOS_TAIL);
-					
-				//next hop
-				int_ptr			= op_prg_mem_alloc( sizeof(int) );
-				*int_ptr		= next_hop;
-				op_prg_list_insert(my_route_tmp, int_ptr , OPC_LISTPOS_TAIL);
-				
-				
-				//Insert the start of my route in the list of all routes
-				op_prg_list_insert(all_routes , my_route_tmp , OPC_LISTPOS_TAIL);
 				
 				
 				
@@ -1981,68 +1795,22 @@ wlan_mac_interface_auto (void)
 				int			nb_pk_received = 0;
 				int			nb_pk_sent = 0;
 				//delay
-				double		delay;
-				double		cumulated_delay;
-				double		max_delay;
+				double		delay_tmp;
+				double		cumulated_delay = 0;
+				double		max_delay = 0;
 				//Simulation parameters
 				int			CTR;
 				int			BLOCKED_MODE;
+				double		PRIVILEGED_MAX_TIME;
 				
 				
 				if (my_stat_id == 0){
-				
-					op_ima_sim_attr_get(OPC_INTEGER , "CTR" , 			&CTR);
-					op_ima_sim_attr_get(OPC_INTEGER , "BLOCKED_MODE" , 	&BLOCKED_MODE);
-				
-					//-------------------------------------------
-					//				FILENAME
-					//-------------------------------------------
-				
-					switch(mac_backoff_type){
-						case 0: 
-							sprintf(backoff_type_str , "ORIGINAL");
-						break;
-						case 1: 
-							sprintf(backoff_type_str , "TRAFFIC");
-						break;
-						case 2: 
-							sprintf(backoff_type_str , "BORDER");
-						break;
-						case 3: 
-							sprintf(backoff_type_str , "LENGTH");
-						break;
-						default:
-							sprintf(backoff_type_str, "UNKNOWN");
-						break;
-					}
-					
-					switch(routing_type){
-						case 0: 
-							sprintf(routing_type_str , "XY");
-						break;
-						case 1: 
-							sprintf(routing_type_str , "OPT_CORNER");
-						break;
-						case 2: 
-							sprintf(routing_type_str , "SHORT");
-						break;
-						case 3: 
-							sprintf(routing_type_str , "SIDES");
-						break;
-						case 4: 
-							sprintf(routing_type_str , "ALPHA_%d" , alpha);
-						break;
-						default:
-							sprintf(routing_type_str, "UNKNOWN");
-						break;
-					}
 				
 				
 					//-------------------------------------------
 					//				PACKETS
 					//-------------------------------------------
-					
-					
+				
 					for(i=0; i <op_prg_list_size(pk_list) ; i++){
 						elem = op_prg_list_access(pk_list, i);
 					
@@ -2053,21 +1821,22 @@ wlan_mac_interface_auto (void)
 							nb_pk_received ++;
 							
 							//Delays
-							delay = elem->time_received - elem->time_sent;
-							cumulated_delay += delay;
-							if (delay > max_delay)
-								max_delay = delay;
+							delay_tmp = elem->time_received - elem->time_sent;
+							cumulated_delay += delay_tmp;
+							if (delay_tmp > max_delay)
+								max_delay = delay_tmp;
 						}
 					}
 				
 					//All info about the packets in a common file
-					debug_write_pk_info();
+					if (DEBUG_INTF)
+						debug_write_pk_info();
 				
 					
 					//-------------------------------------------
 					//					WRITING
 					//-------------------------------------------
-					sprintf(filename , "results_80211/%d-nodes_%d-range_%d-_%s_%s_results.txt", timestamp , nb_nodes , range , backoff_type_str , routing_type_str);
+					sprintf(filename , "results_80211/%d-nodes_%d-range_%d-results.txt", timestamp , nb_nodes , range);
 					pfile = fopen(filename , "w");
 				
 				
@@ -2076,22 +1845,8 @@ wlan_mac_interface_auto (void)
 						printf("ERROR: %d (%s)\n", errno, strerror(errno));
 						op_sim_end(msg, "" , "" , "");
 					}
-					
-					op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS" , &RTS);
 						
-						
-					fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
-					fprintf(pfile , "|                                           SIMULATION PARAMETERS                                            |\n");
-					fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
-				
-					fprintf(pfile , "Radio Range								:	%d\n", 			range);
-					fprintf(pfile , "Self-Positionning							:	%d\n", 			self_position);
-					fprintf(pfile , "Routing Type							:	%s\n", 				routing_type_str);
-					fprintf(pfile , "Backoff Type							:	%s\n", 				backoff_type_str);
-					fprintf(pfile , "Duration								:	%f\n", 				op_sim_time());
-					fprintf(pfile , "RTS									:	%d\n", 				RTS);
-					fprintf(pfile , "CTR									:	%d\n", 				CTR);
-					fprintf(pfile , "Blocked Mode							:	%d\n", 				BLOCKED_MODE);
+					print_headers_stat_file(pfile);
 				
 					fprintf(pfile , "\n\n\n ------------------------------------------------------------------------------------------------------------\n");
 					fprintf(pfile , "|                                                  GENERAL                                                   |\n");
@@ -2105,12 +1860,6 @@ wlan_mac_interface_auto (void)
 					fprintf(pfile , "|                                                 CAPACITY                                                   |\n");
 					fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
 				
-					fprintf(pfile , "------------------------------------------------  PARAMETERS ---------------------------------------------------\n");
-					fprintf(pfile , "Is rate dynamical ?						:	%d\n", 			rate_adaptation);
-					fprintf(pfile , "Rate adapted every 						:	%d\n", 			PK_ID_MODULO);
-					fprintf(pfile , "Maximal Difference valid / bad				:	%f\n", 			PRECISION_REQUIRED);
-					fprintf(pfile , "Valid Capacity if dlivery ratio >				:	%f\n", 		MIN_DELIVERY_RATIO);
-					fprintf(pfile , "Time between tests						:	%f\n", 				INTERVALL_RATES_TEST);
 				
 					fprintf(pfile , "\n\n------------------------------------------------  CAPACITY ---------------------------------------------------\n");
 					fprintf(pfile , "Valid inter packet time						:	%f\n", 		achievable_inter_pk_time);
@@ -2182,7 +1931,7 @@ wlan_mac_interface_auto (void)
 				//-----------------------------------------------------
 				//				END-TO-END 		ROUTES 
 				//-----------------------------------------------------
-				
+				/*
 				
 				//get my route nb
 				for(i = 0 ; (my_route_nb == 0) && (i< op_prg_list_size(all_routes)) ; i++){
@@ -2244,6 +1993,8 @@ wlan_mac_interface_auto (void)
 				//IN stats var (to be accessed by the mac layer)
 				op_prg_list_elems_copy(my_route_tmp , my_route_to_sink);
 				//print_route(my_route_to_sink);
+				
+				*/
 				}
 
 
@@ -2341,7 +2092,6 @@ wlan_mac_interface_auto_terminate (void)
 #undef pk_destination
 #undef routing_type
 #undef range
-#undef self_position
 #undef my_stat_id
 #undef rate_adaptation
 #undef alpha
@@ -2349,6 +2099,7 @@ wlan_mac_interface_auto_terminate (void)
 #undef is_border_node
 #undef mac_backoff_type
 #undef id_list
+#undef DEBUG_INTF
 
 
 
@@ -2421,11 +2172,6 @@ wlan_mac_interface_auto_svar (void * gen_ptr, const char * var_name, char ** var
 		*var_p_ptr = (char *) (&prs_ptr->range);
 		FOUT;
 		}
-	if (strcmp ("self_position" , var_name) == 0)
-		{
-		*var_p_ptr = (char *) (&prs_ptr->self_position);
-		FOUT;
-		}
 	if (strcmp ("my_stat_id" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->my_stat_id);
@@ -2459,6 +2205,11 @@ wlan_mac_interface_auto_svar (void * gen_ptr, const char * var_name, char ** var
 	if (strcmp ("id_list" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->id_list);
+		FOUT;
+		}
+	if (strcmp ("DEBUG_INTF" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->DEBUG_INTF);
 		FOUT;
 		}
 	*var_p_ptr = (char *)OPC_NIL;
