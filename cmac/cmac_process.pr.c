@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44246C93 44246C93 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4429B936 4429B936 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -64,6 +64,8 @@ FSM_EXT_DECS
 
 #define		PI								3.141592653589793238462 
 
+
+
 //-----------------------------------------------
 //				TIMEOUTS
 //-----------------------------------------------
@@ -106,12 +108,22 @@ FSM_EXT_DECS
 
 // PRIVILEGED MODE
 #define		PRIVILEGED_MIN_TIME				(PRIVILEGED_MAX_TIME * 0.9)
-//#define		PRIVILEGED_MAX_TIME				0.015
 
 
 
 //Maximum number of branches for the AP
 #define		MAX_NB_BRANCHES					4
+
+
+
+
+//-----------------------------------------------
+//				BUSY TONE
+//-----------------------------------------------
+
+//The frequency for the busy tone is 
+//SHIFT_FREQ_BUSY_TONE MHz less than for the transmission radio
+#define		SHIFT_FREQ_BUSY_TONE			0.1					
 
 
 
@@ -131,17 +143,23 @@ FSM_EXT_DECS
 
 #define		STREAM_TO_UP					5
 #define		STREAM_FROM_UP					5
+
 #define		STREAM_TO_RADIO					0
-#define		STREAM_TO_DIRECT_SYNC			1
-#define		STREAM_TO_BUSY_TONE				2
 #define		STREAM_FROM_RADIO				0
+
+#define		STREAM_TO_BUSY_TONE				1
 #define		STREAM_FROM_BUSY_TONE			1
 
+#define		STREAM_TO_DIRECT_SYNC			2
+
+
 #define		STAT_FROM_RX					0
-#define		STAT_FROM_RX_BUSY_TONE			4
 #define		STAT_FROM_TX					1
-#define		STAT_FROM_TX_DIREC_SYNC			2
+
+#define		STAT_FROM_RX_BUSY_TONE			2
 #define		STAT_FROM_TX_BUSY_TONE			3
+
+#define		STAT_FROM_TX_DIREC_SYNC			4
 
 
 
@@ -208,7 +226,7 @@ FSM_EXT_DECS
 
 
 //Is the medium busy ? (transmission / reception / reservation)
-#define		IS_MEDIUM_BUSY					((is_rx_busy) || ((is_busy_tone) && (!is_border_node)) || (is_tx_busy) || (my_nav > op_sim_time()))
+#define		IS_MEDIUM_BUSY					((is_rx_busy) || (is_tx_busy) || (my_nav > op_sim_time()) || ((is_busy_tone_rx && !busy_tone_rx_ignored && BUSY_TONE_ACTIVATED) && (!is_border_node)))
 
 
 //We must defer in any of these conditions: 
@@ -391,6 +409,7 @@ typedef struct{
 	double		ifs;				//inter frame spacing for this packet type
 	Boolean		released;			//The memory was released (packet destroyed)
 	Packet		*payload;
+	double		next_hello;
 }frame_struct;
 
 
@@ -486,8 +505,8 @@ int 	get_new_frame_id();
 
 //Hellos
 void 	print_neighborhood_table(int debug_type);
-void  	generate_hello();
-void 	update_neighborhood_table(int source , int dist_sink , int dist_border, double sync_rx_power, int branch , List *bn_list_tmp);
+void  	generate_hello(double next_hello);
+void 	update_neighborhood_table(int source , int dist_sink , int dist_border, double sync_rx_power, int branch , List *bn_list_tmp , double next_hello);
 char* 	print_border_nodes(char *msg);
 
 //Stability
@@ -585,8 +604,11 @@ typedef struct
 	int	                    		sync_last_branch;
 	int	                    		my_branch;
 	int	                    		cw;
-	Boolean	                		is_busy_tone;
+	Boolean	                		is_busy_tone_rx;
 	double	                 		busy_tone_speed;
+	Boolean	                		is_busy_tone_tx;
+	Boolean	                		busy_tone_rx_ignored;
+	Boolean	                		BUSY_TONE_ACTIVATED;
 	} cmac_process_state;
 
 #define pr_state_ptr            		((cmac_process_state*) SimI_Mod_State_Ptr)
@@ -644,8 +666,11 @@ typedef struct
 #define sync_last_branch        		pr_state_ptr->sync_last_branch
 #define my_branch               		pr_state_ptr->my_branch
 #define cw                      		pr_state_ptr->cw
-#define is_busy_tone            		pr_state_ptr->is_busy_tone
+#define is_busy_tone_rx         		pr_state_ptr->is_busy_tone_rx
 #define busy_tone_speed         		pr_state_ptr->busy_tone_speed
+#define is_busy_tone_tx         		pr_state_ptr->is_busy_tone_tx
+#define busy_tone_rx_ignored    		pr_state_ptr->busy_tone_rx_ignored
+#define BUSY_TONE_ACTIVATED     		pr_state_ptr->BUSY_TONE_ACTIVATED
 
 /* This macro definition will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
@@ -1728,7 +1753,7 @@ void init_stability(int stab[], short value){
 
 
 //Generates an hello (next frame to send !)
-void  generate_hello(){ 
+void  generate_hello(double next_hello){ 
 	//Packet to send
 	frame_struct	frame;
 	//info
@@ -1749,6 +1774,7 @@ void  generate_hello(){
 	frame.payload		= NULL;
 	frame.duration		= 0;
 	frame.pk_size		= HEADERS_PK_SIZE + DIST_SINK_SIZE + DIST_BORDER_SIZE;
+	frame.next_hello	= next_hello;
 	
 	//Adds the hello in head of the data packet buffer
 	add_in_data_frame_buffer(frame , OPC_LISTPOS_HEAD);
@@ -1802,7 +1828,7 @@ void delete_timeouted_neighbors(Vartype*ptr , int code){
 	if (is_modif_required){
 		//Border node
 		if (update_is_border_node())
-			generate_hello();
+			generate_hello(0);
 
 		//Distances
 		update_dist();
@@ -1818,7 +1844,7 @@ void delete_timeouted_neighbors(Vartype*ptr , int code){
 
 
 //updates the neighborhood table with one new entry !
-void update_neighborhood_table(int source , int dist_sink , int dist_border, double sync_rx_power, int branch , List *bn_list_tmp){
+void update_neighborhood_table(int source , int dist_sink , int dist_border, double sync_rx_power, int branch , List *bn_list_tmp , double next_hello){
 	int				i;
 	neigh_struct	*neigh_ptr;
 	Boolean			neighbor_updated 	= OPC_FALSE;
@@ -1854,10 +1880,11 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 			neigh_ptr->dist_border			= dist_border;
 			neigh_ptr->sync_rx_power		= sync_rx_power;
 			neigh_ptr->branch				= branch;
-			neigh_ptr->timeout				= op_sim_time() + INTERVALL_HELLO;			
 			neigh_ptr->border_nodes_list	= bn_list_tmp;
 			update_stability(neigh_ptr->stability , OPC_TRUE);
 			neighbor_updated = OPC_TRUE;
+			if (next_hello != 0)
+				neigh_ptr->timeout				= op_sim_time() + next_hello + 0.1;			
 				
 			debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d updated (sink %d, border %d)\n", source, dist_sink , dist_border);
 			debug_print(MEDIUM , DEBUG_NODE, "neighbor %d updated (sink %d, border %d)\n", source, dist_sink , dist_border);
@@ -1882,6 +1909,7 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 		neigh_ptr->branch				= branch;
 		neigh_ptr->timeout				= op_sim_time() +INTERVALL_HELLO;
 		neigh_ptr->border_nodes_list	= bn_list_tmp;
+		neigh_ptr->timeout				= op_sim_time() + next_hello + 0.1;			
 		init_stability(neigh_ptr->stability , OPC_TRUE);
 		op_prg_list_insert(my_neighborhood_table , neigh_ptr , OPC_LISTPOS_TAIL);	  
 		
@@ -1908,7 +1936,7 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 	
 	//I changed by border node status or my distance to sink / border
 	if (hello_required)
-		generate_hello();
+		generate_hello(0);
 	
 }
 
@@ -2007,6 +2035,7 @@ Packet* create_packet(frame_struct frame){
 			op_pk_nfd_set(pk , "DIST_BORDER" ,	my_dist_border);
 			op_pk_nfd_set(pk , "SYNC_POWER" ,	my_sync_rx_power);
 			op_pk_nfd_set(pk , "BRANCH" ,		my_branch);
+			op_pk_nfd_set(pk , "NEXT" ,			frame.next_hello);
 			fill_border_nodes_fields(pk);
 		break;
 		case RTS_PK_TYPE:
@@ -2547,6 +2576,8 @@ void receive_packet_from_radio(){
 	int				duration;
 	//transmission time for the flow
 	double			transmission_time;
+	//next hello
+	double			next_hello;
 	//Control
 	char			msg[500];
 	
@@ -2794,6 +2825,7 @@ void receive_packet_from_radio(){
 			//Updates the neighborhood table
 			case HELLO_PK_TYPE:
 				op_pk_nfd_get(frame , "BRANCH" , 	&branch);
+				op_pk_nfd_get(frame , "NEXT" , 		&next_hello);
 			
 				if (destination != BROADCAST)
 					op_sim_end("An hello is sent in broadcast" , "not in unicast", "please correct the bug", "");
@@ -2802,7 +2834,7 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , "DIST_BORDER" , 	&dist_border);
 				op_pk_nfd_get(frame , "SYNC_POWER" , 	&sync_power);
 				bn_list_tmp = create_bn_list_from_packet(frame);
-				update_neighborhood_table(source , dist_sink , dist_border , sync_power , branch , bn_list_tmp);
+				update_neighborhood_table(source , dist_sink , dist_border , sync_power , branch , bn_list_tmp , next_hello);
 			
 			break;
 				
@@ -2885,6 +2917,8 @@ void interrupt_process(){
 	Boolean		old;
 	//reception power 
 	double		new_rx_power;
+	//next hello to generate
+	double		next_hello;
 	
 	switch (op_intrpt_type()){
 	
@@ -2909,6 +2943,8 @@ void interrupt_process(){
 		case OPC_INTRPT_STAT :
 			
 			switch(op_intrpt_stat()){
+				
+				//signal from radio receiver (and registers the power of the last received packet)
 				case STAT_FROM_RX :
 					new_rx_power = op_stat_local_read(op_intrpt_stat()); 
 					old = 	is_rx_busy;
@@ -2928,10 +2964,10 @@ void interrupt_process(){
 				case STAT_FROM_RX_BUSY_TONE :
 				
 					new_rx_power = op_stat_local_read(op_intrpt_stat()); 
-					old = is_busy_tone;
-					is_busy_tone 	= (new_rx_power > rx_power_threshold);	
-					if (old != is_busy_tone)
-						debug_print(LOW , DEBUG_RADIO , "rx_busy %d -> %d (busy tone, power %f, threshold %f)\n", old , is_busy_tone , new_rx_power*1E14 , rx_power_threshold*1E14);
+					old = is_busy_tone_rx;
+					is_busy_tone_rx	= (new_rx_power > rx_power_threshold);	
+					if (old != is_busy_tone_rx)
+						debug_print(LOW , DEBUG_RADIO , "busy tone %d -> %d (power %f, threshold %f)\n", old , is_busy_tone_rx , new_rx_power*1E14 , rx_power_threshold*1E14);
 					
 				break;
 				
@@ -2947,11 +2983,12 @@ void interrupt_process(){
 				
 				//End of busy tone -> we send another packet
 				case STAT_FROM_TX_BUSY_TONE:
+					
 				
+					if ((op_stat_local_read(op_intrpt_stat()) != 1.0) && (is_busy_tone_tx)){
+						maintain_busy_tone(1E-6);						
 				
-					if (op_stat_local_read(op_intrpt_stat()) != 1.0){
-						//maintain_busy_tone(NULL , 0);				
-						//debug_print(LOW , DEBUG_RADIO , "tx_busy tone, state %d (=> new packet sent to maintain the busy state)\n" , op_stat_local_read(op_intrpt_stat()) == 1.0);
+						debug_print(MEDIUM , DEBUG_RADIO , "keeps on maintaining activity on the busy_tone tx\n");
 					}
 				break;
 					
@@ -2968,12 +3005,6 @@ void interrupt_process(){
 			if (op_intrpt_code() == SINK_CTR_CODE){
 				generate_ctr();
 				
-				//The busy tone changes when the branch changes (only for the sink)
-				//change_antenna_direction(STREAM_TO_BUSY_TONE , ctr_last_branch);
-				//debug_print(LOW , DEBUG_RADIO , "busy tone direction has changed, pointing now to branch %d\n", ctr_last_branch);
-				//maintain_busy_tone(PRIVILEGED_MAX_TIME * BETA - 0.0001);
-				
-				
 				//The next CTR from the sink
 				op_intrpt_schedule_self(op_sim_time() + PRIVILEGED_MAX_TIME * BETA , SINK_CTR_CODE);
 			}
@@ -2985,13 +3016,17 @@ void interrupt_process(){
 		
 			//HELLO
 			if (op_intrpt_code() == HELLO_PK_CODE){
-				generate_hello();
-				
 				//The next HELLO
-				if(op_sim_time() < 60.0 - INTERVALL_HELLO/4)
-					op_intrpt_schedule_self(op_sim_time() + INTERVALL_HELLO/8 - op_dist_uniform(1), HELLO_PK_CODE);
+				if(op_sim_time() < 60.0 - INTERVALL_HELLO / 10)
+					next_hello = INTERVALL_HELLO / 10 - op_dist_uniform(1);
 				else
-					op_intrpt_schedule_self(op_sim_time() + INTERVALL_HELLO - op_dist_uniform(1) , HELLO_PK_CODE);
+					next_hello = INTERVALL_HELLO - op_dist_uniform(1);
+				
+				//prepares the packet
+				generate_hello(next_hello);
+				
+				//schedules the next interruption
+				op_intrpt_schedule_self(op_sim_time() + next_hello , HELLO_PK_CODE);
 			}
 			
 			
@@ -3445,7 +3480,7 @@ void maintain_busy_tone(double time){
 
 	//Create a packet with the required size (in bits)
 	pkptr = op_pk_create(busy_tone_speed * time);
-	debug_print(LOW , DEBUG_RADIO , "new busy tone for %fs (packet size %f)\n", time , op_pk_total_size_get(pkptr));
+	debug_print(LOW , DEBUG_RADIO , "new busy tone for %fs (packet size %f bits)\n", time , op_pk_total_size_get(pkptr));
 
 	//transmission
 	op_pk_send(pkptr , STREAM_TO_BUSY_TONE);	
@@ -3506,14 +3541,14 @@ cmac_process (void)
 				double	frequency;
 				double	bandwidth;
 				//transmitters
-				int		nb_tx;
+				int		nb_radio;
 				//Channels
 				int		num_chann;
 				Objid	chann_objid;
 				Objid	sub_chann_objid;
 				Objid	tx_id , rx_id;
 				//Control
-				int		i;
+				int		i , j;
 				char	str[300];
 				char	msg[500];
 				//Statwires
@@ -3564,10 +3599,17 @@ cmac_process (void)
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BETA",					&BETA);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BLOCKED_MODE",			&strict_privileged_mode);
 				op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&PRIVILEGED_MAX_TIME);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING",				&ROUTING);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "SYNC_DIRECT_ANTENNA",	&is_sync_direct_antenna);
+				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BUSY_TONE_ACTIVATED",	&BUSY_TONE_ACTIVATED);
+				
+				
+				//A border node is allowed to send packets only when it is privileged
+				strict_privileged_mode = OPC_TRUE;
+				
+				//The busy tone is not activated if RTS are not used
+				BUSY_TONE_ACTIVATED = BUSY_TONE_ACTIVATED && RTS;
 				
 				
 				
@@ -3600,34 +3642,35 @@ cmac_process (void)
 				//		   		PROPERTIES
 				//-----------------------------------------------
 				
-				is_node_privileged		= OPC_FALSE;
-				last_frame_sent.type	= NO_PK_TYPE;
-				next_frame_to_send.type	= NO_PK_TYPE;
+				is_node_privileged			= OPC_FALSE;
+				last_frame_sent.type		= NO_PK_TYPE;
+				next_frame_to_send.type		= NO_PK_TYPE;
 				
-				data_frame_buffer		= op_prg_list_create();
-				my_neighborhood_table	= op_prg_list_create();
-				my_frame_id_seen		= op_prg_list_create();
-				bn_list					= op_prg_list_create();
+				data_frame_buffer			= op_prg_list_create();
+				my_neighborhood_table		= op_prg_list_create();
+				my_frame_id_seen			= op_prg_list_create();
+				bn_list						= op_prg_list_create();
 				
 				
 				//No reservation
 				my_nav	= 0;
 				
 				//Backoff distribution initialization
-				cw 				= MAX_BACKOFF;
-				backoff_dist 	= op_dist_load("uniform_int" , 0 , cw);
+				cw 							= MAX_BACKOFF;
+				backoff_dist 				= op_dist_load("uniform_int" , 0 , cw);
 				
 				//no reservation
-				is_reply_required = OPC_FALSE;
+				is_reply_required 			= OPC_FALSE;
 				
 				//Power of the last received sync frame
-				my_sync_rx_power		= 0;
+				my_sync_rx_power			= 0;
 				
 				//Power of the last received packet (when rx busy -> !busy)
-				last_rx_power			= 0;
+				last_rx_power				= 0;
+				busy_tone_rx_ignored		= OPC_FALSE;
 				
 				//next packet == hello
-				is_hello_to_send = OPC_FALSE;
+				is_hello_to_send 			= OPC_FALSE;
 				
 				//Verification of the next start time for data frames (in the source process)
 				next_start_time				= 0;
@@ -3637,6 +3680,7 @@ cmac_process (void)
 				ctr_last_branch 			= 0;
 				sync_last_branch			= 0;
 				my_branch					= -1;
+				
 				
 				
 				
@@ -3735,12 +3779,18 @@ cmac_process (void)
 				//		  	 	TRANSMISSION
 				//-----------------------------------------------
 				
-				//normal radios (first and second radios)
-				if (is_sink)
-					nb_tx = 2;
-				else
-					nb_tx = 1;
-				for (i=0; i < nb_tx ; i++){
+				
+				//-----------------------------------------------
+				//				NORMAL RADIO
+				//-----------------------------------------------
+				
+				
+				//----- TRANSMISSION ----
+				
+				nb_radio = op_topo_assoc_count(my_objid , OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX);
+				
+				for (i=0; i<nb_radio ; i++){
+					
 				
 					tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, i);
 					if (tx_id == OPC_OBJID_INVALID)
@@ -3756,15 +3806,50 @@ cmac_process (void)
 					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth);
 					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	frequency);
 					op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
+				
+				}
+				
+				//----- RECEPTION ----
+				
+				nb_radio = op_topo_assoc_count(my_objid , OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX);
+				
+				for (i=0; i<nb_radio ; i++){
+				
+					rx_id = op_topo_assoc (my_objid, OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, i);
+					if (rx_id == OPC_OBJID_INVALID)
+						op_sim_end("No attached receiver\n", "" , "" , "");
+				
+				
+					//Nb channels
+					op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
+					num_chann = op_topo_child_count (chann_objid, OPC_OBJTYPE_RARXCH);
+					
+				
+					//Frequency + bandwidth of the first received
+					for (j = 0; j < num_chann; j++){ 	
+						//Id
+						sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, j);
+					
+						//Frequency + bandwidth
+						op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth);
+						op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	frequency);		
+						
+						//Reception power threshold
+						op_ima_obj_state_set (sub_chann_objid, &rx_power_threshold);
+					}
 				}
 				
 				
-				//Busy tone configuration
-				if (is_sink){
-					change_tx_power(1E-3 , STREAM_TO_BUSY_TONE);
-					change_antenna_direction(STREAM_TO_BUSY_TONE , ctr_last_branch);
-					
-					
+				//-----------------------------------------------
+				//				BUSY TONE
+				//-----------------------------------------------
+				
+				//Such that one bit is transmitted in 1us
+				busy_tone_speed = 1E6;
+				
+				if (OPC_TRUE){
+				
+				//Transmission
 					tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, STREAM_TO_BUSY_TONE);
 					if (tx_id == OPC_OBJID_INVALID)
 						op_sim_end("No attached transmitter\n", "" , "" , "");
@@ -3776,9 +3861,30 @@ cmac_process (void)
 					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
 				
 					//Speed
-					op_ima_obj_attr_get (sub_chann_objid, "data rate", 		&busy_tone_speed);
-					printf("speed -> %f\n", busy_tone_speed);
+					op_ima_obj_attr_set (sub_chann_objid, "data rate", 		busy_tone_speed);
+					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth * busy_tone_speed / operational_speed);
+					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	frequency - SHIFT_FREQ_BUSY_TONE);
+					op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
+					//printf("speed -> %f, bandwidth %f\n", busy_tone_speed , bandwidth * busy_tone_speed / operational_speed);
+					
+					//NB: bandwidth in KHz, frequency in MHz
+					if (bandwidth * busy_tone_speed / operational_speed >= 1000 * SHIFT_FREQ_BUSY_TONE)
+						op_sim_end("The bandiwthd separation between the busy tone " , "and the principal radio is too small." , "Please increase the value of SHIFT_FREQ_BUSY_TONE", "to separate sufficiently the channels");
 				
+				//reception	
+					rx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, STREAM_FROM_BUSY_TONE);
+					if (rx_id == OPC_OBJID_INVALID)
+						op_sim_end("No attached transmitter\n", "" , "" , "");
+				
+					//Channels nb
+					op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
+				
+					//id access
+					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, 0);
+				
+					//Speed
+					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth * busy_tone_speed / operational_speed);
+					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	frequency - SHIFT_FREQ_BUSY_TONE);
 				}
 				
 				
@@ -3787,29 +3893,6 @@ cmac_process (void)
 				//		   			RECEPTION
 				//-----------------------------------------------
 				
-				//Principal radio receiver
-				rx_id = op_topo_assoc (my_objid, OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, STREAM_FROM_RADIO);
-				if (rx_id == OPC_OBJID_INVALID)
-					op_sim_end("No attached receiver\n", "" , "" , "");
-				
-				
-				//Nb channels
-				op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
-				num_chann = op_topo_child_count (chann_objid, OPC_OBJTYPE_RARXCH);
-					
-				
-				//Frequency + bandwidth of the first received
-				for (i = 0; i < num_chann; i++){ 	
-					//Id
-					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, i);
-					
-					//Frequency + bandwidth
-					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	frequency);
-						
-					//Reception power threshold
-					op_ima_obj_state_set (sub_chann_objid, &rx_power_threshold);
-				}
 				
 				
 				
@@ -4043,7 +4126,7 @@ cmac_process (void)
 					debug_print(MAX , DEBUG_SEND , "busy -> %d %d %d %d\n", is_rx_busy , is_tx_busy , my_nav > op_sim_time() , IS_MEDIUM_BUSY   );
 				
 				
-					//Transmits the frame
+					//Prepares the packet
 					is_tx_busy = OPC_TRUE;
 					frame_pk = create_packet(next_frame_to_send);
 					
@@ -4053,22 +4136,46 @@ cmac_process (void)
 					is_reply_required = OPC_TRUE;
 				
 					
-						
-					//Increases power (to 10W, that is enormous and all the nodes will get it)
-					//If a node does not receive the SYNC it is not a problem: the branch will not expand to the network extremities
-					if (next_frame_to_send.type == SYNC_PK_TYPE){
 					
-						if (is_sync_direct_antenna){		
-							change_antenna_direction(STREAM_TO_DIRECT_SYNC , sync_last_branch);
-							op_pk_send(frame_pk , STREAM_TO_DIRECT_SYNC);
-						}
-						else{
-							change_tx_power(1000 , STREAM_TO_RADIO);
-							op_pk_send(frame_pk , STREAM_TO_RADIO);
-						}
+					// -----  SPECIAL ACTIONS  -----
+				
+					switch (next_frame_to_send.type){
+					
+						//Ack sent -> no more busy_tone required
+						case ACK_PK_TYPE:
+							is_busy_tone_tx = OPC_FALSE;
+						break;
+						
+						//RTS sent -> we ignore further busy tone in reception
+						case RTS_PK_TYPE:
+							busy_tone_rx_ignored = OPC_TRUE;
+						break;
+						
+						//CTS sent -> we activate the busy tone
+						case CTS_PK_TYPE:
+							maintain_busy_tone(SIFS);
+						break;
+						
+						//Increases power (to 10W, that is enormous and all the nodes will get it)
+						//If a node does not receive the SYNC it is not a problem: the branch will not expand to the network extremities
+						case SYNC_PK_TYPE:
+					
+							if (is_sync_direct_antenna)	
+								change_antenna_direction(STREAM_TO_DIRECT_SYNC , sync_last_branch);
+							else
+								change_tx_power(1000 , STREAM_TO_RADIO);
+						break;
+						
+						case HELLO_PK_TYPE:
+							is_hello_to_send = OPC_FALSE;
+						break;
 							
 					}
-					//transmission
+					
+					
+					// -----  TRANSMISSSION  -----
+					if ((next_frame_to_send.type == SYNC_PK_TYPE) && (is_sync_direct_antenna))
+						op_pk_send(frame_pk , STREAM_TO_DIRECT_SYNC);
 					else
 						op_pk_send(frame_pk , STREAM_TO_RADIO);
 				
@@ -4077,10 +4184,6 @@ cmac_process (void)
 					last_frame_sent = next_frame_to_send;
 					last_frame_sent.released = OPC_FALSE;
 					set_next_frame_null();
-					
-					//Hello
-					if (last_frame_sent.type == HELLO_PK_TYPE)
-						is_hello_to_send = OPC_FALSE;
 					
 				}
 				//else -> nothing, we just stay in this state while the transmission and keep to treat other interrupts
@@ -4248,9 +4351,9 @@ cmac_process (void)
 				//------------------------------------------
 				
 				
-				debug_print(LOW , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, border %d, priviledged %d\n", is_data_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg) ,  IS_PK_TO_SEND , is_border_node , is_node_privileged);
+				debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, border %d, priviledged %d\n", is_data_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg) ,  IS_PK_TO_SEND , is_border_node , is_node_privileged);
 				if (is_node_privileged)
-					debug_print(LOW , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d\n", time_start_privileged , PRIVILEGED_MIN_TIME , time_start_privileged + PRIVILEGED_MIN_TIME <= op_sim_time() , PRIVILEGED_END);
+					debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d\n", time_start_privileged , PRIVILEGED_MIN_TIME , time_start_privileged + PRIVILEGED_MIN_TIME <= op_sim_time() , PRIVILEGED_END);
 								
 				//We have no frame which is scheduled to be transmitted
 				if (next_frame_to_send.type == NO_PK_TYPE){
@@ -4388,6 +4491,8 @@ cmac_process (void)
 				
 				//Handles the possible interruptions (STREAM || STAT)
 				interrupt_process();
+				
+				
 				
 				
 				
@@ -4746,40 +4851,27 @@ cmac_process (void)
 						//increase the nb of retries
 						last_frame_sent.nb_retry ++;
 						
-						//And transmission !
+						//And retransmission !
 						change_next_frame(last_frame_sent);
-						
-					//generate_ctr(last_frame_sent.nb_retry + 1);
 					}
 					
-					
-					//NB: we will automatically get the first packet from the data frame buffer 
-					//And we do not do it now since if we received a control frame, we will first answer to this control frame before sending data frames
 					
 					if (!is_node_privileged)
 						update_nav_time(EIFS , my_address , -1);
 					
-					//New backoff
-					/*if ((!is_node_privileged) && (cw <= MAX_EXPO_BACKOFF / 2)){
-						cw *= 2;
-						backoff_dist 	= op_dist_load("uniform_int" , 0 , cw);
-						printf("double backoff for %d\n", my_address);
-					}
-					*/
+					
+					//The frame timeouted: no more busy tone in transmission
+					is_busy_tone_tx 		= OPC_FALSE;
 				}
 				
 				
 				
 				//The medium is no longer reserved for this flow
 				if ((is_reply_received) || (IS_FRAME_TIMEOUT) || is_reply_bad) {
-					is_reply_required = OPC_FALSE;
+					is_reply_required 		= OPC_FALSE;
 					
-					//normal backoff
-					/*if (cw != MAX_BACKOFF){
-						cw = MAX_BACKOFF;
-						backoff_dist 	= op_dist_load("uniform_int" , 0 , cw);
-					}
-					*/
+					//The transmission whatever it is succefull or not is ended: we must take into account the current busy tones
+					busy_tone_rx_ignored 	= OPC_FALSE;
 				}
 				
 				
@@ -4975,8 +5067,11 @@ cmac_process_terminate (void)
 #undef sync_last_branch
 #undef my_branch
 #undef cw
-#undef is_busy_tone
+#undef is_busy_tone_rx
 #undef busy_tone_speed
+#undef is_busy_tone_tx
+#undef busy_tone_rx_ignored
+#undef BUSY_TONE_ACTIVATED
 
 
 
@@ -5264,14 +5359,29 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 		*var_p_ptr = (char *) (&prs_ptr->cw);
 		FOUT;
 		}
-	if (strcmp ("is_busy_tone" , var_name) == 0)
+	if (strcmp ("is_busy_tone_rx" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->is_busy_tone);
+		*var_p_ptr = (char *) (&prs_ptr->is_busy_tone_rx);
 		FOUT;
 		}
 	if (strcmp ("busy_tone_speed" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->busy_tone_speed);
+		FOUT;
+		}
+	if (strcmp ("is_busy_tone_tx" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->is_busy_tone_tx);
+		FOUT;
+		}
+	if (strcmp ("busy_tone_rx_ignored" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->busy_tone_rx_ignored);
+		FOUT;
+		}
+	if (strcmp ("BUSY_TONE_ACTIVATED" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->BUSY_TONE_ACTIVATED);
 		FOUT;
 		}
 	*var_p_ptr = (char *)OPC_NIL;

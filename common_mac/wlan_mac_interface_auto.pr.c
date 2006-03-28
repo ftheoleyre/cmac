@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char wlan_mac_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 442478CF 442478CF 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char wlan_mac_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4429B69A 4429B69A 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -120,8 +120,8 @@ static void			wlan_mac_higher_layer_register_as_arp ();
 //
 //--------------------------------------
 
-#define		STREAM_FROM_MAC				1
-#define		STREAM_TO_MAC				1
+#define		STREAM_FROM_MAC				0
+#define		STREAM_TO_MAC				0
 
 
 
@@ -908,6 +908,7 @@ void print_headers_stat_file(FILE *pfile){
 	int		RTS;
 	double	PRIVILEGED_MAX_TIME;
 	double	GRID_RANGE;
+	int		BUSY_TONE_ACTIVATED;
 
 	
 	
@@ -921,7 +922,9 @@ void print_headers_stat_file(FILE *pfile){
 	op_ima_sim_attr_get(OPC_DOUBLE , 		"PRIVILEGED_MAX_TIME" , 	&PRIVILEGED_MAX_TIME);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 					&RTS);
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"GRID_RANGE",				&GRID_RANGE);
-		
+	op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"BUSY_TONE_ACTIVATED",		&BUSY_TONE_ACTIVATED);
+	
+	BUSY_TONE_ACTIVATED = BUSY_TONE_ACTIVATED && RTS;
 
 
 	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
@@ -934,6 +937,7 @@ void print_headers_stat_file(FILE *pfile){
 	fprintf(pfile , "Grid Range								:	%f\n", 				GRID_RANGE);
 	fprintf(pfile , "Duration								:	%f\n", 				op_sim_time());
 	fprintf(pfile , "RTS									:	%d\n", 				RTS);
+	fprintf(pfile , "Busy Tone								:	%d\n", 				BUSY_TONE_ACTIVATED);
 	fprintf(pfile , "CTR									:	%d\n", 				CTR);
 	fprintf(pfile , "Blocked Mode							:	%d\n", 				BLOCKED_MODE);
 	fprintf(pfile , "Privileged Max Time						:	%f\n", 			PRIVILEGED_MAX_TIME);
@@ -1242,6 +1246,7 @@ wlan_mac_interface_auto (void)
 				
 				
 				
+				
 				//--------------------------------------------
 				//
 				//					PARAMETERS
@@ -1288,8 +1293,8 @@ wlan_mac_interface_auto (void)
 				
 				
 				
-				//Sets this value for all the nodes (if self_position)
-				if (rate_adaptation){
+				//Sets this value for all the nodes (even if we do not adapt the rate: the packet generation must start after TIME_START_PK_GENERATION)
+				if (OPC_TRUE){//rate_adaptation){
 					for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
 				  	
 						node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
@@ -1641,10 +1646,10 @@ wlan_mac_interface_auto (void)
 				//Mac process name
 				char	mac_name[400];
 				//The range for the grid (-1 if disabled)
-				double	GRID_RANGE;
-				
-				
-				
+				double	POSITION_PARAMETER;
+				int		POSITION;
+				int		is_sink;
+				int		mac_process_id;
 				
 				
 				
@@ -1723,20 +1728,49 @@ wlan_mac_interface_auto (void)
 				//
 				//--------------------------------------------
 				
-				op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"GRID_RANGE",		&GRID_RANGE);
-				if (GRID_RANGE !=  -1){
+				op_ima_sim_attr_get(OPC_IMA_INTEGER,"POSITION",				&POSITION);
+				op_ima_sim_attr_get(OPC_IMA_DOUBLE, "POSITION_PARAMETER", 	&POSITION_PARAMETER);
 				
-					y_int = mac_address /  100;
-					x_int = mac_address - y_int * 100;
+				mac_process_id = op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_PROC , STREAM_TO_MAC);
+				op_ima_obj_attr_get(mac_process_id , "Is Sink" , &is_sink);
 				
-					y_sink = (int)(pk_destination /  100);
-					x_sink = (int)(pk_destination - y_sink * 100);
 				
-					x = (double)x_int * GRID_RANGE / (double)range;
-					y = (double)y_int * GRID_RANGE / (double)range;
+				switch(POSITION){
 				
-					op_ima_obj_attr_set(op_id_parent(op_id_self()) , "x position" , x);
-					op_ima_obj_attr_set(op_id_parent(op_id_self()) , "y position" , y);
+					//No automatic position
+					case 0:
+					
+					break;
+					
+					//GRID
+					case 1:
+				
+						y_int = mac_address /  100;
+						x_int = mac_address - y_int * 100;
+				
+						y_sink = (int)(pk_destination /  100);
+						x_sink = (int)(pk_destination - y_sink * 100);
+				
+						x = (double)x_int * POSITION_PARAMETER / (double)range;
+						y = (double)y_int * POSITION_PARAMETER / (double)range;
+				
+						op_ima_obj_attr_set(op_id_parent(op_id_self()) , "x position" , x);
+						op_ima_obj_attr_set(op_id_parent(op_id_self()) , "y position" , y);
+					break;
+					
+					//RANDOM
+					case 2:
+						if (!is_sink){
+							x = op_dist_uniform(POSITION_PARAMETER);
+							y = op_dist_uniform(POSITION_PARAMETER);
+						}
+						else{
+							x = POSITION_PARAMETER / 2;
+							y = POSITION_PARAMETER / 2;
+						}
+						op_ima_obj_attr_set(op_id_parent(op_id_self()) , "x position" , x);
+						op_ima_obj_attr_set(op_id_parent(op_id_self()) , "y position" , y);
+					break;
 				}
 				
 				
