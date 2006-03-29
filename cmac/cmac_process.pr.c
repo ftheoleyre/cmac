@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 442B0790 442B0790 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 442B144C 442B144C 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -107,7 +107,7 @@ FSM_EXT_DECS
 
 
 // PRIVILEGED MODE
-#define		PRIVILEGED_MIN_TIME				(PRIVILEGED_MAX_TIME * 0.9)
+#define		PRIV_MIN_RATIO					0.9
 
 
 
@@ -133,7 +133,7 @@ FSM_EXT_DECS
 //-----------------------------------------------
 
 #define		MULTI_CHANNEL					0
-
+#define		RATIO_PRIV_BANDWIDTH 			1
 
 
 
@@ -261,7 +261,7 @@ FSM_EXT_DECS
 //
 #define		PRIVILEGED_END					(PRIVILEGED_MEDIUM_LIMIT || PRIVILEGED_HIGH_LIMIT)
 
-#define		PRIVILEGED_MEDIUM_LIMIT			((is_node_privileged) && (is_data_frame_buffer_empty()) && (time_start_privileged + PRIVILEGED_MIN_TIME <= op_sim_time()))
+#define		PRIVILEGED_MEDIUM_LIMIT			((is_node_privileged) && (is_data_frame_buffer_empty()) && (time_start_privileged + slot_privileged_duration * PRIV_MIN_RATIO <= op_sim_time()))
 #define		PRIVILEGED_HIGH_LIMIT			((is_node_privileged) && (op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == PRIVILEGED_MAX_CODE))
 
 
@@ -624,7 +624,6 @@ typedef struct
 	double	                 		last_next_start_time_verif;
 	Boolean	                		is_ctr_activated;
 	Boolean	                		strict_privileged_mode;
-	double	                 		PRIVILEGED_MAX_TIME;
 	List*	                  		bn_list;
 	int	                    		BETA;
 	int	                    		ROUTING;
@@ -637,9 +636,11 @@ typedef struct
 	Boolean	                		is_busy_tone_tx;
 	Boolean	                		busy_tone_rx_ignored;
 	Boolean	                		BUSY_TONE_ACTIVATED;
-	double	                 		my_frequency;
-	double	                 		my_bandwidth;
+	double	                 		my_main_frequency;
+	double	                 		my_main_bandwidth;
 	List*	                  		my_nav_list;
+	double	                 		my_current_frequency;
+	double	                 		slot_privileged_duration;
 	} cmac_process_state;
 
 #define pr_state_ptr            		((cmac_process_state*) SimI_Mod_State_Ptr)
@@ -686,7 +687,6 @@ typedef struct
 #define last_next_start_time_verif		pr_state_ptr->last_next_start_time_verif
 #define is_ctr_activated        		pr_state_ptr->is_ctr_activated
 #define strict_privileged_mode  		pr_state_ptr->strict_privileged_mode
-#define PRIVILEGED_MAX_TIME     		pr_state_ptr->PRIVILEGED_MAX_TIME
 #define bn_list                 		pr_state_ptr->bn_list
 #define BETA                    		pr_state_ptr->BETA
 #define ROUTING                 		pr_state_ptr->ROUTING
@@ -699,9 +699,11 @@ typedef struct
 #define is_busy_tone_tx         		pr_state_ptr->is_busy_tone_tx
 #define busy_tone_rx_ignored    		pr_state_ptr->busy_tone_rx_ignored
 #define BUSY_TONE_ACTIVATED     		pr_state_ptr->BUSY_TONE_ACTIVATED
-#define my_frequency            		pr_state_ptr->my_frequency
-#define my_bandwidth            		pr_state_ptr->my_bandwidth
+#define my_main_frequency       		pr_state_ptr->my_main_frequency
+#define my_main_bandwidth       		pr_state_ptr->my_main_bandwidth
 #define my_nav_list             		pr_state_ptr->my_nav_list
+#define my_current_frequency    		pr_state_ptr->my_current_frequency
+#define slot_privileged_duration		pr_state_ptr->slot_privileged_duration
 
 /* This macro definition will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
@@ -1008,7 +1010,7 @@ double get_nav_main_freq(){
 	for(i=0 ; i < op_prg_list_size(my_nav_list) ; i++){
 		ptr = op_prg_list_access(my_nav_list , i);
 		
-		if ((ptr->timeout > timeout) && (ptr->frequency == my_frequency))
+		if ((ptr->timeout > timeout) && (ptr->frequency == my_main_frequency))
 			timeout = ptr->timeout;
 	}
 	
@@ -2351,6 +2353,12 @@ Packet* create_packet(frame_struct frame){
 		break;
 		case CTR_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr");
+			op_pk_nfd_set(pk , "FREQ" , 		my_current_frequency);
+			op_pk_nfd_set(pk , "T_SLOT" , 		slot_privileged_duration);
+		break;
+		case CTR_ACK_PK_TYPE:
+			pk = op_pk_create_fmt("cmac_ctr_ack");
+			op_pk_nfd_set(pk , "FREQ" , 		my_current_frequency);
 		break;
 		case CTR_END_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr_end");
@@ -2659,6 +2667,7 @@ void generate_ctr_ack(int destination, int frame_id , int duration_unavailable){
 	//prepares transmission
 	change_next_frame(frame);
 	
+	
 	debug_print(MEDIUM , DEBUG_CONTROL , "CTR-ACK generated by %d at %f\n", my_address , op_sim_time());
 }
 
@@ -2864,6 +2873,9 @@ void receive_packet_from_radio(){
 	int				source , destination;
 	short			frame_type;
 	int				frame_id;
+	//CTR
+	double			freq;
+	double			t_slot;
 	//hellos
 	int				dist_sink , dist_border , branch;
 	List			*bn_list_tmp;
@@ -2998,11 +3010,11 @@ void receive_packet_from_radio(){
 					
 					
 					//sends an acknowledgement (unicast + no nav)
-					if ((destination != BROADCAST) && (is_reply_possible(destination , my_frequency)))
+					if ((destination != BROADCAST) && (is_reply_possible(destination , my_main_frequency)))
 						generate_ack(source , frame_id , duration);
 				}
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_frequency , duration);
+					update_nav_time(transmission_time , source , my_main_frequency , duration);
 			
 			break;
 				
@@ -3025,7 +3037,7 @@ void receive_packet_from_radio(){
 				
 				//NaV if a reservation is present
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_frequency , duration);
+					update_nav_time(transmission_time , source , my_main_frequency , duration);
 			
 			break;
 			
@@ -3041,17 +3053,17 @@ void receive_packet_from_radio(){
 				// -> I am not in communication (I am waiting for a reply for a transmitted frame)
 				// -> If we are privileged, our privileged time has not expired
 				//
-				if ((destination == my_address) && (is_reply_possible(destination , my_frequency)) && (!is_reply_required) && ((time_start_privileged + PRIVILEGED_MAX_TIME >= op_sim_time())||(!is_node_privileged)) )
+				if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency)) && (!is_reply_required) && ((time_start_privileged + slot_privileged_duration >= op_sim_time())||(!is_node_privileged)) )
 					generate_cts(source , duration , frame_id);
 			
 
 				//debug
 				else if (destination == my_address)
-					debug_print(LOW , DEBUG_RECEIVE , "no reply authorized: nav %d (%f), not_slot_finished %d (%f), piviledged %d\n" , get_nav_main_freq() > op_sim_time() , get_nav_main_freq() , time_start_privileged + PRIVILEGED_MAX_TIME >= op_sim_time() , time_start_privileged , is_node_privileged);
+					debug_print(LOW , DEBUG_RECEIVE , "no reply authorized: nav %d (%f), not_slot_finished %d (%f), piviledged %d\n" , get_nav_main_freq() > op_sim_time() , get_nav_main_freq() , time_start_privileged + slot_privileged_duration >= op_sim_time() , time_start_privileged , is_node_privileged);
 			
 				//exchange : RTS - CTS - DATA - ACK
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_frequency , duration);
+					update_nav_time(transmission_time , source , my_main_frequency , duration);
 
 			break;
 			
@@ -3065,11 +3077,11 @@ void receive_packet_from_radio(){
 				
 			
 				//We received a CTS for us -> we have to send now the data packet
-				if ((destination == my_address) && (is_reply_possible(destination , my_frequency)) && (!is_data_frame_buffer_empty()))
+				if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency)) && (!is_data_frame_buffer_empty()))
 					change_next_frame(get_first_data_frame_buffer());
 
 				//A particular case : we received a CTS and meanwhile, the data packet we wanted to send was timeouted and deleted
-				else if ((destination == my_address) && (is_reply_possible(destination , my_frequency))){
+				else if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency))){
 					
 					debug_print(LOW, DEBUG_CONTROL , "ERROR: we received a CTS and we do not have any data frame to transmit\n");
 					print_data_frame_buffer(DEBUG_CONTROL);
@@ -3077,19 +3089,33 @@ void receive_packet_from_radio(){
 			
 				//exchange : RTS - CTS - DATA - ACK
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_frequency , duration);
+					update_nav_time(transmission_time , source , my_main_frequency , duration);
 
 			break;
 			
 			//We become privileged node
 			//-> automatically, we will send a DATA_PK (or a CTR if we have none)
 			case CTR_PK_TYPE:
-
-				if ((destination == my_address) && (is_reply_possible(destination , my_frequency))){
+				op_pk_nfd_get(frame , "FREQ" , 		&freq);
+				op_pk_nfd_get(frame , "T_SLOT" , 	&t_slot);
+				
+				
+				duration = 0;
+				//Multi-channel -> this border node is in privileged mode (using another frequency)
+				if (MULTI_CHANNEL)
+					transmission_time = t_slot;
+				//Single channel -> reserves the medium for the reply (which will be sent through this channel)
+				else
+					transmission_time =  SIFS + PROPAGATION_DELAY + (double)MTU_MAX / operational_speed;
+				
+				
+				
+				if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency))){
 					
 					//the node becomes privileged
-					is_node_privileged 		= OPC_TRUE;
-					time_start_privileged	= op_sim_time();
+					is_node_privileged 			= OPC_TRUE;
+					time_start_privileged		= op_sim_time();
+					slot_privileged_duration	= t_slot;
 					
 					//Error
 					if (!is_border_node)
@@ -3097,25 +3123,32 @@ void receive_packet_from_radio(){
 						
 					
 					//Schedules the end of the privileged mode
-					op_intrpt_schedule_self(op_sim_time() + PRIVILEGED_MIN_TIME , PRIVILEGED_MIN_CODE);
-					op_intrpt_schedule_self(op_sim_time() + PRIVILEGED_MAX_TIME , PRIVILEGED_MAX_CODE);
+					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * PRIV_MIN_RATIO , PRIVILEGED_MIN_CODE);
+					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration , 					PRIVILEGED_MAX_CODE);
 					
-					//Multi channel case (CTR_ACK -> F1+F2 if no data)
+					//Multi channel case (CTR_ACK -> in F1+F2 if no data)
 					if (MULTI_CHANNEL)					
-						//Any case
 						generate_ctr_ack(source , frame_id , 0);
 					
 					//No data frame -> ack to send
-					else if ((is_data_frame_buffer_empty()) && (PRIVILEGED_MIN_TIME != 0))
+					else if ((is_data_frame_buffer_empty()) && (PRIV_MIN_RATIO * slot_privileged_duration != 0))
 						generate_ack(source , frame_id , 0);
 					
 					//No data frame and slot finished -> CTR
 					else if (is_data_frame_buffer_empty())
-						generate_ctr();
-					
+						generate_ctr();					
 				}
+				
+				else if (destination != my_address)
+					update_nav_time(transmission_time , source , freq , duration);
+					
 			break;
 		   	
+			case CTR_ACK_PK_TYPE:
+			
+			break;
+			
+			
 			//Nothing to do, we just ignore the packet
 			case CTR_END_PK_TYPE:			
 			break;
@@ -3304,7 +3337,7 @@ void interrupt_process(){
 				generate_ctr();
 				
 				//The next CTR from the sink
-				op_intrpt_schedule_self(op_sim_time() + PRIVILEGED_MAX_TIME * BETA , SINK_CTR_CODE);
+				op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * BETA , SINK_CTR_CODE);
 			}
 
 			//SYNC from the sink
@@ -3332,7 +3365,7 @@ void interrupt_process(){
 			if (op_intrpt_code() == PRIVILEGED_MAX_CODE){
 			
 				//End interruption (we have also a min_time interruption)
-				if ((is_node_privileged) && (time_start_privileged + PRIVILEGED_MAX_TIME <= op_sim_time()))
+				if ((is_node_privileged) && (time_start_privileged + slot_privileged_duration <= op_sim_time()))
 					generate_ctr();
 			}			
 		break;
@@ -3803,6 +3836,59 @@ cmac_process (void)
 				
 				
 				
+				//-----------------------------------------------
+				//		   			ROUTING
+				//-----------------------------------------------
+				
+				
+				
+				
+				
+				//-------------  POSITIONS  -----------------
+				
+				y_int = my_address /  100;
+				x_int = my_address - y_int * 100;
+				
+				op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "wlan_mac_intf.Destination" , &sink_destination);
+				y_sink = (int)(sink_destination /  100);
+				x_sink = (int)(sink_destination - y_sink * 100);
+				
+				
+				
+				
+				
+				//-----------  IS_BORDER_NODE  --------------
+				
+				is_border_node = OPC_FALSE;
+				
+				
+				
+				//--------------  IS_SINK  -----------------
+				
+				op_ima_obj_attr_get(op_id_self() , "Is Sink" , &is_sink);
+				if (is_sink){
+					is_border_node 		= OPC_TRUE;
+					my_sync_rx_power 	= OPC_DBL_INFINITY;
+				}
+				
+				
+				
+				
+				//---------  DISTANCES / ROUTING  ------------
+				
+				if (is_sink)
+					my_dist_sink = 0;
+				else
+					my_dist_sink = pow (2, 4) - 1;
+				
+				//dist border
+				if (is_border_node)
+					my_dist_border = 0;
+				else
+					my_dist_border = pow (2, 4) - 1;
+				
+				
+				
 				
 				
 				
@@ -3815,11 +3901,14 @@ cmac_process (void)
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BETA",					&BETA);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
-				op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&PRIVILEGED_MAX_TIME);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING",				&ROUTING);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "SYNC_DIRECT_ANTENNA",	&is_sync_direct_antenna);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BUSY_TONE_ACTIVATED",	&BUSY_TONE_ACTIVATED);
 				
+				if (is_sink)
+					op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&slot_privileged_duration);
+				else
+					slot_privileged_duration = 0;
 				
 				//A border node is allowed to send packets only when it is privileged
 				strict_privileged_mode = is_ctr_activated;
@@ -3879,60 +3968,6 @@ cmac_process (void)
 				
 				
 				
-				//-----------------------------------------------
-				//		   			ROUTING
-				//-----------------------------------------------
-				
-				
-				
-				
-				
-				//-------------  POSITIONS  -----------------
-				
-				y_int = my_address /  100;
-				x_int = my_address - y_int * 100;
-				
-				op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "wlan_mac_intf.Destination" , &sink_destination);
-				y_sink = (int)(sink_destination /  100);
-				x_sink = (int)(sink_destination - y_sink * 100);
-				
-				
-				
-				
-				
-				//-----------  IS_BORDER_NODE  --------------
-				
-				is_border_node = OPC_FALSE;
-				
-				
-				
-				//--------------  IS_SINK  -----------------
-				
-				op_ima_obj_attr_get(op_id_self() , "Is Sink" , &is_sink);
-				if (is_sink){
-					is_border_node 		= OPC_TRUE;
-					my_sync_rx_power 	= OPC_DBL_INFINITY;
-				}
-				
-				
-				
-				
-				//---------  DISTANCES / ROUTING  ------------
-				
-				if (is_sink)
-					my_dist_sink = 0;
-				else
-					my_dist_sink = pow (2, 4) - 1;
-				
-				//dist border
-				if (is_border_node)
-					my_dist_border = 0;
-				else
-					my_dist_border = pow (2, 4) - 1;
-				
-				
-				//printf("%d - %d\n", is_sink, is_border_node);
-				
 				
 				
 				
@@ -3987,8 +4022,8 @@ cmac_process (void)
 				//Channel
 				op_ima_obj_attr_get (params_attr_objid, "Channel Settings", &chann_params_comp_attr_objid);
 				subchann_params_attr_objid = op_topo_child (chann_params_comp_attr_objid, OPC_OBJTYPE_GENERIC, 0);
-				op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 				&my_bandwidth);	
-				op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 			&my_frequency);	
+				op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 				&my_main_bandwidth);	
+				op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 			&my_main_frequency);	
 				
 				
 				
@@ -4020,8 +4055,8 @@ cmac_process (void)
 					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
 				
 					//Frequency + bandwidth
-					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_bandwidth);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_frequency);
+					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth);
+					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency);
 					op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
 				
 				}
@@ -4048,8 +4083,8 @@ cmac_process (void)
 						sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, j);
 					
 						//Frequency + bandwidth
-						op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_bandwidth);
-						op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_frequency);		
+						op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth);
+						op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency);		
 						
 						//Reception power threshold
 						op_ima_obj_state_set (sub_chann_objid, &rx_power_threshold);
@@ -4079,13 +4114,12 @@ cmac_process (void)
 				
 					//Speed
 					op_ima_obj_attr_set (sub_chann_objid, "data rate", 		busy_tone_speed);
-					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_bandwidth * busy_tone_speed / operational_speed);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_frequency - SHIFT_FREQ_BUSY_TONE);
+					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
+					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_BUSY_TONE);
 					op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
-					//printf("speed -> %f, bandwidth %f\n", busy_tone_speed , bandwidth * busy_tone_speed / operational_speed);
 					
 					//NB: bandwidth in KHz, frequency in MHz
-					if (my_bandwidth * busy_tone_speed / operational_speed >= 1000 * SHIFT_FREQ_BUSY_TONE)
+					if (my_main_bandwidth * busy_tone_speed / operational_speed >= 1000 * SHIFT_FREQ_BUSY_TONE)
 						op_sim_end("The bandiwthd separation between the busy tone " , "and the principal radio is too small." , "Please increase the value of SHIFT_FREQ_BUSY_TONE", "to separate sufficiently the channels");
 				
 					
@@ -4101,8 +4135,8 @@ cmac_process (void)
 					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, 0);
 				
 					//Speed
-					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_bandwidth * busy_tone_speed / operational_speed);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_frequency - SHIFT_FREQ_BUSY_TONE);
+					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
+					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_BUSY_TONE);
 				}
 				
 				
@@ -4465,6 +4499,23 @@ cmac_process (void)
 							sync_last_branch = 0;
 					}
 						
+					//-----------------------------------------------------
+					//	MULTI_CHANNEL -> COMMUTES
+					//-----------------------------------------------------
+				
+					if (MULTI_CHANNEL){
+					
+						//CTR sent -> changes to the privileged channel
+						if (last_frame_sent.type == CTR_PK_TYPE)
+							change_tx_rx_freq(my_current_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
+						
+						//CTR-ACK sent -> changes to the privileged channel
+						if (last_frame_sent.type == CTR_ACK_PK_TYPE)
+							change_tx_rx_freq(my_current_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
+						
+						
+						
+					}
 						
 						
 					//-----------------------------------------------------
@@ -4483,6 +4534,9 @@ cmac_process (void)
 					else if (last_frame_sent.type == CTR_END_PK_TYPE)
 						is_reply_required = OPC_FALSE;
 					
+					else if (last_frame_sent.type == CTR_ACK_PK_TYPE)
+						is_reply_required = OPC_FALSE;
+				
 					//default behavior	
 					else	
 						is_reply_required = OPC_TRUE;
@@ -4569,7 +4623,7 @@ cmac_process (void)
 				
 				debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, border %d, priviledged %d\n", is_data_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg) ,  IS_PK_TO_SEND , is_border_node , is_node_privileged);
 				if (is_node_privileged)
-					debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d\n", time_start_privileged , PRIVILEGED_MIN_TIME , time_start_privileged + PRIVILEGED_MIN_TIME <= op_sim_time() , PRIVILEGED_END);
+					debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d\n", time_start_privileged , slot_privileged_duration * PRIV_MIN_RATIO , time_start_privileged + slot_privileged_duration * PRIV_MIN_RATIO <= op_sim_time() , PRIVILEGED_END);
 								
 				//We have no frame which is scheduled to be transmitted
 				if (next_frame_to_send.type == NO_PK_TYPE){
@@ -4596,13 +4650,13 @@ cmac_process (void)
 							if (op_prg_list_size(data_frame_buffer) >= 2)
 								time_for_second_data 	= compute_rts_cts_data_ack_time(data_frame.pk_size) ;
 							
-							if (time_for_first_data + op_sim_time() >= PRIVILEGED_MAX_TIME + time_start_privileged)
+							if (time_for_first_data + op_sim_time() >= slot_privileged_duration + time_start_privileged)
 								generate_ctr();
 							
 							else{
 								
 								//Medium reservation if a second packet has to be transmitted
-								if ((op_prg_list_size(data_frame_buffer) < 2) || (time_for_first_data + time_for_second_data + op_sim_time() >= PRIVILEGED_MAX_TIME + time_start_privileged)){
+								if ((op_prg_list_size(data_frame_buffer) < 2) || (time_for_first_data + time_for_second_data + op_sim_time() >= slot_privileged_duration + time_start_privileged)){
 									data_frame.duration = 0;
 									//printf("bof: %d %d \n" , (op_prg_list_size(data_frame_buffer) < 2) , (time_for_first_data + time_for_second_data + op_sim_time() >= PRIVILEGED_MAX_TIME + time_start_privileged));
 								}
@@ -5076,7 +5130,7 @@ cmac_process (void)
 					
 					
 					if (!is_node_privileged)
-						update_nav_time(EIFS , my_address , my_frequency , -1);
+						update_nav_time(EIFS , my_address , my_main_frequency , -1);
 					
 					
 					//The frame timeouted: no more busy tone in transmission
@@ -5275,7 +5329,6 @@ cmac_process_terminate (void)
 #undef last_next_start_time_verif
 #undef is_ctr_activated
 #undef strict_privileged_mode
-#undef PRIVILEGED_MAX_TIME
 #undef bn_list
 #undef BETA
 #undef ROUTING
@@ -5288,9 +5341,11 @@ cmac_process_terminate (void)
 #undef is_busy_tone_tx
 #undef busy_tone_rx_ignored
 #undef BUSY_TONE_ACTIVATED
-#undef my_frequency
-#undef my_bandwidth
+#undef my_main_frequency
+#undef my_main_bandwidth
 #undef my_nav_list
+#undef my_current_frequency
+#undef slot_privileged_duration
 
 
 
@@ -5523,11 +5578,6 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 		*var_p_ptr = (char *) (&prs_ptr->strict_privileged_mode);
 		FOUT;
 		}
-	if (strcmp ("PRIVILEGED_MAX_TIME" , var_name) == 0)
-		{
-		*var_p_ptr = (char *) (&prs_ptr->PRIVILEGED_MAX_TIME);
-		FOUT;
-		}
 	if (strcmp ("bn_list" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->bn_list);
@@ -5588,19 +5638,29 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 		*var_p_ptr = (char *) (&prs_ptr->BUSY_TONE_ACTIVATED);
 		FOUT;
 		}
-	if (strcmp ("my_frequency" , var_name) == 0)
+	if (strcmp ("my_main_frequency" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_frequency);
+		*var_p_ptr = (char *) (&prs_ptr->my_main_frequency);
 		FOUT;
 		}
-	if (strcmp ("my_bandwidth" , var_name) == 0)
+	if (strcmp ("my_main_bandwidth" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_bandwidth);
+		*var_p_ptr = (char *) (&prs_ptr->my_main_bandwidth);
 		FOUT;
 		}
 	if (strcmp ("my_nav_list" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->my_nav_list);
+		FOUT;
+		}
+	if (strcmp ("my_current_frequency" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->my_current_frequency);
+		FOUT;
+		}
+	if (strcmp ("slot_privileged_duration" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->slot_privileged_duration);
 		FOUT;
 		}
 	*var_p_ptr = (char *)OPC_NIL;
