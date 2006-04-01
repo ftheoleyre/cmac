@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 442C6DD8 442C6DD8 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 442DC1A7 442DC1A7 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -116,6 +116,10 @@ FSM_EXT_DECS
 #define		MAX_NB_BRANCHES					4
 
 
+//A CTR could be delayed
+#define		MAX_CTR_DELAY_FROM_SINK			100E-6
+
+
 
 
 //-----------------------------------------------
@@ -123,8 +127,8 @@ FSM_EXT_DECS
 //-----------------------------------------------
 
 //The frequency for the busy tone is 
-//SHIFT_FREQ_BUSY_TONE MHz less than for the transmission radio
-#define		SHIFT_FREQ_BUSY_TONE			0.100					
+//SHIFT_FREQ_SEPARATION MHz less than for the transmission radio
+#define		SHIFT_FREQ_SEPARATION			0.2					
 
 
 
@@ -133,8 +137,11 @@ FSM_EXT_DECS
 //				MULTI CHANNEL
 //-----------------------------------------------
 
-#define		MULTI_CHANNEL					0
+//#define		MULTI_CHANNEL					1
 #define		RATIO_PRIV_BANDWIDTH 			1
+
+
+
 
 
 
@@ -247,7 +254,7 @@ FSM_EXT_DECS
 
 
 //We must transmit one packet: our data buffer is not empty OR we have already prepared a frame to send
-#define		IS_DATA_OK						((!strict_privileged_mode)    ||    (is_hello_to_send || !is_border_node || is_node_privileged || is_sink))
+#define		IS_DATA_OK						((!strict_privileged_mode) || (is_hello_to_send && !IS_BROADCAST_FORBIDDEN) || !is_border_node || is_node_privileged || is_sink)
 #define		IS_PK_TO_SEND					((IS_DATA_OK && !is_frame_buffer_empty()) || (next_frame_to_send.type != NO_PK_TYPE))
 
 
@@ -266,6 +273,7 @@ FSM_EXT_DECS
 #define		PRIVILEGED_HIGH_LIMIT			((is_node_privileged) && (op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == PRIVILEGED_MAX_CODE))
 
 
+#define		MAIN_FREQ_RETURN				((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == MAIN_FREQ_RETURN_CODE))
 
 
 //No frame to send
@@ -295,6 +303,10 @@ FSM_EXT_DECS
 
 //I will directly send one packet
 #define		GO_TO_SEND						((!TRANSMISSION_CANCELED) && (!IS_MEDIUM_BUSY) && (my_backoff == 0))
+
+
+//I can send one BROADCAST frame -> other nodes will receive it
+#define		IS_BROADCAST_FORBIDDEN			((!is_node_privileged && is_border_node && (nb_channels == 1)) || (is_nav_for_other_freq()) || (!is_main_freq_active(STREAM_TO_RADIO)))
 
 
 
@@ -354,6 +366,10 @@ FSM_EXT_DECS
 #define		FRAME_ID_TIMEOUT_CODE			12
 
 
+//I must return to my main frequency
+#define		MAIN_FREQ_RETURN_CODE			13
+
+
 
 //-----------------------------------------------
 //		   	PACKET TYPES
@@ -383,7 +399,7 @@ FSM_EXT_DECS
 
 
 //MTU in bits
-#define		MTU_MAX							2400
+#define		MTU_MAX							2400.0
 
 	
 
@@ -615,6 +631,7 @@ typedef struct
 	double	                 		time_start_privileged;
 	Evhandle	               		frame_timeout_intrpt;
 	Evhandle	               		timeout_intrpt;
+	Evhandle	               		main_freq_return_intrpt;
 	int	                    		DEBUG;
 	Evhandle	               		defer_intrpt;
 	int	                    		ctr_last_branch;
@@ -643,6 +660,7 @@ typedef struct
 	int	                    		BETA;
 	int	                    		ROUTING;
 	Boolean	                		RTS;
+	int	                    		nb_channels;
 	} cmac_process_state;
 
 #define pr_state_ptr            		((cmac_process_state*) SimI_Mod_State_Ptr)
@@ -673,6 +691,7 @@ typedef struct
 #define time_start_privileged   		pr_state_ptr->time_start_privileged
 #define frame_timeout_intrpt    		pr_state_ptr->frame_timeout_intrpt
 #define timeout_intrpt          		pr_state_ptr->timeout_intrpt
+#define main_freq_return_intrpt 		pr_state_ptr->main_freq_return_intrpt
 #define DEBUG                   		pr_state_ptr->DEBUG
 #define defer_intrpt            		pr_state_ptr->defer_intrpt
 #define ctr_last_branch         		pr_state_ptr->ctr_last_branch
@@ -701,6 +720,7 @@ typedef struct
 #define BETA                    		pr_state_ptr->BETA
 #define ROUTING                 		pr_state_ptr->ROUTING
 #define RTS                     		pr_state_ptr->RTS
+#define nb_channels             		pr_state_ptr->nb_channels
 
 /* This macro definition will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
@@ -741,7 +761,7 @@ enum { _block_origin = __LINE__ };
 
 //Adds a timeout interruption
 //NB : i have a blocking state -> I do not send any other packet until either I received the reply or the frame timeouts
-void add_frame_timeout(int data_pk_size){
+void add_frame_timeout(double data_pk_size){
 	
 	//error, the timeout interruption was not canceled !
 	if (op_ev_valid(timeout_intrpt))
@@ -796,40 +816,48 @@ void change_tx_power(double power , int stream){
 	printf("--> NEW power %f\n", power);
 }
 
-//Changes the radio power for tranmissions
-void change_tx_rx_freq(double frequency , double bandwidth , int stream){
-	//id
+
+//returns true if we are focused on the main channel
+Boolean is_main_freq_active(int stream){
 	int			radio_id , chan_id , sub_chan_id;
-	int			num_chan;
-	int			i;
+	double		frequency;
 	
-	//gets the id of the tansmitter + channel attributes
+
+	//Gets only transmitter value (the receiver value is identical, or there is a big trouble !)
 	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , stream);
 	op_ima_obj_attr_get (radio_id, "channel", &chan_id);
-
-	//Sets the channel attributes
-	//NB: I have normally one single channel, but .....
-	num_chan = op_topo_child_count(chan_id, OPC_OBJTYPE_RATXCH);		
-	for(i=0 ; i<num_chan ; i++){
-		sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
-		op_ima_obj_attr_set (sub_chan_id, "bandwidth", 		bandwidth);
-		op_ima_obj_attr_set (sub_chan_id, "min frequency", 	frequency);
-	}
+	sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
+	op_ima_obj_attr_get (sub_chan_id, "min frequency", 	&frequency);
 	
-	//gets the id of the tansmitter + channel attributes
+	return (frequency == my_main_frequency);
+}
+
+//Changes the radio power for tranmissions
+void change_tx_rx_freq(double frequency , double bandwidth , int stream){
+	int		radio_id , chan_id , sub_chan_id;
+	double	old_freq;
+	
+	//------------ TRANSMISSION -----------
+	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , stream);
+	op_ima_obj_attr_get (radio_id, "channel", &chan_id);
+	sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
+	op_ima_obj_attr_get (sub_chan_id, "min frequency", 	&old_freq);
+	op_ima_obj_attr_set (sub_chan_id, "bandwidth", 		bandwidth);
+	op_ima_obj_attr_set (sub_chan_id, "min frequency", 	frequency);
+	
+	
+
+	//------------ RECEPTION -----------
 	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_IN , OPC_OBJTYPE_RARX , stream);
 	op_ima_obj_attr_get (radio_id, "channel", &chan_id);
+	sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RARXCH, 0);
+	op_ima_obj_attr_set (sub_chan_id, "bandwidth", 		bandwidth);
+	op_ima_obj_attr_set (sub_chan_id, "min frequency", 	frequency);
 
-	//Sets the channel attributes
-	//NB: I have normally one single channel, but .....
-	num_chan = op_topo_child_count(chan_id, OPC_OBJTYPE_RARXCH);		
-	for(i=0 ; i<num_chan ; i++){
-		sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RARXCH, 0);
-		op_ima_obj_attr_set (sub_chan_id, "bandwidth", 		bandwidth);
-		op_ima_obj_attr_set (sub_chan_id, "min frequency", 	frequency);
+	if (frequency != old_freq){
+		debug_print(LOW , DEBUG_RADIO , "new bandwidth %f and frequency %f (main %f/%f)\n", bandwidth , frequency , my_main_bandwidth , my_main_frequency);
+		debug_print(LOW , DEBUG_NODE , "new bandwidth %f and frequency %f (main %f/%f)\n", bandwidth , frequency , my_main_bandwidth , my_main_frequency);
 	}
-
-	debug_print(LOW , DEBUG_RADIO , "new bandwidth %f and frequency %f (main %f/%f)\n", bandwidth , frequency , my_main_bandwidth , my_main_frequency);
 }
 
 
@@ -998,6 +1026,21 @@ void update_nav_time(double transmission_time, int source , double frequency , i
 }
 
 
+//Returns TRUE if a reservation was registered for another frequency
+Boolean is_nav_for_other_freq(){
+	int			i;
+	nav_struct	*ptr;
+	
+	for(i=0 ; i < op_prg_list_size(my_nav_list) ; i++){
+		ptr = op_prg_list_access(my_nav_list , i);
+		
+		if ((ptr->timeout > op_sim_time()) && (ptr->frequency != my_main_frequency))
+			return(OPC_TRUE);
+	}
+	
+	return(OPC_FALSE);
+}
+
 //Returns the longest NAV for the main frequency
 double get_nav_main_freq(){
 	int			i;
@@ -1015,7 +1058,7 @@ double get_nav_main_freq(){
 }
 
 
-//Is the medium free to reply ?
+//Is the medium free to reply to addr ? (i.e. no other node has already reserved this frequency ?
 Boolean is_reply_possible(int addr , double frequency){
 	int			i;
 	nav_struct	*ptr;
@@ -1031,6 +1074,19 @@ Boolean is_reply_possible(int addr , double frequency){
 }
 
 
+//The destination is available for reception (no NAV for any frequency)
+Boolean is_destination_available(int destination){
+	int			i;
+	nav_struct	*ptr;
+	
+	for(i=0 ; i < op_prg_list_size(my_nav_list) ; i++){
+		ptr = op_prg_list_access(my_nav_list , i);
+		
+		if ((ptr->timeout > op_sim_time()) && (ptr->address == destination))
+			return(OPC_FALSE);
+	}
+	return(OPC_TRUE);
+}
 
 
 
@@ -1439,26 +1495,24 @@ void print_multicast_frame_buffer(int debug_type){
 //-----------------------------------------------------------
 
 
-
-//Must any multicast / anycast data farme be sent ?
-Boolean is_frame_buffer_empty(){
-	return((get_unicast_frame_buffer_size() == 0) && (get_multicast_frame_buffer_size() == 0));
-}
-
-
-//returns the first data frame to send
-frame_struct *get_frame_buffer(int pos){
+//Rteurns the nb of possible frames
+int get_frame_buffer_size(){
 	frame_struct	*ptr;
 	frame_struct	*ptr_uni;
 	frame_struct	*ptr_multi;
 	int				i , j;
 	int				nb = 0;
-
+	
+	//initialization
 	i = 0;
-	j = 0;
+	//Multicast -> only when all my neighbors can receive it
+	if (IS_BROADCAST_FORBIDDEN)
+		j = op_prg_list_size(multicast_frame_buffer);
+	else
+		j = 0;
+
 	while((i < op_prg_list_size(unicast_frame_buffer)) || (j < op_prg_list_size(multicast_frame_buffer))){
 	
-//	debug_print(LOW, DEBUG_STATE , "%d/%d  %d/%d \n", i , op_prg_list_size(unicast_frame_buffer) , j ,op_prg_list_size(multicast_frame_buffer));
 		//no more unicast frame
 		if (i == op_prg_list_size(unicast_frame_buffer)){
 			ptr = op_prg_list_access(multicast_frame_buffer , j);
@@ -1489,9 +1543,69 @@ frame_struct *get_frame_buffer(int pos){
 		}
 		
 		//result
-		if ((ptr->time_transmission_min < op_sim_time()) && (pos == nb))
+		if ((ptr->time_transmission_min < op_sim_time()) && (is_destination_available(ptr->destination)))
+			nb++;
+	}
+	return(nb);
+}
+
+//Must any multicast / anycast data farme be sent ?
+Boolean is_frame_buffer_empty(){
+	return((get_frame_buffer_size() == 0));
+}
+
+
+//returns the first data frame to send
+frame_struct *get_frame_buffer(int pos){
+	frame_struct	*ptr;
+	frame_struct	*ptr_uni;
+	frame_struct	*ptr_multi;
+	int				i , j;
+	int				nb = 0;
+	
+	//initialization
+	i = 0;
+	//Multicast -> only when all my neighbors can receive it
+	if (IS_BROADCAST_FORBIDDEN)
+		j = op_prg_list_size(multicast_frame_buffer);
+	else
+		j = 0;
+
+	while((i < op_prg_list_size(unicast_frame_buffer)) || (j < op_prg_list_size(multicast_frame_buffer))){
+	
+		//no more unicast frame
+		if (i == op_prg_list_size(unicast_frame_buffer)){
+			ptr = op_prg_list_access(multicast_frame_buffer , j);
+			j++;
+		}
+	
+	
+		//no more multicast frame
+		else if (j == op_prg_list_size(multicast_frame_buffer)){
+			ptr = op_prg_list_access(unicast_frame_buffer , i);
+			i++;
+		}
+	
+	
+		else{
+			ptr_uni 	= op_prg_list_access(unicast_frame_buffer , i);
+			ptr_multi	= op_prg_list_access(multicast_frame_buffer , j);
+			
+			//next element for the next time
+			if (ptr_uni->time_added < ptr_multi->time_added){
+				ptr = ptr_uni;
+				i++;
+			}
+			else{
+				ptr = ptr_multi;
+				j++;
+			}
+		}
+		
+		//result
+		if ((ptr->time_transmission_min < op_sim_time()) && (is_destination_available(ptr->destination)) && (pos == nb))
 			return(ptr);
-		else if (ptr->time_transmission_min < op_sim_time())
+		else if ((ptr->time_transmission_min < op_sim_time()) && (is_destination_available(ptr->destination)))
 			nb++;
 	}
 	return(NULL);
@@ -2307,7 +2421,7 @@ void  generate_hello(double next_hello){
 	add_in_multicast_frame_buffer(frame , OPC_LISTPOS_HEAD);
 	is_hello_to_send 			= OPC_TRUE;
 	
-	debug_print(MAX , DEBUG_HELLO , "HELLO generated\n");
+	debug_print(LOW , DEBUG_HELLO , "HELLO generated\n");
 	debug_print(MAX , DEBUG_NODE , "HELLO generated\n");
 }
 
@@ -2578,10 +2692,14 @@ Packet* create_packet(frame_struct frame){
 			pk = op_pk_create_fmt("cmac_ctr");
 			op_pk_nfd_set(pk , "FREQ" , 		my_privileged_frequency);
 			op_pk_nfd_set(pk , "T_SLOT" , 		slot_privileged_duration);
+			op_pk_nfd_set(pk , "OFFSET" , 		(op_sim_time() - frame.time_added));
+//TAG
+			op_pk_nfd_set(pk , "OFFSET" , 		0);
 		break;
 		case CTR_ACK_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr_ack");
 			op_pk_nfd_set(pk , "FREQ" , 		my_privileged_frequency);
+			op_pk_nfd_set(pk , "T_SLOT" , 		slot_privileged_duration);
 		break;
 		case CTR_END_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr_end");
@@ -2804,6 +2922,8 @@ void generate_ctr_end(){
 	//info
 	int				frame_id;
 	
+	printf("CTR-END\n");
+	
 	//frame id
 	frame_id = get_new_frame_id();
 	//Next frame to send
@@ -2834,9 +2954,23 @@ void generate_ctr(){
 	int				destination;
 	int				frame_id;
 	
+	//Main frequency
+	change_tx_rx_freq(my_main_frequency , my_main_bandwidth , STREAM_TO_RADIO);
+	
 	//Destination
 	if (is_sink){
 		ctr_last_branch++;
+		
+		//If several available channels, get one for this branch (round robin when the branch changes)
+		if (nb_channels > 1){
+			my_privileged_frequency = my_main_frequency;
+			my_privileged_frequency += my_main_bandwidth / 1000 + SHIFT_FREQ_SEPARATION;
+			my_privileged_frequency += (my_main_bandwidth * RATIO_PRIV_BANDWIDTH  / 1000 + SHIFT_FREQ_SEPARATION) * (ctr_last_branch % (nb_channels - 1));
+		}
+		else
+			my_privileged_frequency = my_main_frequency;
+		
+		
 		if (ctr_last_branch >= get_nb_branches())
 			ctr_last_branch = 0;
 		destination = get_child_from_sink(ctr_last_branch);	
@@ -2852,6 +2986,9 @@ void generate_ctr(){
 	
 	//Normal CTR
 	else {
+		//Unavailability of the next hop
+		update_nav_time(2 * (slot_privileged_duration + MAX_CTR_DELAY_FROM_SINK) , destination , my_privileged_frequency , 0);
+	
 		//frame id
 		frame_id = get_new_frame_id();
 	
@@ -3084,6 +3221,17 @@ double compute_ack_time(){
 	return(SIFS + PROPAGATION_DELAY + (double)(ack_pk_size ) / operational_speed);
 }
 
+//returns the pk size for an ack
+double compute_ack_pk_size(){
+	Packet			*pkptr;
+	int				ack_pk_size;
+
+	pkptr = op_pk_create_fmt("cmac_ack");
+	ack_pk_size = op_pk_total_size_get(pkptr);
+	op_pk_destroy(pkptr);
+	
+	return(ack_pk_size);
+}
 
 
 
@@ -3113,6 +3261,7 @@ void receive_packet_from_radio(){
 	//CTR
 	double			freq;
 	double			t_slot;
+	double			offset;
 	//data frame
 	frame_struct	*frame_ptr;
 	//hellos
@@ -3144,8 +3293,10 @@ void receive_packet_from_radio(){
 
 	//DEBUG
 	debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main freq %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , get_nav_main_freq());
-	if ((my_address == destination) || (destination == BROADCAST))
+	if ((my_address == destination) || (destination == BROADCAST)){
 		debug_print(LOW , DEBUG_RECEIVE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main freq %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , get_nav_main_freq());
+		debug_print(LOW , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main freq %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , get_nav_main_freq());
+	}
 	else
 	if ((my_address == destination) || (destination == BROADCAST))
 		debug_print(LOW , DEBUG_RECEIVE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main freq %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , get_nav_main_freq());
@@ -3343,11 +3494,12 @@ void receive_packet_from_radio(){
 			case CTR_PK_TYPE:
 				op_pk_nfd_get(frame , "FREQ" , 		&freq);
 				op_pk_nfd_get(frame , "T_SLOT" , 	&t_slot);
+				op_pk_nfd_get(frame , "OFFSET" , 	&offset);
 				
 				
 				duration = 0;
 				//Multi-channel -> this border node is in privileged mode (using another frequency)
-				if (MULTI_CHANNEL)
+				if (nb_channels > 1)
 					transmission_time 		= t_slot;
 				
 				//Single channel -> reserves the medium for the reply (which will be sent through this channel)
@@ -3367,15 +3519,20 @@ void receive_packet_from_radio(){
 					//Error
 					if (!is_border_node)
 						update_is_border_node();
-						
+
 					
 					//Schedules the end of the privileged mode
-					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * PRIV_MIN_RATIO , PRIVILEGED_MIN_CODE);
-					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration , 					PRIVILEGED_MAX_CODE);
+					if (slot_privileged_duration > offset){
+						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - offset) * PRIV_MIN_RATIO , 	PRIVILEGED_MIN_CODE);
+						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - offset), 					PRIVILEGED_MAX_CODE);
+					}
+					else
+						op_intrpt_schedule_self(op_sim_time() , PRIVILEGED_MAX_CODE);
+					
 					
 					
 					//Multi channel case (CTR_ACK -> in F1+F2 if no data)
-					if (MULTI_CHANNEL)					
+					if (nb_channels > 1)					
 						generate_ctr_ack(source , frame_id , 0);
 					
 					//No data frame -> ack to send
@@ -3385,12 +3542,21 @@ void receive_packet_from_radio(){
 				}
 				
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , freq , duration);
+					update_nav_time(transmission_time , source , freq , 0);
 					
 			break;
 		   	
 			case CTR_ACK_PK_TYPE:
-			
+				//A node which sends a CTR-ACK will become unavailable during t_slot
+				//Then, it will send a CTR to indicate that it will privileged receiver
+				op_pk_nfd_get(frame , "FREQ" , 		&freq);
+				op_pk_nfd_get(frame , "T_SLOT" , 	&t_slot);
+				
+				//And I will update this only if it comes from the 'normal' frequency
+				//If it comes throug the privileged frequency -> I already set this NAV (with an higher value since I know that I is busy 2*t_slot)
+				if (is_main_freq_active(STREAM_TO_RADIO))
+					update_nav_time(t_slot , source , freq , 0);
+			//TAG
 			break;
 			
 			
@@ -3582,8 +3748,11 @@ void interrupt_process(){
 			if (op_intrpt_code() == SINK_CTR_CODE){
 				generate_ctr();
 				
-				//The next CTR from the sink
-				op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * BETA , SINK_CTR_CODE);
+				//The next CTR from the sink (if several channels, the period of CTR should be reduced)
+				if (nb_channels > 1)
+					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * BETA /  (nb_channels - 1) + MAX_CTR_DELAY_FROM_SINK, SINK_CTR_CODE);
+				else
+					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * BETA + MAX_CTR_DELAY_FROM_SINK, 						SINK_CTR_CODE);
 			}
 
 			//SYNC from the sink
@@ -3613,7 +3782,14 @@ void interrupt_process(){
 				//End interruption (we have also a min_time interruption)
 				if ((is_node_privileged) && (time_start_privileged + slot_privileged_duration <= op_sim_time()))
 					generate_ctr();
-			}			
+			}
+			
+			//Returns to the main frequency
+			if (op_intrpt_code() == MAIN_FREQ_RETURN_CODE)			
+				change_tx_rx_freq(my_main_frequency , my_main_bandwidth , STREAM_TO_RADIO);
+		
+			
+			
 		break;
 		
 		//Stats, debug ...
@@ -4153,6 +4329,7 @@ cmac_process (void)
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING",				&ROUTING);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "SYNC_DIRECT_ANTENNA",	&is_sync_direct_antenna);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BUSY_TONE_ACTIVATED",	&BUSY_TONE_ACTIVATED);
+				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CHANNELS",				&nb_channels);
 				
 				if (is_sink){
 					op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&slot_privileged_duration);
@@ -4366,11 +4543,11 @@ cmac_process (void)
 					//Speed
 					op_ima_obj_attr_set (sub_chann_objid, "data rate", 		busy_tone_speed);
 					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_BUSY_TONE);
+					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_SEPARATION);
 					op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
 					
 					//NB: bandwidth in KHz, frequency in MHz
-					if (my_main_bandwidth * busy_tone_speed / operational_speed >= 1000 * SHIFT_FREQ_BUSY_TONE)
+					if (my_main_bandwidth * busy_tone_speed / operational_speed >= 1000 * SHIFT_FREQ_SEPARATION)
 						op_sim_end("The bandiwthd separation between the busy tone " , "and the principal radio is too small." , "Please increase the value of SHIFT_FREQ_BUSY_TONE", "to separate sufficiently the channels");
 				
 					
@@ -4387,22 +4564,10 @@ cmac_process (void)
 				
 					//Speed
 					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_BUSY_TONE);
+					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_SEPARATION);
 				}
 				
 				
-				
-				
-				//-----------------------------------------------
-				//		   		PRIVILEGED FREQUENCY
-				//-----------------------------------------------
-				
-				
-				if ((is_sink) && (MULTI_CHANNEL))
-					my_privileged_frequency	= my_main_frequency + my_main_bandwidth / 1000 + 0.1;
-				else
-					my_privileged_frequency		= my_main_frequency;
-					
 				
 				
 				
@@ -4423,7 +4588,6 @@ cmac_process (void)
 					//value
 					op_ima_obj_attr_set (statwire_objid, "high threshold trigger", rx_power_threshold);	
 				}
-				
 				
 				
 				
@@ -4629,6 +4793,10 @@ cmac_process (void)
 					
 					// -----  SPECIAL ACTIONS  -----
 				
+					
+					if (next_frame_to_send.destination == BROADCAST)
+						print_nav_list(DEBUG_HELLO);
+					
 					switch (next_frame_to_send.type){
 					
 						//Ack sent -> no more busy_tone required
@@ -4659,22 +4827,20 @@ cmac_process (void)
 						case HELLO_PK_TYPE:
 							is_hello_to_send = OPC_FALSE;
 						break;
-							
 					}
 					
 					
 					// -----  TRANSMISSSION  -----
 					if ((next_frame_to_send.type == SYNC_PK_TYPE) && (is_sync_direct_antenna))
 						op_pk_send(frame_pk , STREAM_TO_DIRECT_SYNC);
-					else
+					else 
 						op_pk_send(frame_pk , STREAM_TO_RADIO);
 				
 					
-					//Registers the frame as sent (if a reply is required: ACK/CTS/...
+					//Registers the frame as sent (if a reply is required: ACK/CTS/...)
 					last_frame_sent = next_frame_to_send;
 					last_frame_sent.released = OPC_FALSE;
 					set_next_frame_null();
-					
 				}
 				//else -> nothing, we just stay in this state while the transmission and keep to treat other interrupts
 				
@@ -4739,15 +4905,23 @@ cmac_process (void)
 							sync_last_branch = 0;
 					}
 						
+					
+					
 					//-----------------------------------------------------
 					//	MULTI_CHANNEL -> COMMUTES
 					//-----------------------------------------------------
 				
-					if (MULTI_CHANNEL){
+					if (nb_channels > 1){
 					
 						//CTR sent -> changes to the privileged channel
-						if (last_frame_sent.type == CTR_PK_TYPE)
+						if (last_frame_sent.type == CTR_PK_TYPE){
 							change_tx_rx_freq(my_privileged_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
+							
+							if (op_ev_valid(main_freq_return_intrpt))
+								op_ev_cancel(main_freq_return_intrpt);
+							main_freq_return_intrpt = op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration , MAIN_FREQ_RETURN_CODE);
+						}
+						
 						
 						//CTR-ACK sent -> changes to the privileged channel
 						if ((last_frame_sent.type == CTR_ACK_PK_TYPE) && (last_frame_sent.nb_retry == 0)){
@@ -4812,10 +4986,12 @@ cmac_process (void)
 					//-----------------------------------------------------	
 					//Timeout of a reply is required
 					if (is_reply_required){
-						
-						//We must wait the reply (potentially a data frame with the MTU
-						//add_frame_timeout(last_frame_sent.pk_size + MTU_MAX);
-						add_frame_timeout(MTU_MAX);
+				
+						//DATA sent -> a ack only is required
+						if ((is_node_privileged) && (nb_channels > 1) && (last_frame_sent.type == DATA_UNICAST_PK_TYPE))
+							add_frame_timeout(compute_ack_pk_size());
+						else 
+							add_frame_timeout(MTU_MAX);
 					}
 						
 					//-----------------------------------------------------
@@ -4974,6 +5150,8 @@ cmac_process (void)
 				if (!IS_MEDIUM_BUSY){
 					if ((is_node_privileged) && ((next_frame_to_send.type == CTR_PK_TYPE) || (next_frame_to_send.type == CTR_END_PK_TYPE)) )
 						next_frame_to_send.ifs = PIFS;
+					else if ((is_node_privileged) && (nb_channels > 1))
+						next_frame_to_send.ifs = 0;
 					else if (is_node_privileged)
 						next_frame_to_send.ifs = SIFS;
 					else if ((next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == HELLO_PK_TYPE))
@@ -5080,11 +5258,25 @@ cmac_process (void)
 				//		  CANCEL OBSOLETE TRANSMISSIONS
 				//------------------------------------------
 				
-				if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
+				if 	((next_frame_to_send.type == RTS_PK_TYPE) && (is_unicast_frame_buffer_empty())){
+					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: RTS and the frame buffer is empty\n");
 					set_next_frame_null();
 				}
 				
-						
+				
+				if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
+					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
+					set_next_frame_null();
+				}
+				
+				if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && IS_BROADCAST_FORBIDDEN){
+					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
+					set_next_frame_null();
+				}
+				
+					
+				
+				
 				//------------------------------------------
 				//	 TERMINATE SIMULATION (if required)
 				//------------------------------------------
@@ -5236,13 +5428,21 @@ cmac_process (void)
 				// This case can occur if we received an ack athough we already entered in backoff mode
 				
 				if 	((next_frame_to_send.type == RTS_PK_TYPE) && (is_unicast_frame_buffer_empty())){
+					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: RTS and the frame buffer is empty\n");
 					set_next_frame_null();
 				}
 				
 				
 				if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
+					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
 					set_next_frame_null();
 				}
+				
+				if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && IS_BROADCAST_FORBIDDEN){
+					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
+					set_next_frame_null();
+				}
+				
 				
 				
 				
@@ -5384,7 +5584,7 @@ cmac_process (void)
 						change_next_frame(last_frame_sent);
 						
 						//Failed -> go to the main channel
-						if (MULTI_CHANNEL)
+						if (nb_channels > 1)
 							change_tx_rx_freq(my_main_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
 					}
 					
@@ -5574,6 +5774,7 @@ cmac_process_terminate (void)
 #undef time_start_privileged
 #undef frame_timeout_intrpt
 #undef timeout_intrpt
+#undef main_freq_return_intrpt
 #undef DEBUG
 #undef defer_intrpt
 #undef ctr_last_branch
@@ -5602,6 +5803,7 @@ cmac_process_terminate (void)
 #undef BETA
 #undef ROUTING
 #undef RTS
+#undef nb_channels
 
 
 
@@ -5754,6 +5956,11 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 		*var_p_ptr = (char *) (&prs_ptr->timeout_intrpt);
 		FOUT;
 		}
+	if (strcmp ("main_freq_return_intrpt" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->main_freq_return_intrpt);
+		FOUT;
+		}
 	if (strcmp ("DEBUG" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->DEBUG);
@@ -5892,6 +6099,11 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 	if (strcmp ("RTS" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->RTS);
+		FOUT;
+		}
+	if (strcmp ("nb_channels" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->nb_channels);
 		FOUT;
 		}
 	*var_p_ptr = (char *)OPC_NIL;
