@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 443BFCE3 443BFCE3 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 443E6E7F 443E6E7F 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -833,7 +833,6 @@ int get_next_hop_via_opt2_routing(int range_tmp , int destination_tmp){
 	
 	//Border case
 	if ((x_dev == 0) || (y_dev == 0)){
-		
 	
 		for(i=1 ; i <= range_tmp; i++)
 			if ((y_dev == 0) && (x_dev % i == 0))
@@ -847,7 +846,7 @@ int get_next_hop_via_opt2_routing(int range_tmp , int destination_tmp){
 	}
 	
 	//Diag Routing
-	else if (fabs(x_dev) == fabs(y_dev)){
+	else if ((fabs(x_dev) == fabs(y_dev)) && (fabs(x_dev) < 2 * range_tmp)){
 		next_hop_tmp = mac_address -  100 * signe(y_dev);
 	}
 	
