@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 443BFCA6 443BFCA6 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 446344C2 446344C2 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -277,6 +277,8 @@ FSM_EXT_DECS
 #define		IS_PK_TO_SEND					((IS_DATA_OK && !is_frame_buffer_empty()) || (next_frame_to_send.type != NO_PK_TYPE))
 
 
+
+
 //The mode privileged is finished !
 // -> The node must become unprivileged
 // -> Or we have no more data frames to send, and we remained privileged for a sufficiently long time
@@ -288,8 +290,11 @@ FSM_EXT_DECS
 //
 #define		PRIVILEGED_END					(PRIVILEGED_MEDIUM_LIMIT || PRIVILEGED_HIGH_LIMIT)
 
+#define		END_PRIV_SLOT					(time_start_privileged + slot_privileged_duration - slot_privileged_offset <= op_sim_time())
+#define		END_PRIV_INTRPT					((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == PRIVILEGED_MAX_CODE))
+
 #define		PRIVILEGED_MEDIUM_LIMIT			((is_node_privileged) && (is_frame_buffer_empty()) && (time_start_privileged + slot_privileged_duration * PRIV_MIN_RATIO <= op_sim_time()))
-#define		PRIVILEGED_HIGH_LIMIT			((is_node_privileged) && (op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == PRIVILEGED_MAX_CODE))
+#define		PRIVILEGED_HIGH_LIMIT			((is_node_privileged) && (END_PRIV_SLOT || END_PRIV_INTRPT))
 
 
 #define		MAIN_FREQ_RETURN				((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == MAIN_FREQ_RETURN_CODE))
@@ -325,8 +330,10 @@ FSM_EXT_DECS
 
 
 //I can send one BROADCAST frame -> other nodes will receive it
-#define		IS_BROADCAST_FORBIDDEN			((!is_node_privileged && is_border_node && (nb_channels == 1)) || (is_nav_for_other_freq()) || (!is_main_freq_active(STREAM_TO_RADIO)))
-
+//Special case: the source is the sink (I can send a packet even if I am not privileged (I am never))
+#define		IS_BROADCAST_FORBIDDEN			0
+//((!is_node_privileged && is_border_node && !is_sink && (nb_channels == 1)) || (is_nav_for_other_freq()) || (!is_main_freq_active(STREAM_TO_RADIO)))
+//TAG
 
 
 
@@ -678,6 +685,7 @@ typedef struct
 	int	                    		my_branch;
 	double	                 		my_privileged_frequency;
 	double	                 		slot_privileged_duration;
+	double	                 		slot_privileged_offset;
 	List*	                  		bn_list;
 	int	                    		BETA;
 	Boolean	                		RTS;
@@ -740,6 +748,7 @@ typedef struct
 #define my_branch               		pr_state_ptr->my_branch
 #define my_privileged_frequency 		pr_state_ptr->my_privileged_frequency
 #define slot_privileged_duration		pr_state_ptr->slot_privileged_duration
+#define slot_privileged_offset  		pr_state_ptr->slot_privileged_offset
 #define bn_list                 		pr_state_ptr->bn_list
 #define BETA                    		pr_state_ptr->BETA
 #define RTS                     		pr_state_ptr->RTS
@@ -1362,7 +1371,7 @@ void print_unicast_frame_buffer(int debug_type){
 	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
 	debug_print(LOW , debug_type , "			Unicast Frame Buffer of %d (size %d)\n" , my_address , op_prg_list_size(unicast_frame_buffer));
 	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
-	debug_print(LOW , debug_type , "	DEST	|	TYPE	| 	ID		|	NB_RETRY	|	MIN_TRANSMISSION\n");
+	debug_print(LOW , debug_type , "	DEST	|	TYPE		| 	ID		|	NB_RETRY	|	MIN_TRANSMISSION\n");
 
 
 	
@@ -1751,6 +1760,7 @@ int get_next_hop(){
 	next.stab = 0;
 	switch (MAC_ROUTING){
 		case ROUTING_BORDER:
+		
 			//Walks in the list
 			for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 				neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
@@ -1782,7 +1792,7 @@ int get_next_hop(){
 					next.prio	= 2;
 					next.stab	= compute_stability(neigh_ptr->stability);
 				}
-				debug_print(MAX , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
+				debug_print(LOW , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
 			}
 		break;
 		case ROUTING_SHORT:
@@ -2711,9 +2721,11 @@ Packet* create_packet(frame_struct frame){
 			pk = op_pk_create_fmt("cmac_ctr");
 			op_pk_nfd_set(pk , "FREQ" , 		my_privileged_frequency);
 			op_pk_nfd_set(pk , "T_SLOT" , 		slot_privileged_duration);
-			op_pk_nfd_set(pk , "OFFSET" , 		(op_sim_time() - frame.time_added));
+			op_pk_nfd_set(pk , "OFFSET" , 	   	op_sim_time() - frame.time_added);
+debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
 //TAG
-			op_pk_nfd_set(pk , "OFFSET" , 		0);
+//			op_pk_nfd_set(pk , "OFFSET" , 		0);
+		
 		break;
 		case CTR_ACK_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr_ack");
@@ -3011,7 +3023,7 @@ void generate_ctr(){
 	//Normal CTR
 	else {
 		//Unavailability of the next hop
-		update_nav_time(2 * (slot_privileged_duration + MAX_CTR_DELAY_FROM_SINK) , destination , my_privileged_frequency , 0);
+		//update_nav_time(2 * (slot_privileged_duration + MAX_CTR_DELAY_FROM_SINK) , destination , my_privileged_frequency , 0);
 	
 		//frame id
 		frame_id = get_new_frame_id();
@@ -3032,7 +3044,7 @@ void generate_ctr(){
 		frame.payload				= NULL;
 		change_next_frame(frame);
 	
-		debug_print(MEDIUM , DEBUG_CONTROL , "CTR generated for the child %d\n", destination);
+		debug_print(LOW , DEBUG_CONTROL , "CTR generated for the child %d\n", destination);
 	}
 }
 
@@ -3149,19 +3161,24 @@ void receive_packet_from_up(){
 	//Destination
 	ici_ptr = op_intrpt_ici();
 	
+	//Usual case: the next hop is defined explicity by the upper layer
+	if (ici_ptr != OPC_NIL){
+		op_ici_attr_get (ici_ptr, "dest_addr", 		&next_hop);
+		//op_ici_attr_get (ici_ptr, "power_ratio", 	&power_ratio);
+	}	
+	
+	//NO routing in MAC but no specified next hop
 	if ((ici_ptr == OPC_NIL) && (MAC_ROUTING == ROUTING_NO))
 		op_sim_end("The mac layer is not allowed to route packets" , "and it received a packet from the upper layer" , "without any next hop specified in the ICI" , "");
 	
-	else if ((ici_ptr != OPC_NIL) && (MAC_ROUTING != ROUTING_NO))
+	//Routing in MAC but a specified next hop
+	else if ((ici_ptr != OPC_NIL) && (next_hop != -1) && (next_hop != 0) && (MAC_ROUTING != ROUTING_NO))
 		op_sim_end("The mac layer is configured to route directly packets to the sink" , "but a next hop is specified explicitly from the upper layer" , "" , "");
 		
+	//routing in MAC -> computes the next hop		
 	else if (MAC_ROUTING != ROUTING_NO){
-		next_hop	= get_next_hop();
+		next_hop	= get_next_hop();		
 		power_ratio	= 1;
-	}
-	else{
-		op_ici_attr_get (ici_ptr, "dest_addr", 		&next_hop);
-		op_ici_attr_get (ici_ptr, "power_ratio", 	&power_ratio);
 	}
 
 	//ready to send !
@@ -3547,8 +3564,6 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , "T_SLOT" , 	&t_slot);
 				op_pk_nfd_get(frame , "OFFSET" , 	&offset);
 				
-				
-				duration = 0;
 				//Multi-channel -> this border node is in privileged mode (using another frequency)
 				if (nb_channels > 1)
 					transmission_time 		= t_slot;
@@ -3565,6 +3580,7 @@ void receive_packet_from_radio(){
 					is_node_privileged 			= OPC_TRUE;
 					time_start_privileged		= op_sim_time();
 					slot_privileged_duration	= t_slot;
+					slot_privileged_offset		= offset;
 					my_privileged_frequency 	= freq;
 					
 					//Error
@@ -3574,12 +3590,12 @@ void receive_packet_from_radio(){
 					
 					//Schedules the end of the privileged mode
 					if (slot_privileged_duration > offset){
-						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - offset) * PRIV_MIN_RATIO , 	PRIVILEGED_MIN_CODE);
-						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - offset), 					PRIVILEGED_MAX_CODE);
+						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - slot_privileged_offset) * PRIV_MIN_RATIO , 	PRIVILEGED_MIN_CODE);
+						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - slot_privileged_offset), 					PRIVILEGED_MAX_CODE);
 					}
 					else
 						op_intrpt_schedule_self(op_sim_time() , PRIVILEGED_MAX_CODE);
-					
+					debug_print(LOW , DEBUG_NODE , "duration : %f/%f -> min %f max %f\n",  slot_privileged_duration , slot_privileged_offset  , (slot_privileged_duration - offset) * PRIV_MIN_RATIO , (slot_privileged_duration - offset) );
 					
 					
 					//Multi channel case (CTR_ACK -> in F1+F2 if no data)
@@ -3587,8 +3603,10 @@ void receive_packet_from_radio(){
 						generate_ctr_ack(source , frame_id , 0);
 					
 					//No data frame -> ack to send (max power)
-					else if (is_frame_buffer_empty())
+					//No ack if I have already finished my slot -> I will send a CTR which will act as a CTR-ACK
+					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_child_border_node()== BROADCAST))){
 						generate_ack(source , frame_id , 0 , 1);
+					}
 					
 				}
 				
@@ -3599,7 +3617,7 @@ void receive_packet_from_radio(){
 		   	
 			case CTR_ACK_PK_TYPE:
 				//A node which sends a CTR-ACK will become unavailable during t_slot
-				//Then, it will send a CTR to indicate that it will privileged receiver
+				//Then, it will send a CTR to indicate that it will privilege receiver
 				op_pk_nfd_get(frame , "FREQ" , 		&freq);
 				op_pk_nfd_get(frame , "T_SLOT" , 	&t_slot);
 				
@@ -4289,7 +4307,8 @@ cmac_process (void)
 				//Position, routes...
 				int		x_int , y_int , x_sink, y_sink;
 				int		sink_destination;
-				
+				//Id
+				int		intf_id;
 				
 				
 				
@@ -4342,12 +4361,14 @@ cmac_process (void)
 				
 				//--------------  IS_SINK  -----------------
 				
-				op_ima_obj_attr_get(op_id_self() , "Is Sink" , &is_sink);
+				//The upper process is the first one since I am the lowest layer
+				intf_id = op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_PROC , 0);
+				if (op_topo_assoc_count(intf_id , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_STRM) > 1)
+					is_sink = OPC_TRUE;
 				if (is_sink){
 					is_border_node 		= OPC_TRUE;
 					my_sync_rx_power 	= OPC_DBL_INFINITY;
 				}
-				
 				
 				
 				
@@ -4710,18 +4731,11 @@ cmac_process (void)
 				{
 				debug_print(LOW , DEBUG_STATE , "ENTER - IDLE2 - %d\n", my_address);
 				
-				//printf("Type %d Code %d (%d %d %d)\n", op_intrpt_type() , op_intrpt_code() , OPC_INTRPT_STRM , OPC_INTRPT_SELF , OPC_INTRPT_STAT);
-				
-				
 				//Handles the possible interruptions (STREAM || STAT)
 				interrupt_process();
 				
 				
 				debug_print(LOW , DEBUG_STATE , "EXIT - IDLE2 - %d\n", my_address);
-				//debug_print(LOW , DEBUG_STATE , "%d %d %d\n", op_intrpt_type(), IS_DATA_OK , !is_frame_buffer_empty());
-				//print_unicast_frame_buffer(DEBUG_STATE);
-				//print_multicast_frame_buffer(DEBUG_STATE);
-				
 				}
 
 
@@ -5231,7 +5245,9 @@ cmac_process (void)
 				
 				
 				
-				debug_print(LOW , DEBUG_STATE , "EXIT - DEFER1 - %d - timeout %f\n", my_address , (op_sim_time() + next_frame_to_send.ifs) *1E6);
+				debug_print(LOW , DEBUG_STATE , "EXIT - DEFER1 - %d - timeout %f\n", my_address , next_frame_to_send.ifs *1E6);
+				debug_print(LOW, DEBUG_STATE , "%d : %d %d %d %d %d %d %d\n", IS_MEDIUM_BUSY , is_rx_busy , is_tx_busy , get_nav_main_freq() >= op_sim_time() , is_busy_tone_rx , !busy_tone_rx_ignored , BUSY_TONE_ACTIVATED , !is_border_node);
+				print_nav_list(DEBUG_STATE);
 				}
 
 
@@ -5896,6 +5912,7 @@ cmac_process_terminate (void)
 #undef my_branch
 #undef my_privileged_frequency
 #undef slot_privileged_duration
+#undef slot_privileged_offset
 #undef bn_list
 #undef BETA
 #undef RTS
@@ -6186,6 +6203,11 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 	if (strcmp ("slot_privileged_duration" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->slot_privileged_duration);
+		FOUT;
+		}
+	if (strcmp ("slot_privileged_offset" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->slot_privileged_offset);
 		FOUT;
 		}
 	if (strcmp ("bn_list" , var_name) == 0)
