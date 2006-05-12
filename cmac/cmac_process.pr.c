@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 446344C2 446344C2 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4464A0D8 4464A0D8 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -688,7 +688,7 @@ typedef struct
 	double	                 		slot_privileged_offset;
 	List*	                  		bn_list;
 	int	                    		BETA;
-	Boolean	                		RTS;
+	double	                 		RTS_PK_SIZE;
 	int	                    		MAC_ROUTING;
 	double	                 		POWER_TX;
 	} cmac_process_state;
@@ -751,7 +751,7 @@ typedef struct
 #define slot_privileged_offset  		pr_state_ptr->slot_privileged_offset
 #define bn_list                 		pr_state_ptr->bn_list
 #define BETA                    		pr_state_ptr->BETA
-#define RTS                     		pr_state_ptr->RTS
+#define RTS_PK_SIZE             		pr_state_ptr->RTS_PK_SIZE
 #define MAC_ROUTING             		pr_state_ptr->MAC_ROUTING
 #define POWER_TX                		pr_state_ptr->POWER_TX
 
@@ -4312,6 +4312,7 @@ cmac_process (void)
 				
 				
 				
+					
 				//-----------------------------------------------
 				//		   		IDENTIFICATION
 				//-----------------------------------------------
@@ -4397,10 +4398,15 @@ cmac_process (void)
 				//Parameters
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "DEBUG",					&DEBUG);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BETA",					&BETA);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS);
+				op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CHANNELS",				&nb_channels);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING_MAC",			&MAC_ROUTING);
+				
+				//No RTS / CTS -> pk_size set to the infinity value
+				if (RTS_PK_SIZE == -1)
+					RTS_PK_SIZE = OPC_INT_INFINITY;
+				
 				
 				if (is_sink){
 					op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&slot_privileged_duration);
@@ -4417,7 +4423,7 @@ cmac_process (void)
 				
 				//The busy tone is not activated if RTS are not used
 				//NB : the busy tone is currently descativated (no better performances for a more complex system)
-				BUSY_TONE_ACTIVATED = OPC_FALSE && RTS;
+				BUSY_TONE_ACTIVATED = OPC_FALSE && (RTS_PK_SIZE < MTU_MAX);
 				
 				
 				
@@ -5189,7 +5195,7 @@ cmac_process (void)
 							data_frame = *frame_ptr;
 					
 						//broadcast frames do not need any RTS
-						if ((data_frame.destination == BROADCAST) || (!RTS))
+						if ((data_frame.destination == BROADCAST) || (data_frame.pk_size  > RTS_PK_SIZE))
 							change_next_frame(data_frame);
 						
 						//Generates a new RTS, it will be automatically registered as the new frame to send
@@ -5300,7 +5306,7 @@ cmac_process (void)
 				if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 					
 					if (!IS_MEDIUM_BUSY){
-						if ((!is_node_privileged) &&     (     (next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.destination == BROADCAST) || ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (!RTS))   )      ){
+						if ((!is_node_privileged) &&     (     (next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.destination == BROADCAST) || ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE))   )      ){
 				
 							//Takes a new backoff
 							my_backoff = op_dist_outcome (backoff_dist);
@@ -5915,7 +5921,7 @@ cmac_process_terminate (void)
 #undef slot_privileged_offset
 #undef bn_list
 #undef BETA
-#undef RTS
+#undef RTS_PK_SIZE
 #undef MAC_ROUTING
 #undef POWER_TX
 
@@ -6220,9 +6226,9 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 		*var_p_ptr = (char *) (&prs_ptr->BETA);
 		FOUT;
 		}
-	if (strcmp ("RTS" , var_name) == 0)
+	if (strcmp ("RTS_PK_SIZE" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->RTS);
+		*var_p_ptr = (char *) (&prs_ptr->RTS_PK_SIZE);
 		FOUT;
 		}
 	if (strcmp ("MAC_ROUTING" , var_name) == 0)

@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4463483C 4463483C 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44644A93 44644A93 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -686,6 +686,7 @@ int get_next_hop_via_opt_corner_sides_routing(int range_tmp , int destination_tm
 int get_next_hop_via_xy_routing(int range_tmp , int destination_tmp){
 	int 	next_hop_tmp;
 	int		x_dev , y_dev;
+	char	msg[200];
 	int		dev = range_tmp / sqrt(2);		// Max mobility via diagonale
 	
 	y_dev = (int) (mac_address / 100) - (int) (destination_tmp /100);
@@ -716,8 +717,10 @@ int get_next_hop_via_xy_routing(int range_tmp , int destination_tmp){
 		while (next_hop_tmp > pk_destination)
 			next_hop_tmp --;
 	}
-	else
-		printf("erreur -> aucun cas pour %d %d\n", mac_address , pk_destination);
+	else if (!is_sink){
+		sprintf(msg , "No next hop toward %d for the node %d", pk_destination , mac_address);
+		op_sim_end("Fatal error" , msg , "" , "");
+	}
 		
 	//Final result !
 	return(next_hop_tmp);
@@ -1222,7 +1225,7 @@ void adapt_rate(void *arg , int code){
 
 	//DEBUG
 	//debug_write_pk_info();	
-	printf("NEW RATE : %f (delivery ratio %f) (best %f) (worst %f) (%f)\n", current_inter_pk_time , delivery_ratio, achievable_inter_pk_time , bad_inter_pk_time , (achievable_inter_pk_time - bad_inter_pk_time) / 2);
+	printf("NEW RATE : %f (delivery ratio %f)\n", current_inter_pk_time , delivery_ratio);
 	
 	
 
