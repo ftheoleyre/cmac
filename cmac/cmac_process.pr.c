@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4464A0D8 4464A0D8 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 446C7D9F 446C7D9F 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -160,6 +160,15 @@ FSM_EXT_DECS
 
 
 
+
+
+
+//-----------------------------------------------
+//			BORDER NODES ELECTION
+//-----------------------------------------------
+
+#define		BORDER_DYNAMIC					1
+#define		BORDER_CENTRALIZED				2
 
 
 
@@ -539,6 +548,7 @@ typedef struct{
 //-----------------------------------------------
 
 
+//distributed method
 typedef struct{
 	int		addr;
 	double	pow;
@@ -550,6 +560,28 @@ typedef struct{
 int	MAX_BRANCH_LENGTH = 0;
 
 
+
+//centralized method
+typedef struct{
+	int	address;
+	int	parent;
+}bn_struct;
+
+//-----------------------------------------------
+//			LIST OF POSITIONS
+//-----------------------------------------------
+
+
+typedef struct{
+	double	x;
+	double	y;
+	int		address;
+} pos_struct;
+
+
+
+
+
 //-----------------------------------------------
 //					PRIVILEGE
 //-----------------------------------------------
@@ -557,6 +589,17 @@ int	MAX_BRANCH_LENGTH = 0;
 double TIME_MAX_PRIVILEGED;
 
 
+
+
+//-----------------------------------------------
+//				GLOBAL LISTS
+//-----------------------------------------------
+
+//to compute border nodes in a centralized manner
+List *global_border_nodes_list;
+
+//To have the position of all nodes
+List *positions_list;
 
 
 //-----------------------------------------------
@@ -591,9 +634,9 @@ char* 	print_border_nodes(char *msg);
 
 
 //Stability
-int 	compute_stability(int stab[]);
-void 	update_stability(int stab[], short value);
-void 	init_stability(int stab[], short value);
+int 	compute_stability	(int stab[]);
+void 	update_stability	(int stab[], short value);
+void 	init_stability		(int stab[], short value);
 
 
 //To compute duration for NAV
@@ -691,6 +734,8 @@ typedef struct
 	double	                 		RTS_PK_SIZE;
 	int	                    		MAC_ROUTING;
 	double	                 		POWER_TX;
+	int	                    		border_election;
+	double	                 		RADIO_RANGE;
 	} cmac_process_state;
 
 #define pr_state_ptr            		((cmac_process_state*) SimI_Mod_State_Ptr)
@@ -754,6 +799,8 @@ typedef struct
 #define RTS_PK_SIZE             		pr_state_ptr->RTS_PK_SIZE
 #define MAC_ROUTING             		pr_state_ptr->MAC_ROUTING
 #define POWER_TX                		pr_state_ptr->POWER_TX
+#define border_election         		pr_state_ptr->border_election
+#define RADIO_RANGE             		pr_state_ptr->RADIO_RANGE
 
 /* This macro definition will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
@@ -1832,6 +1879,122 @@ int get_next_hop(){
 //
 //-----------------------------------------------------------
 
+//Coputes the euclidian distance
+double get_dist(double x1 , double y1 , double x2 , double y2){
+	return(sqrt(pow(x1 - x2 , 2) + pow(y1 - y2 , 2)));
+}
+
+//elect border nodes in a centralized manner
+void compute_border_nodes_status(){
+	int			i , j , k;
+	//Topology identification
+	int			process_id;
+	int			node_id;
+	//values
+	double		x , y;
+	int			addr;
+	int			*pvalue;
+	//tmp vars
+	bn_struct	*bn_elem;
+	//list of positions
+	List		*pos_list;
+	pos_struct	*elem;
+	//Last node in the branch
+	pos_struct	last_node;
+	pos_struct	sink_node;
+	pos_struct	best_node;
+	double		best_dist;
+	double		direction_x;
+	double		direction_y;
+	
+	
+	//initialization
+	pos_list = op_prg_list_create();
+	
+	//gets all the positions
+	for (i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
+		node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
+		op_ima_obj_attr_get(node_id , "x position" , &x);
+		op_ima_obj_attr_get(node_id , "y position" , &y);
+		
+		//tries to get the attribute 'address' from all the processes
+		addr = 0;
+		for(j=0 ; (j < op_topo_child_count(node_id , OPC_OBJTYPE_PROC))  && (addr == 0); j++){
+			process_id = op_topo_child(node_id , OPC_OBJTYPE_PROC , j);
+			pvalue = op_ima_obj_svar_get(process_id , "my_address");
+			if (pvalue != NULL)
+				addr = *pvalue; 
+		}
+		
+		elem = op_prg_mem_alloc(sizeof(pos_struct));
+		elem->x 		= x;
+		elem->y 		= y;
+		elem->address	= addr;
+		op_prg_list_insert(pos_list , elem , OPC_LISTPOS_TAIL);
+		
+		//I am the sink
+		if (elem->address == my_address)
+			sink_node = *elem;
+	}
+	
+	debug_print(LOW , DEBUG_CONTROL , "List of the border nodes (elected in a centralized manner):\n");
+	
+	//Expands each branch
+	for(i=0 ; i < MAX_NB_BRANCHES ; i++){
+		
+		//O^th node : the sink
+		last_node = sink_node;
+		
+		//The direction of the branch (one x and y step for this direction)
+		direction_x = cos(i * 2 * PI / MAX_NB_BRANCHES) * RADIO_RANGE;
+		direction_y = sin(i * 2 * PI / MAX_NB_BRANCHES) * RADIO_RANGE;
+		
+		//Adds one node in the branch (if possible)
+		for(j=1; j < MAX_BRANCH_LENGTH+1 ; j++){			
+			//The nodes to add
+			best_node.x 		= 0;
+			best_node.y 		= 0;
+			best_node.address 	= last_node.address;
+			best_dist			= OPC_DBL_INFINITY;
+			
+			//Searches if we have a better candidate
+			for(k=0 ; k < op_prg_list_size(pos_list) ; k++){
+				elem = op_prg_list_access(pos_list , k);
+				
+				if (get_dist(elem->x , elem->y , last_node.x , last_node.y) <= RADIO_RANGE)
+					
+					//distance to the k° point of the branch (the goal in an optimal objective)
+					if (get_dist(elem->x , elem->y , sink_node.x + direction_x * j , sink_node.y + direction_y * j) < best_dist){
+						best_dist = get_dist(elem->x , elem->y , sink_node.x + direction_x *j , sink_node.y + direction_y * j);
+						best_node = *elem;
+					}
+			}
+			
+			//If the candidate is not null -> add it
+			if (best_node.address != last_node.address){
+				bn_elem				= op_prg_mem_alloc(sizeof(bn_struct));
+				bn_elem->address 	= best_node.address;
+				bn_elem->parent		= last_node.address;
+				op_prg_list_insert(global_border_nodes_list , bn_elem , OPC_LISTPOS_TAIL);
+				
+				last_node 			= best_node;
+				debug_print(LOW , DEBUG_CONTROL , "%d is a bn\n", best_node.address);
+			}
+		}
+	}
+	
+	
+	
+	//Memory free
+	while(op_prg_list_size(pos_list) != 0){
+		elem = op_prg_list_remove(pos_list , OPC_LISTPOS_TAIL);
+		op_prg_mem_free(elem);
+	}
+	op_prg_list_free(pos_list);
+		
+}
+
+
 //Is this node a border node ?
 Boolean	get_is_border_node(){
 	int				i , j;
@@ -1840,41 +2003,70 @@ Boolean	get_is_border_node(){
 	int				max_stab_in_neigh=0;
 	int				stab_my_parent = 0;
 	int				stab_tmp;
+	bn_struct		*elem;
+	char		   	msg[500];
 	
 	//The sink is always a border node !
 	if (is_sink)
 		return(OPC_TRUE);
 	
+
+	
+	switch (border_election){
+	
+//Border nodes are elected dynamically (from their parent which choose one child)
+		case BORDER_DYNAMIC: 
+
+			//Walks in the list
+			for(i=op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
+				neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+				stab_tmp = compute_stability(neigh_ptr->stability);
 		
-	//Walks in the list
-	for(i=op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		stab_tmp = compute_stability(neigh_ptr->stability);
-		
-		//I am in its list of border nodes
-		for(j=0 ; j < op_prg_list_size(neigh_ptr->border_nodes_list) ; j++){
-			addr_ptr = op_prg_list_access(neigh_ptr->border_nodes_list , j);
+				//I am in its list of border nodes
+				for(j=0 ; j < op_prg_list_size(neigh_ptr->border_nodes_list) ; j++){
+					addr_ptr = op_prg_list_access(neigh_ptr->border_nodes_list , j);
 			
-			//It is one parent -> store its stability
-			if ((*addr_ptr == my_address) && (stab_tmp > stab_my_parent))
-				stab_my_parent = stab_tmp;
+					//It is one parent -> store its stability
+					if ((*addr_ptr == my_address) && (stab_tmp > stab_my_parent))
+						stab_my_parent = stab_tmp;
+				}
+				//The max stability
+				if (stab_tmp > max_stab_in_neigh)
+					max_stab_in_neigh = stab_tmp;
+			}
+	
+		//No one
+		if (stab_my_parent == 0)
+			return(OPC_FALSE);
+	
+		//This parent has a sufficient stability
+		if (stab_my_parent >= max_stab_in_neigh - STAB_STEP)
+			return(OPC_TRUE);
+		else
+			return(OPC_FALSE);
+	break;
+
+		
+//The border nodes are elected in a centralized manner
+	case BORDER_CENTRALIZED	:
+	
+		for(i=0 ; i < op_prg_list_size(global_border_nodes_list) ; i++){
+			elem = op_prg_list_access(global_border_nodes_list , i);
+			if (elem->address == my_address)
+				return(OPC_TRUE);
 		}
-		//The max stability
-		if (stab_tmp > max_stab_in_neigh)
-				max_stab_in_neigh = stab_tmp;
-
+		
+		return(OPC_FALSE);
+	break;		
+	
+		
+		
+//Error : no border nodes election
+	default :
+		sprintf(msg , "%d unknown" , border_election);
+		op_sim_end("Unknown border node election" , msg , "" , "");
+	break;
 	}
-	
-	//No one
-	if (stab_my_parent == 0)
-		return(OPC_FALSE);
-	
-	//This parent has a sufficient stability
-	if (stab_my_parent >= max_stab_in_neigh - STAB_STEP)
-		return(OPC_TRUE);
-	else
-		return(OPC_FALSE);
-
 }
 
 
@@ -1905,7 +2097,7 @@ Boolean update_is_border_node(){
 	
 		//debug
 		debug_print(LOW , DEBUG_NODE , "changed the border_node status: %d -> %d\n", old_value , is_border_node);
-		printf("%d border_node status: %d -> %d\n", my_address , old_value , is_border_node);
+		//printf("%d border_node status: %d -> %d\n", my_address , old_value , is_border_node);
 		print_neighborhood_table(DEBUG_NODE);
 	}
 	
@@ -2139,120 +2331,142 @@ void compute_current_bn_list(List **ll){
 	//conditions
 	Boolean			direct_and_new;
 	Boolean			no_direct_and_new;
-
+	//centralized border nodes list
+	bn_struct		*elem;
+	
+	
 	
 	//empty the old list
 	while(op_prg_list_size(*ll) > 0){
 		int_ptr = op_prg_list_remove(*ll , 0);
 		op_prg_mem_free(int_ptr);
 	}
-
-	//--------------------------------------------------
-	//				NO BORDER NODE
-	//--------------------------------------------------
-	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_border_node) || (my_dist_sink > MAX_BRANCH_LENGTH)))
-		debug_print(MAX , DEBUG_NODE , "No border node: %d %d %d\n", my_sync_rx_power == 0 , !is_border_node , my_dist_sink > MAX_BRANCH_LENGTH);
-
-	else{
-		//initialization
-		max_sync_rx_power = op_prg_list_create();
 	
-		
-		
-		//--------------------------------------------------
-		//	Stores all the power of my neighbors (sorted)
-		//--------------------------------------------------
-		for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-			
-			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-			//Adds the power if the node is farther from the sink
-			if (neigh_ptr->dist_sink > my_dist_sink){
-				ptr = op_prg_mem_alloc(sizeof(election_struct));
-				ptr->addr 	= neigh_ptr->address;
-				ptr->pow 	= neigh_ptr->sync_rx_power;
-				ptr->stab	= compute_stability(neigh_ptr->stability);
-				ptr->branch	= neigh_ptr->branch;
-				op_prg_list_insert_sorted(max_sync_rx_power , ptr , compare_election_struct);
-			}
-		}
 	
-		//--------------------------------------------------
-		//			No node in the list
-		//--------------------------------------------------
-		if (op_prg_list_size(max_sync_rx_power) == 0){
-		}
 	
-		//--------------------------------------------------
-		//		For the sink -> places the N min power
-		//--------------------------------------------------
-		else if (is_sink){
-			debug_print(LOW , DEBUG_NODE , "Border nodes: \n");
-
-			//Firt branch to deal with
-			branch_tmp = -1;
-			
-			//Walks in the sorted list of my neighbors
-			for(i=0 ; i < op_prg_list_size(max_sync_rx_power) ; i++){
-				ptr = op_prg_list_access(max_sync_rx_power , i);
+	switch(border_election){
+	
+	
+		case BORDER_CENTRALIZED :
+			for(i= 0 ; i < op_prg_list_size(global_border_nodes_list) ; i++){
+				elem = op_prg_list_access(global_border_nodes_list , i);
 				
-				debug_print(MAX , DEBUG_NODE , "	ptr (%d : %d %f) current (%d)\n", ptr->addr , ptr->branch , ptr->pow , branch_tmp);
-				
-				//Eliminates nodes nearer from the sink than I am
-				direct_and_new		= (is_sync_direct_antenna) && (ptr->branch > branch_tmp);
-				no_direct_and_new	= (!is_sync_direct_antenna) && (i < MAX_NB_BRANCHES);
-				
-				if ((ptr->pow != 0) && (direct_and_new || no_direct_and_new)){
-					branch_tmp = ptr->branch;
-				
-					//creates a list of current border nodes
+				//adds the node if I am its parent (It's my child !)
+				if (elem->parent == my_address){
 					int_ptr = op_prg_mem_alloc(sizeof(int));
-					*int_ptr = ptr->addr;
+					*int_ptr = elem->address;
 					op_prg_list_insert(*ll , int_ptr , OPC_LISTPOS_TAIL);
-					
-					debug_print(MAX , DEBUG_NODE , "	->%d\n", ptr->addr);					
-				}
+				}			
 			}
-		}	
-		//------------------------------------------------------
-		//	For a normal border node, chooses only the lowest
-		//------------------------------------------------------
-		else{
-
-			ptr = op_prg_list_access(max_sync_rx_power , 0);
-			
-			if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0)){
-				debug_print(MAX , DEBUG_NODE , "node %d chosen as border node\n", ptr->addr);
-					
-				//creates a list of current border nodes
-				int_ptr = op_prg_mem_alloc(sizeof(int));
-				*int_ptr = ptr->addr;
-				op_prg_list_insert(*ll , int_ptr , OPC_LISTPOS_TAIL);
-			}
-			else
-				debug_print(MAX , DEBUG_NODE , "no border node : %d\n", ptr->pow < my_sync_rx_power , ptr->pow != 0);
-			
 		
-		}
-			
+		break;
+		
+		
+		
+		
+		case BORDER_DYNAMIC :		
+	
 
-		//--------------------------------------------------
-		//			release memory
-		//--------------------------------------------------
-		while(op_prg_list_size(max_sync_rx_power) > 0){
-			ptr = op_prg_list_remove(max_sync_rx_power , 0);
-			op_prg_mem_free(ptr);
-		}
-		op_prg_mem_free(max_sync_rx_power);
-	}
-	
-	/*debug_print(LOW , DEBUG_NODE , "FINAL_LIST\n");
-	for(i=0 ; i < op_prg_list_size(bn_list) ; i++){
-		int_ptr = op_prg_list_access(bn_list , i);
-		debug_print(LOW , DEBUG_NODE , "  : %d\n", *int_ptr);
-	}
-	*/
-	
+			//--------------------------------------------------
+			//				NO BORDER NODE
+			//--------------------------------------------------
+			if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_border_node) || (my_dist_sink > MAX_BRANCH_LENGTH)))
+				debug_print(MAX , DEBUG_NODE , "No border node: %d %d %d\n", my_sync_rx_power == 0 , !is_border_node , my_dist_sink > MAX_BRANCH_LENGTH);
+
+			else{
+				//initialization
+				max_sync_rx_power = op_prg_list_create();
+			
+				
+				
+				//--------------------------------------------------
+				//	Stores all the power of my neighbors (sorted)
+				//--------------------------------------------------
+				for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
+					
+					neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+				
+					//Adds the power if the node is farther from the sink
+					if (neigh_ptr->dist_sink > my_dist_sink){
+						ptr = op_prg_mem_alloc(sizeof(election_struct));
+						ptr->addr 	= neigh_ptr->address;
+						ptr->pow 	= neigh_ptr->sync_rx_power;
+						ptr->stab	= compute_stability(neigh_ptr->stability);
+						ptr->branch	= neigh_ptr->branch;
+						op_prg_list_insert_sorted(max_sync_rx_power , ptr , compare_election_struct);
+					}
+				}
+			
+				//--------------------------------------------------
+				//			No node in the list
+				//--------------------------------------------------
+				if (op_prg_list_size(max_sync_rx_power) == 0){
+				}
+			
+				//--------------------------------------------------
+				//		For the sink -> places the N min power
+				//--------------------------------------------------
+				else if (is_sink){
+					debug_print(LOW , DEBUG_NODE , "Border nodes: \n");
+
+					//Firt branch to deal with
+					branch_tmp = -1;
+					
+					//Walks in the sorted list of my neighbors
+					for(i=0 ; i < op_prg_list_size(max_sync_rx_power) ; i++){
+						ptr = op_prg_list_access(max_sync_rx_power , i);
+						
+						debug_print(MAX , DEBUG_NODE , "	ptr (%d : %d %f) current (%d)\n", ptr->addr , ptr->branch , ptr->pow , branch_tmp);
+						
+						//Eliminates nodes nearer from the sink than I am
+						direct_and_new		= (is_sync_direct_antenna) && (ptr->branch > branch_tmp);
+						no_direct_and_new	= (!is_sync_direct_antenna) && (i < MAX_NB_BRANCHES);
+						
+						if ((ptr->pow != 0) && (direct_and_new || no_direct_and_new)){
+							branch_tmp = ptr->branch;
+						
+							//creates a list of current border nodes
+							int_ptr = op_prg_mem_alloc(sizeof(int));
+							*int_ptr = ptr->addr;
+							op_prg_list_insert(*ll , int_ptr , OPC_LISTPOS_TAIL);
+							
+							debug_print(MAX , DEBUG_NODE , "	->%d\n", ptr->addr);					
+						}
+					}
+				}	
+				//------------------------------------------------------
+				//	For a normal border node, chooses only the lowest
+				//------------------------------------------------------
+				else{
+
+					ptr = op_prg_list_access(max_sync_rx_power , 0);
+					
+					if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0)){
+						debug_print(MAX , DEBUG_NODE , "node %d chosen as border node\n", ptr->addr);
+							
+						//creates a list of current border nodes
+						int_ptr = op_prg_mem_alloc(sizeof(int));
+						*int_ptr = ptr->addr;
+						op_prg_list_insert(*ll , int_ptr , OPC_LISTPOS_TAIL);
+					}
+					else
+						debug_print(MAX , DEBUG_NODE , "no border node : %d\n", ptr->pow < my_sync_rx_power , ptr->pow != 0);
+					
+				
+				}
+					
+
+				//--------------------------------------------------
+				//			release memory
+				//--------------------------------------------------
+				while(op_prg_list_size(max_sync_rx_power) > 0){
+					ptr = op_prg_list_remove(max_sync_rx_power , 0);
+					op_prg_mem_free(ptr);
+				}
+				op_prg_mem_free(max_sync_rx_power);
+			}
+		break;
+	}	
 }
 
 	
@@ -2302,7 +2516,7 @@ void fill_border_nodes_fields(Packet *pk){
 
 //Returns the border node (not for the sink, it have several border nodes !)
 int get_child_border_node(){
-	int		*int_ptr;
+	int			*int_ptr;
 	
 	if ((!is_border_node) || (op_prg_list_size(bn_list) == 0))
 		return(BROADCAST);
@@ -2314,11 +2528,10 @@ int get_child_border_node(){
 
 //Returns the child of the current branch
 int get_child_from_sink(int current_branch){
-	int		*int_ptr;
-	
-	if ((!is_border_node) || (op_prg_list_size(bn_list) == 0))
+	int			*int_ptr;
+
+	if ((!is_border_node) || (op_prg_list_size(bn_list) <= current_branch))
 		return(BROADCAST);
-	
 	
 	int_ptr = op_prg_list_access(bn_list , current_branch);
 	return(*int_ptr);
@@ -3824,9 +4037,18 @@ void interrupt_process(){
 					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * BETA + MAX_CTR_DELAY_FROM_SINK, 						SINK_CTR_CODE);
 			}
 
-			//SYNC from the sink
-			if (op_intrpt_code() == SINK_SYNC_CODE)
-				generate_sync();
+			//SYNC from the sink (if we have a dynamical election of border nodes)
+			if ((op_intrpt_code() == SINK_SYNC_CODE) && (is_sink)){
+				switch (border_election){
+					case BORDER_CENTRALIZED :
+						compute_border_nodes_status();
+					break;
+				
+					case BORDER_DYNAMIC :
+						generate_sync();
+					break;
+				}
+			}
 
 		
 			//HELLO
@@ -4309,6 +4531,8 @@ cmac_process (void)
 				int		sink_destination;
 				//Id
 				int		intf_id;
+				//positions
+				pos_struct	pos;
 				
 				
 				
@@ -4322,8 +4546,14 @@ cmac_process (void)
 				my_stat_id		= nb_mac_nodes++;
 				
 				
-				if (cmac_timestamp == 0)
+				if (cmac_timestamp == 0){
 					cmac_timestamp = time(NULL);
+					global_border_nodes_list = op_prg_list_create();
+					positions_list = op_prg_list_create();
+				}
+				
+				
+				
 				
 				//Address
 				op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
@@ -4402,9 +4632,11 @@ cmac_process (void)
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CHANNELS",				&nb_channels);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING_MAC",			&MAC_ROUTING);
+				op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "RADIO_RANGE",			&RADIO_RANGE);
+				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BORDER_ELECTION",	   	&border_election);
 				
 				//No RTS / CTS -> pk_size set to the infinity value
-				if (RTS_PK_SIZE == -1)
+				if (RTS_PK_SIZE == 99999)
 					RTS_PK_SIZE = OPC_INT_INFINITY;
 				
 				
@@ -4688,8 +4920,6 @@ cmac_process (void)
 				
 				
 				
-				
-				
 				//-----------------------------------------------
 				//		   	SYNCHRO WITH OTHER LAYERS
 				//-----------------------------------------------
@@ -4742,6 +4972,8 @@ cmac_process (void)
 				
 				
 				debug_print(LOW , DEBUG_STATE , "EXIT - IDLE2 - %d\n", my_address);
+				
+				
 				}
 
 
@@ -4787,7 +5019,7 @@ cmac_process (void)
 				
 				
 				if (my_stat_id == 0)
-					MAX_BRANCH_LENGTH = min_int(BETA + 1 , (int)(pow(nb_mac_nodes , 0.5) / 2) - 1);
+					MAX_BRANCH_LENGTH = min_int(BETA + 1 , (int)(pow(nb_mac_nodes , 0.5) / 2));
 				
 				
 				
@@ -5924,6 +6156,8 @@ cmac_process_terminate (void)
 #undef RTS_PK_SIZE
 #undef MAC_ROUTING
 #undef POWER_TX
+#undef border_election
+#undef RADIO_RANGE
 
 
 
@@ -6239,6 +6473,16 @@ cmac_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 	if (strcmp ("POWER_TX" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->POWER_TX);
+		FOUT;
+		}
+	if (strcmp ("border_election" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->border_election);
+		FOUT;
+		}
+	if (strcmp ("RADIO_RANGE" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->RADIO_RANGE);
 		FOUT;
 		}
 	*var_p_ptr = (char *)OPC_NIL;
