@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 446C7D9F 446C7D9F 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 446C8B94 446C8B94 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -1900,12 +1900,9 @@ void compute_border_nodes_status(){
 	List		*pos_list;
 	pos_struct	*elem;
 	//Last node in the branch
-	pos_struct	last_node;
-	pos_struct	sink_node;
-	pos_struct	best_node;
-	double		best_dist;
-	double		direction_x;
-	double		direction_y;
+	pos_struct	last_node , sink_node , best_node;
+	double		direction_x , direction_y;
+	double		current_dist , last_dist , best_dist;
 	
 	
 	//initialization
@@ -1961,13 +1958,21 @@ void compute_border_nodes_status(){
 			for(k=0 ; k < op_prg_list_size(pos_list) ; k++){
 				elem = op_prg_list_access(pos_list , k);
 				
+				//This node and the last node are connected
 				if (get_dist(elem->x , elem->y , last_node.x , last_node.y) <= RADIO_RANGE)
 					
 					//distance to the k° point of the branch (the goal in an optimal objective)
-					if (get_dist(elem->x , elem->y , sink_node.x + direction_x * j , sink_node.y + direction_y * j) < best_dist){
-						best_dist = get_dist(elem->x , elem->y , sink_node.x + direction_x *j , sink_node.y + direction_y * j);
-						best_node = *elem;
-					}
+					current_dist 	= get_dist(elem->x , elem->y , sink_node.x + direction_x * j , sink_node.y + direction_y * j);
+					last_dist 		= get_dist(last_node.x , last_node.y , sink_node.x + direction_x * j , sink_node.y + direction_y * j);
+					if (current_dist < best_dist)
+						
+						//There exists an improvement !
+						//In other words, elem is nearer from the goal than the last node of the branch 
+						//It could not be the case if we have a 'hole' in the network
+						if (last_dist > current_dist){
+							best_dist = current_dist;
+							best_node = *elem;
+						}
 			}
 			
 			//If the candidate is not null -> add it
@@ -1979,6 +1984,7 @@ void compute_border_nodes_status(){
 				
 				last_node 			= best_node;
 				debug_print(LOW , DEBUG_CONTROL , "%d is a bn\n", best_node.address);
+				printf("%d bn\n", best_node.address);
 			}
 		}
 	}
