@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 446C8B94 446C8B94 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44A39F0B 44A39F0B 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -99,10 +99,10 @@ FSM_EXT_DECS
 #define		INTERVALL_HELLO					30.0
 
 //The maximum number of stabilities to store
-#define		MAX_STAB						10
+#define		MAX_STAB						15
 
 //Two stabilities with STAB_STEP difference are considered equal
-#define		STAB_STEP						2
+#define		STAB_STEP						3
 
 
 
@@ -1881,7 +1881,12 @@ int get_next_hop(){
 
 //Coputes the euclidian distance
 double get_dist(double x1 , double y1 , double x2 , double y2){
-	return(sqrt(pow(x1 - x2 , 2) + pow(y1 - y2 , 2)));
+	double x , y;
+	
+	x = pow (x1 - x2 , 2);
+	y = pow (y1 - y2 , 2);
+
+	return(sqrt(x + y));
 }
 
 //elect border nodes in a centralized manner
@@ -1903,7 +1908,11 @@ void compute_border_nodes_status(){
 	pos_struct	last_node , sink_node , best_node;
 	double		direction_x , direction_y;
 	double		current_dist , last_dist , best_dist;
+	double		range;
 	
+	
+	if (!is_sink)
+		op_sim_end("Only the sink is allowed to compute" , "the list of border nodes, event in this centralized algorithm" , "" , "");
 	
 	//initialization
 	pos_list = op_prg_list_create();
@@ -1935,10 +1944,13 @@ void compute_border_nodes_status(){
 	}
 	
 	debug_print(LOW , DEBUG_CONTROL , "List of the border nodes (elected in a centralized manner):\n");
+	printf("bn list from %d\n", my_address);
+	
 	
 	//Expands each branch
 	for(i=0 ; i < MAX_NB_BRANCHES ; i++){
-		
+		printf("NEW BRANCH\n");
+	
 		//O^th node : the sink
 		last_node = sink_node;
 		
@@ -1949,21 +1961,22 @@ void compute_border_nodes_status(){
 		//Adds one node in the branch (if possible)
 		for(j=1; j < MAX_BRANCH_LENGTH+1 ; j++){			
 			//The nodes to add
-			best_node.x 		= 0;
-			best_node.y 		= 0;
-			best_node.address 	= last_node.address;
+			best_node 			= last_node;
 			best_dist			= OPC_DBL_INFINITY;
 			
 			//Searches if we have a better candidate
 			for(k=0 ; k < op_prg_list_size(pos_list) ; k++){
 				elem = op_prg_list_access(pos_list , k);
 				
+				range 			= get_dist(elem->x 		, elem->y 		, last_node.x 					, last_node.y);
+				current_dist 	= get_dist(elem->x 		, elem->y 		, sink_node.x + direction_x * j , sink_node.y + direction_y * j);
+				last_dist 		= get_dist(last_node.x 	, last_node.y 	, sink_node.x + direction_x * j , sink_node.y + direction_y * j);
+				
+				
 				//This node and the last node are connected
-				if (get_dist(elem->x , elem->y , last_node.x , last_node.y) <= RADIO_RANGE)
-					
+				if (range <= RADIO_RANGE)
+									
 					//distance to the k° point of the branch (the goal in an optimal objective)
-					current_dist 	= get_dist(elem->x , elem->y , sink_node.x + direction_x * j , sink_node.y + direction_y * j);
-					last_dist 		= get_dist(last_node.x , last_node.y , sink_node.x + direction_x * j , sink_node.y + direction_y * j);
 					if (current_dist < best_dist)
 						
 						//There exists an improvement !
@@ -1977,14 +1990,15 @@ void compute_border_nodes_status(){
 			
 			//If the candidate is not null -> add it
 			if (best_node.address != last_node.address){
+				debug_print(LOW , DEBUG_CONTROL , "%d is a bn\n", best_node.address);
+				printf("%d bn (last %d)\n", best_node.address , last_node.address);
+				
 				bn_elem				= op_prg_mem_alloc(sizeof(bn_struct));
 				bn_elem->address 	= best_node.address;
 				bn_elem->parent		= last_node.address;
 				op_prg_list_insert(global_border_nodes_list , bn_elem , OPC_LISTPOS_TAIL);
 				
 				last_node 			= best_node;
-				debug_print(LOW , DEBUG_CONTROL , "%d is a bn\n", best_node.address);
-				printf("%d bn\n", best_node.address);
 			}
 		}
 	}
@@ -5091,8 +5105,8 @@ cmac_process (void)
 				if (!is_tx_busy){
 				
 					//debug
-					debug_print(LOW , DEBUG_SEND , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
-					debug_print(LOW , DEBUG_NODE , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
+					debug_print(LOW , DEBUG_SEND , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f, freq %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
+					debug_print(LOW , DEBUG_NODE , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f, freq %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
 				
 				
 					//Prepares the packet

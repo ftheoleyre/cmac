@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44644A93 44644A93 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44A28CB6 44A28CB6 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -91,15 +91,25 @@ static void			wlan_mac_higher_layer_register_as_arp ();
 
 
 
+//--------------------------------------
+//
+//			POSITION TYPES
+//
+//--------------------------------------
+
+#define		GRID_POSITION				1
+#define		RANDOM_POSITION				2
+#define		AS_IS_POSITION				3
+#define		RANDOM_GRID_POSITION		4
+
+
+
 
 //--------------------------------------
 //
 //			CONSTANTS
 //
 //--------------------------------------
-
-//Radio range (in meters)
-#define		PHYSIC_RADIO_RANGE			21
 
 //Addresses
 #define		MIN_ADDRESS					101
@@ -288,7 +298,7 @@ typedef struct
 	int	                    		next_hop;
 	int	                    		pk_destination;
 	int	                    		routing_type;
-	int	                    		range;
+	double	                 		radio_range;
 	int	                    		self_position;
 	int	                    		my_stat_id;
 	int	                    		rate_adaptation;
@@ -299,6 +309,7 @@ typedef struct
 	List*	                  		id_list;
 	int	                    		DEBUG;
 	int	                    		is_sink;
+	double	                 		grid_side;
 	} wifi_interface_auto_state;
 
 #define pr_state_ptr            		((wifi_interface_auto_state*) SimI_Mod_State_Ptr)
@@ -312,7 +323,7 @@ typedef struct
 #define next_hop                		pr_state_ptr->next_hop
 #define pk_destination          		pr_state_ptr->pk_destination
 #define routing_type            		pr_state_ptr->routing_type
-#define range                   		pr_state_ptr->range
+#define radio_range             		pr_state_ptr->radio_range
 #define self_position           		pr_state_ptr->self_position
 #define my_stat_id              		pr_state_ptr->my_stat_id
 #define rate_adaptation         		pr_state_ptr->rate_adaptation
@@ -323,6 +334,7 @@ typedef struct
 #define id_list                 		pr_state_ptr->id_list
 #define DEBUG                   		pr_state_ptr->DEBUG
 #define is_sink                 		pr_state_ptr->is_sink
+#define grid_side               		pr_state_ptr->grid_side
 
 /* This macro definition will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
@@ -542,18 +554,18 @@ int get_next_hop_via_shortest_routing(int range_tmp , int destination_tmp){
 	//Sides diag
 	else if ((fabs(y_dev) < range_tmp) && (fabs(x_dev) < range_tmp)){
 		next_hop_tmp = mac_address - y_dev * 100 ;
-		next_hop_tmp = next_hop_tmp - signe (x_dev) * min (fabs(x_dev) , floor(sqrt( pow(range , 2) - pow(y_dev, 2) ))  );				
+		next_hop_tmp = next_hop_tmp - signe (x_dev) * min (fabs(x_dev) , floor(sqrt( pow(radio_range , 2) - pow(y_dev, 2) ))  );				
 	}
 	else if (fabs(y_dev) < range_tmp){
 		
 		next_hop_tmp = mac_address - y_dev * 100 ;
-		next_hop_tmp = next_hop_tmp - signe (x_dev) * floor(sqrt( pow(range , 2) - pow(y_dev, 2) ));				
+		next_hop_tmp = next_hop_tmp - signe (x_dev) * floor(sqrt( pow(radio_range , 2) - pow(y_dev, 2) ));				
 
 	}
 	else if (fabs(x_dev) < range_tmp) {
 		
 		next_hop_tmp = mac_address - x_dev ;
-		next_hop_tmp = next_hop_tmp - signe (y_dev) * 100 * floor(sqrt( pow(range , 2) - pow(x_dev, 2) ));				
+		next_hop_tmp = next_hop_tmp - signe (y_dev) * 100 * floor(sqrt( pow(radio_range , 2) - pow(x_dev, 2) ));				
 
 	}
 	//diag
@@ -561,9 +573,9 @@ int get_next_hop_via_shortest_routing(int range_tmp , int destination_tmp){
 		if (dev > 0)
 			next_hop_tmp = mac_address - signe(x_dev) * dev - signe(y_dev) * dev *100;
 		else if (x_dev >= y_dev)
-			next_hop_tmp = mac_address - signe(x_dev) * range;
+			next_hop_tmp = mac_address - signe(x_dev) * range_tmp;
 		else if (y_dev > x_dev)
-			next_hop_tmp = mac_address - signe(y_dev) * range * 100;
+			next_hop_tmp = mac_address - signe(y_dev) * range_tmp * 100;
 	}
 		
 	
@@ -595,7 +607,7 @@ int get_next_hop_via_opt_corner_sides_routing(int range_tmp , int destination_tm
 			if (fabs(y_dev) < range_tmp){		
 			
 				next_hop_tmp = mac_address - y_dev * 100 ;
-				next_hop_tmp = next_hop_tmp - signe (x_dev) * floor(sqrt( pow(range , 2) - pow(y_dev, 2) ));				
+				next_hop_tmp = next_hop_tmp - signe (x_dev) * floor(sqrt( pow(radio_range , 2) - pow(y_dev, 2) ));				
 
 			}
 			else
@@ -636,7 +648,7 @@ int get_next_hop_via_opt_corner_sides_routing(int range_tmp , int destination_tm
 			if (fabs(x_dev) < range_tmp){
 			
 				next_hop_tmp = mac_address - x_dev ;
-				next_hop_tmp = next_hop_tmp - 100 * signe (y_dev) * floor(sqrt( pow(range , 2) - pow(x_dev, 2) ));
+				next_hop_tmp = next_hop_tmp - 100 * signe (y_dev) * floor(sqrt( pow(radio_range , 2) - pow(x_dev, 2) ));
 			}
 			else
 				next_hop_tmp = mac_address - signe(x_dev) * range_tmp;
@@ -779,7 +791,7 @@ int get_next_hop_via_sides_short_bis_routing(int range_tmp , int destination_tmp
 			if (fabs(y_dev) < range_tmp){		
 			
 				next_hop_tmp = mac_address - y_dev * 100 ;
-				next_hop_tmp = next_hop_tmp - floor(sqrt( pow(range , 2) - pow(y_dev, 2) ));				
+				next_hop_tmp = next_hop_tmp - floor(sqrt( pow(radio_range , 2) - pow(y_dev, 2) ));				
 
 			}
 			else
@@ -797,7 +809,7 @@ int get_next_hop_via_sides_short_bis_routing(int range_tmp , int destination_tmp
 		if (x_dev != 0){
 			if (fabs(x_dev) < range_tmp){
 				next_hop_tmp = mac_address - x_dev ;
-				next_hop_tmp = next_hop_tmp - 100 * floor(sqrt( pow(range , 2) - pow(x_dev, 2) ));
+				next_hop_tmp = next_hop_tmp - 100 * floor(sqrt( pow(radio_range , 2) - pow(x_dev, 2) ));
 
 			}
 			else
@@ -1049,6 +1061,8 @@ void print_headers_stat_file(FILE *pfile){
 	int		RTS , BETA;
 	int		routing_mac = 0;
 	int		routing_up = 0;
+	int		position;
+	double	position_parameter;
 
 	
 	
@@ -1068,6 +1082,14 @@ void print_headers_stat_file(FILE *pfile){
 		op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ROUTING_UP" ,	&routing_up);
 	else
 		routing_up = -1;
+	if (op_ima_sim_attr_exists("POSITION"))
+		op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"POSITION" ,	&position);
+	else
+		routing_up = -1;
+	if (op_ima_sim_attr_exists("POSITION_PARAMETER"))
+		op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"POSITION_PARAMETER" ,	&position_parameter);
+	else
+		routing_up = -1;
 	
 
 
@@ -1077,7 +1099,10 @@ void print_headers_stat_file(FILE *pfile){
 
 	fprintf(pfile , "------------------------------------------------  GENERAL ---------------------------------------------------\n");
 	fprintf(pfile , "Number of nodes							:	%d\n", 			nb_nodes);
-	fprintf(pfile , "Radio Range								:	%d\n", 			range);
+	fprintf(pfile , "Radio Range								:	%f\n", 			radio_range);
+	fprintf(pfile , "Grid Side								:	%f\n", 				grid_side);
+	fprintf(pfile , "Position								:	%f\n", 				position);
+	fprintf(pfile , "Position parameter								:	%f\n", 		position_parameter);
 	fprintf(pfile , "Duration								:	%f\n", 				op_sim_time());
 	fprintf(pfile , "RTS									:	%d\n", 				RTS);
 	fprintf(pfile , "Inter Packet Time							:	%f\n", 			current_inter_pk_time);
@@ -1116,7 +1141,7 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 	delay			= compute_delay			(pk_list , low_pk_id + PK_ID_MODULO / 10 , high_pk_id);
 	max_delay		= compute_max_delay		(pk_list , low_pk_id + PK_ID_MODULO / 10 , high_pk_id);
 
-	printf(" %f - %d %d\n", delivery_ratio , low_pk_id + PK_ID_MODULO / 10 , high_pk_id);	
+	//printf(" %f - %d %d\n", delivery_ratio , low_pk_id + PK_ID_MODULO / 10 , high_pk_id);	
 	
 	
 	
@@ -1124,7 +1149,7 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 	//-------------------------------------------
 	//					WRITING
 	//-------------------------------------------
-	sprintf(filename , "results_80211/%d-nodes_%d-range_%d-stats.txt", timestamp , nb_nodes , range);
+	sprintf(filename , "results_80211/%d-nodes_%d-stats.txt", timestamp , nb_nodes);
 	pfile = fopen(filename , "w");
 
 
@@ -1225,7 +1250,7 @@ void adapt_rate(void *arg , int code){
 
 	//DEBUG
 	//debug_write_pk_info();	
-	printf("NEW RATE : %f (delivery ratio %f)\n", current_inter_pk_time , delivery_ratio);
+	printf(" %f (%f) ", current_inter_pk_time , delivery_ratio);
 	
 	
 
@@ -1310,7 +1335,7 @@ void pk_send_to_mac(Packet * pkptr , int next_hop_tmp){
 
 	//radio propagation model in alpha = 4
 	if (routing_type == OPT2_ROUTING)
-		power_ratio = pow(dist / range , 4);
+		power_ratio = pow(dist / (radio_range / grid_side) , 4);
 	else
 		power_ratio = 1;
 
@@ -1428,9 +1453,8 @@ wifi_interface_auto (void)
 				
 				
 				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"ROUTING_UP" , 						&routing_type);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"RADIO_RANGE" , 					&range);
+				op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"RADIO_RANGE" , 					&radio_range);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"BETA" , 							&beta);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"SELF_POSITION",					&self_position);
 				op_ima_obj_attr_get(op_id_self(), 		"Destination" , 					&pk_destination);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"BACKOFF_TYPE" , 					&mac_backoff_type);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RATE_ADAPTATION" , 				&rate_adaptation);
@@ -1469,20 +1493,17 @@ wifi_interface_auto (void)
 				//-----------------------------------------------------
 				
 				
-				
-				
-				//Sets this value for all the nodes (if self_position)
-				if (self_position){
-					for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
-				  	
-						node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
-						if (op_ima_obj_attr_exists(node_id , "source.Packet Interarrival Arg1"))
-							op_ima_obj_attr_set(node_id , "source.Packet Interarrival Arg1" , 	current_inter_pk_time);
+				for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
+				 	
+					node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
+					if (op_ima_obj_attr_exists(node_id , "source.Packet Interarrival Arg1"))
+						op_ima_obj_attr_set(node_id , "source.Packet Interarrival Arg1" , 	current_inter_pk_time);
 						
-						if (op_ima_obj_attr_exists(node_id , "source.Start Time Packet Generation"))
-							op_ima_obj_attr_set(node_id , "source.Start Time Packet Generation" , TIME_START_PK_GENERATION);
-					}
+					if (op_ima_obj_attr_exists(node_id , "source.Start Time Packet Generation"))
+						op_ima_obj_attr_set(node_id , "source.Start Time Packet Generation" , TIME_START_PK_GENERATION);
 				}
+				
+				
 				
 				
 				//----------------------------------------------------
@@ -1496,6 +1517,11 @@ wifi_interface_auto (void)
 				
 				my_stat_id = nb_nodes;
 				nb_nodes++;
+				
+				
+				
+				
+				
 				
 				}
 
@@ -1808,6 +1834,9 @@ wifi_interface_auto (void)
 				double	x_center , y_center;
 				int		x_dev , y_dev;
 				double	radius , radius2;
+				//position parameters
+				double	simulation_area;
+				int		position_method;
 				//Control
 				int		i;
 				//Routes
@@ -1862,23 +1891,6 @@ wifi_interface_auto (void)
 					is_sink = OPC_TRUE;
 				
 				
-				
-				/*
-				//--------------------------------------------
-				//
-				//			MAC ADDRESS + STREAMS
-				//
-				//--------------------------------------------
-				
-				//Address
-				mac_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_PROC, STREAM_TO_MAC);
-				op_ima_obj_attr_get(mac_id , "Address" , 	&mac_address);
-				op_ima_obj_attr_get(mac_id , "Is Sink" , 	&is_sink);
-				*/
-				
-				
-				
-				
 				//--------------------------------------------
 				//
 				//					POSITION
@@ -1891,13 +1903,73 @@ wifi_interface_auto (void)
 				y_sink = (int)(pk_destination /  100);
 				x_sink = (int)(pk_destination - y_sink * 100);
 				
-				x = (double)x_int * PHYSIC_RADIO_RANGE / (double)range;
-				y = (double)y_int * PHYSIC_RADIO_RANGE / (double)range;
 				
-				if (self_position){
-					op_ima_obj_attr_set(op_id_parent(op_id_self()) , "x position" , x);
-					op_ima_obj_attr_set(op_id_parent(op_id_self()) , "y position" , y);
+				//POSITION
+				op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"POSITION",	&position_method);
+				switch (position_method){
+				
+					//A grid in which each node is exactly POSITION_PAREMETER far from the previous node (horizontalle and vertically)
+					//- Be careful: POSITION_PARAMETER <= RADIo_RANGE
+					case GRID_POSITION :
+						op_ima_sim_attr_get(OPC_IMA_DOUBLE , "POSITION_PARAMETER" , &grid_side);
+						x = (double)x_int * grid_side;
+						y = (double)y_int * grid_side;
+					
+						if (grid_side > radio_range)
+							op_sim_end("The grid is mis-configured: ", "nodes are too far from each other", "and the network will surely be disconnected" , "");
+					break;
+					
+					
+					//A pseudo grid: 
+					//- Virtual nodes are organized as a grid. 
+					//- Real nodes are placed randomly around the virtual nodes (in a square centered on the virtual node, and of side POSITION_PARAMETER)
+					//- Be careful: POSITION_PARAMETER <= 1/2 * RADIO_RANGE (else the network can be and will surely be disconnected)
+					case RANDOM_GRID_POSITION :
+						op_ima_sim_attr_get(OPC_IMA_DOUBLE , "POSITION_PARAMETER" , &grid_side);
+						
+						if (is_sink){
+							x = (double)x_int * grid_side;
+							y = (double)y_int * grid_side;
+						}
+						else{
+							x = (double)x_int * grid_side + op_dist_uniform(grid_side) - grid_side / 2;
+							y = (double)y_int * grid_side + op_dist_uniform(grid_side) - grid_side / 2;
+						}
+					
+						if (grid_side > radio_range / 2)
+							op_sim_end("The pseudo-grid is mis-configured: ", "nodes are too far from each other", "and the network will surely be disconnected" , "");
+					break;
+					
+					
+					//The original position remains unchanged
+					case AS_IS_POSITION :
+						op_ima_obj_attr_get(op_id_parent(op_id_self()) , "x position" , &x);
+						op_ima_obj_attr_get(op_id_parent(op_id_self()) , "y position" , &y);
+					break;
+					
+					
+					//Nodes are placed randomly on the area (a square of side POSITION_PARAMETER)
+					case RANDOM_POSITION :
+						op_ima_sim_attr_get(OPC_IMA_DOUBLE , "POSITION_PARAMETER" , &simulation_area);
+						if (!is_sink){
+							x = op_dist_uniform(simulation_area);
+							y = op_dist_uniform(simulation_area);
+						}
+						else{
+							x = simulation_area / 2;
+							y = simulation_area / 2;
+						}
+					break;
+					default:
+						sprintf(msg, "%d unknown" , position_method);
+						op_sim_end("Bad position method" , msg , "" , "");
+					break;
 				}
+				
+				
+				//registers the computed position
+				op_ima_obj_attr_set(op_id_parent(op_id_self()) , "x position" , x);
+				op_ima_obj_attr_set(op_id_parent(op_id_self()) , "y position" , y);
 				
 				
 				if (x_int > max_x_int)
@@ -1920,6 +1992,10 @@ wifi_interface_auto (void)
 				y_dev = (int) (mac_address / 100) - (int) (pk_destination /100);
 				x_dev = mac_address - pk_destination - y_dev*100;
 				
+				
+				if ((GRID_POSITION != position_method) && (routing_type != NO_ROUTING))
+					op_sim_end("We cannot implement a centralized routing protocol ", "on a random topology" , "We must have a grid" , "");
+				
 				switch(routing_type){
 				
 					//----------------------------------------
@@ -1935,7 +2011,7 @@ wifi_interface_auto (void)
 					//				XY ROUTING
 					//----------------------------------------
 					case XY_ROUTING :
-						next_hop = get_next_hop_via_xy_routing(range , pk_destination);
+						next_hop = get_next_hop_via_xy_routing(radio_range / grid_side , pk_destination);
 					break;
 					
 					
@@ -1945,9 +2021,9 @@ wifi_interface_auto (void)
 					//		   	OPTIMAL CORNER ROUTING
 					//----------------------------------------
 					case OPT_ROUTING :
-						radius = (double)beta * range / 2;
-						x_center = x_sink + beta * range / (2 * sqrt(2));
-						y_center = y_sink + beta * range / (2 * sqrt(2));
+						radius = (double)beta * radio_range / grid_side / 2;
+						x_center = x_sink + beta * radio_range / grid_side / (2 * sqrt(2));
+						y_center = y_sink + beta * radio_range / grid_side / (2 * sqrt(2));
 						
 						//The sink MUST be in the corner
 						if (pk_destination != MIN_ADDRESS){
@@ -1957,10 +2033,10 @@ wifi_interface_auto (void)
 					
 						//Shortest path (in the maximum clique)
 						if (get_distance(x_center , y_center , (double)x_int , (double)y_int) <= radius)
-							next_hop = get_next_hop_via_shortest_routing(range , pk_destination); 
+							next_hop = get_next_hop_via_shortest_routing(radio_range / grid_side , pk_destination); 
 						//SIDES - modified (to avoid the interferences circle)
 						else
-							next_hop = get_next_hop_via_opt_corner_sides_routing(range , pk_destination , x_center , y_center , radius); 
+							next_hop = get_next_hop_via_opt_corner_sides_routing(radio_range / grid_side , pk_destination , x_center , y_center , radius); 
 						
 					if (mac_address == pk_destination){
 						printf("SINK %d %d\n", x_sink , y_sink);
@@ -1976,17 +2052,17 @@ wifi_interface_auto (void)
 					//				OPT_CORNER 2
 					//------------------------------------------------
 					case OPT2_ROUTING :
-						radius = (double)beta * (double)range;
+						radius = (double)beta * (double)radio_range / grid_side;
 						x_center = x_sink;
 						y_center = y_sink;		
 				
 						//special path (in the beta-center)
 						if (get_distance(x_center , y_center , (double)x_int , (double)y_int) <= (double)radius){
-							next_hop = get_next_hop_via_opt2_routing(range , pk_destination); 
+							next_hop = get_next_hop_via_opt2_routing(radio_range / grid_side , pk_destination); 
 						}
 						//SIDES
 						else{
-							next_hop = get_next_hop_via_opt_corner_sides_routing(range , pk_destination , x_center , y_center , radius); 
+							next_hop = get_next_hop_via_opt_corner_sides_routing(radio_range / grid_side , pk_destination , x_center , y_center , radius); 
 						}
 						
 					break;
@@ -2000,7 +2076,7 @@ wifi_interface_auto (void)
 					//----------------------------------------
 					case SHORT_ROUTING :
 						
-						next_hop = get_next_hop_via_shortest_routing(range , pk_destination); 
+						next_hop = get_next_hop_via_shortest_routing(radio_range / grid_side , pk_destination); 
 					
 					break;
 						
@@ -2012,7 +2088,7 @@ wifi_interface_auto (void)
 					//------------------------------------------------
 					case SIDES_ROUTING :
 						
-						next_hop = get_next_hop_via_sides_routing(range , pk_destination); 
+						next_hop = get_next_hop_via_sides_routing(radio_range / grid_side , pk_destination); 
 					
 					break;
 					
@@ -2023,21 +2099,19 @@ wifi_interface_auto (void)
 					//				'F_alpha' ROUTES
 					//------------------------------------------------
 					case ALPHA_ROUTING :
-						radius = (double)beta * (double)range;
+						radius = (double)beta * (double)radio_range / grid_side;
 						x_center = x_sink;
 						y_center = y_sink;		
-				
-						//printf("%f %f %d %d %f > %f\n",  x_center , y_center , x_int , y_int , radius , get_distance(x_center , y_center , (double)x_int , (double)y_int));
 						
 						//Shortest path (in the beta-center)
 						if (get_distance(x_center , y_center , (double)x_int , (double)y_int) <= (double)radius){
 							//printf("IN  ");
-							next_hop = get_next_hop_via_shortest_routing(range , pk_destination); 
+							next_hop = get_next_hop_via_shortest_routing(radio_range / grid_side , pk_destination); 
 						}
 						//SIDES
 						else{
 							//printf("OUT  ");
-							next_hop = get_next_hop_via_sides_routing(range , pk_destination); 
+							next_hop = get_next_hop_via_sides_routing(radio_range / grid_side , pk_destination); 
 						}
 					
 					break;
@@ -2078,9 +2152,10 @@ wifi_interface_auto (void)
 				//----------------------------------------
 				
 				
-				if ((next_hop == mac_address) && (!is_sink) && (routing_type != NO_ROUTING))
-					op_sim_end("Bug in the routing algorithm in the mac-interface process" , "" , "" , "");
-				
+				if ((next_hop == mac_address) && (!is_sink) && (routing_type != NO_ROUTING)){
+					sprintf(msg, "%d has the next hopd %d (routing algo %d) (%d %d %d)", mac_address , next_hop , routing_type , op_strm_connected(OPC_STRM_OUT , STREAM_TO_UP) , OPC_STRM_OUT , STREAM_TO_UP);
+					op_sim_end("Bug in the routing algorithm in the mac-interface process" , msg , "" , "");
+				}
 				
 				
 				
@@ -2208,7 +2283,7 @@ wifi_interface_auto (void)
 					//-------------------------------------------
 					//					WRITING
 					//-------------------------------------------
-					sprintf(filename , "results_80211/%d-nodes_%d-range_%d-results.txt", timestamp , nb_nodes , range);
+					sprintf(filename , "results_80211/%d-nodes_%d-results.txt", timestamp , nb_nodes);
 					pfile = fopen(filename , "w");
 				
 				
@@ -2465,7 +2540,7 @@ wifi_interface_auto_terminate (void)
 #undef next_hop
 #undef pk_destination
 #undef routing_type
-#undef range
+#undef radio_range
 #undef self_position
 #undef my_stat_id
 #undef rate_adaptation
@@ -2476,6 +2551,7 @@ wifi_interface_auto_terminate (void)
 #undef id_list
 #undef DEBUG
 #undef is_sink
+#undef grid_side
 
 
 
@@ -2543,9 +2619,9 @@ wifi_interface_auto_svar (void * gen_ptr, const char * var_name, char ** var_p_p
 		*var_p_ptr = (char *) (&prs_ptr->routing_type);
 		FOUT;
 		}
-	if (strcmp ("range" , var_name) == 0)
+	if (strcmp ("radio_range" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->range);
+		*var_p_ptr = (char *) (&prs_ptr->radio_range);
 		FOUT;
 		}
 	if (strcmp ("self_position" , var_name) == 0)
@@ -2596,6 +2672,11 @@ wifi_interface_auto_svar (void * gen_ptr, const char * var_name, char ** var_p_p
 	if (strcmp ("is_sink" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->is_sink);
+		FOUT;
+		}
+	if (strcmp ("grid_side" , var_name) == 0)
+		{
+		*var_p_ptr = (char *) (&prs_ptr->grid_side);
 		FOUT;
 		}
 	*var_p_ptr = (char *)OPC_NIL;
