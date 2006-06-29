@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char wlan_mac_modif_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44699ECD 44699ECD 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char wlan_mac_modif_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 446AF1CD 446AF1CD 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -782,7 +782,7 @@ wlan_mac_sv_init ()
 	op_ima_obj_attr_get (params_attr_objid, "Max Receive Lifetime", 	&max_receive_lifetime);
 	op_ima_obj_attr_get (params_attr_objid, "Large Packet Processing", 	&accept_large_packets);
 	op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"RTS", 						&rts_threshold);
-	if (rts_threshold == -1)
+	if (rts_threshold == 99999)
 		rts_threshold = OPC_INT_INFINITY;
 	
 	/* Initialize the retry limit for the current frame to long retry limit.	*/
