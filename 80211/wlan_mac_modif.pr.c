@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char wlan_mac_modif_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 446AF1CD 446AF1CD 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char wlan_mac_modif_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44E30680 44E30680 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -782,8 +782,8 @@ wlan_mac_sv_init ()
 	op_ima_obj_attr_get (params_attr_objid, "Max Receive Lifetime", 	&max_receive_lifetime);
 	op_ima_obj_attr_get (params_attr_objid, "Large Packet Processing", 	&accept_large_packets);
 	op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"RTS", 						&rts_threshold);
-	if (rts_threshold == 99999)
-		rts_threshold = OPC_INT_INFINITY;
+	if (rts_threshold >= 1500)
+		rts_threshold = -1;
 	
 	/* Initialize the retry limit for the current frame to long retry limit.	*/
 	retry_limit = long_retry_limit;
@@ -867,6 +867,13 @@ wlan_mac_sv_init ()
 			/* terms of seconds.											*/
 			plcp_overhead_control = 192E-06;
 			plcp_overhead_data    = 192E-06;
+			
+			/* PLCP + Frame Header transmitted at the lowest bitrate		*/
+			/* PLCP-> 192 bits (1 Mbps) + Header-> 240 bits (variable speed)*/
+			if (ONE_MBPS_HEADER)
+				plcp_overhead_data    = 192E-06 + (240E-6 - 240/operational_speed);
+			else
+				plcp_overhead_data    = 192E-06;
 			
 			/* Minimum contention window size for selecting backoff slots.	*/
 			cw_min = 31;
@@ -2029,10 +2036,10 @@ wlan_prepare_frame_to_send (int frame_type)
 			/* Add some bulk to the packet to model the transmission delay	*/
 			/* of PLCP fields accurately which are always transmitted at	*/
 			/* 1 Mbps regardless of the actual data rate used for data		*/
-			/* frames.														*/
-			if (ONE_MBPS_HEADER)
-				op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_data * operational_speed - WLAN_DEFAULT_PLCP_OVERHEAD);
-		
+			/* frames. 										   				*/
+			op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_data * operational_speed - WLAN_DEFAULT_PLCP_OVERHEAD);
+			
+			
 			/* Prepare data frame fields for transmission.					*/		
 			pk_dhstruct_ptr = wlan_mac_pk_dhstruct_create ();
 
@@ -2262,9 +2269,9 @@ wlan_prepare_frame_to_send (int frame_type)
 			/* of PLCP fields accurately which are always transmitted at	*/
 			/* 1 Mbps regardless of the actual data rate used for data		*/
 			/* frames.														*/
-			if (ONE_MBPS_HEADER)
-				op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_data * operational_speed - WLAN_DEFAULT_PLCP_OVERHEAD);
+			op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_data * operational_speed - WLAN_DEFAULT_PLCP_OVERHEAD);
 		
+						
 			/* Prepare data frame fields for transmission.					*/		
 			pk_dhstruct_ptr = wlan_mac_pk_dhstruct_create ();
 
@@ -2466,9 +2473,8 @@ wlan_prepare_frame_to_send (int frame_type)
 			/* of PLCP fields accurately which are always transmitted at	*/
 			/* 1 Mbps regardless of the actual data rate used for data		*/
 			/* frames.														*/
-			if (ONE_MBPS_HEADER)
-				op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_data * operational_speed - WLAN_DEFAULT_PLCP_OVERHEAD);
-		
+			op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_data * operational_speed - WLAN_DEFAULT_PLCP_OVERHEAD);
+
 			/* Prepare data frame fields for transmission.					*/		
 			pk_dhstruct_ptr = wlan_mac_pk_dhstruct_create ();
 
@@ -2641,8 +2647,7 @@ wlan_prepare_frame_to_send (int frame_type)
 		/* accurately, which is physical layer technology dependent. The	*/
 		/* default value is set for infra-red technology.					*/
 		if (phy_char_flag != WlanC_Infra_Red)
-			if (ONE_MBPS_HEADER)
-				op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_control * WLAN_MAN_DATA_RATE - WLAN_DEFAULT_PLCP_OVERHEAD);
+			op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_control * WLAN_MAN_DATA_RATE - WLAN_DEFAULT_PLCP_OVERHEAD);
 		
 		/* Set destination address to broadcast since unicast not supported.*/
 		destination_addr = -1;
@@ -2852,8 +2857,7 @@ wlan_prepare_frame_to_send (int frame_type)
 		/* accurately, which is physical layer technology dependent. The	*/
 		/* default value is set for infra-red technology.					*/
 		if (phy_char_flag != WlanC_Infra_Red)
-			if (ONE_MBPS_HEADER)
-				op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_control * WLAN_MAN_DATA_RATE - WLAN_DEFAULT_PLCP_OVERHEAD);
+			op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_control * WLAN_MAN_DATA_RATE - WLAN_DEFAULT_PLCP_OVERHEAD);
 
 		/* Initializing Rts frame fields.									*/
 		pk_chstruct_ptr = wlan_mac_pk_chstruct_create ();
@@ -2919,8 +2923,7 @@ wlan_prepare_frame_to_send (int frame_type)
 		/* accurately, which is physical layer technology dependent. The	*/
 		/* default value is set for infra-red technology.					*/
 		if (phy_char_flag != WlanC_Infra_Red)
-			if (ONE_MBPS_HEADER)
-				op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_control * WLAN_MAN_DATA_RATE - WLAN_DEFAULT_PLCP_OVERHEAD);
+			op_pk_bulk_size_set (wlan_transmit_frame_ptr, plcp_overhead_control * WLAN_MAN_DATA_RATE - WLAN_DEFAULT_PLCP_OVERHEAD);
 
 		/* Setting ack frame fields.										*/
 		pk_chstruct_ptr = wlan_mac_pk_chstruct_create ();

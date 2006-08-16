@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44A39F0B 44A39F0B 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44BDEDCA 44BDEDCA 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -4648,7 +4648,7 @@ cmac_process (void)
 				//Parameters
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "DEBUG",					&DEBUG);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BETA",					&BETA);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
+				op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "RTS",					&RTS_PK_SIZE);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CHANNELS",				&nb_channels);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING_MAC",			&MAC_ROUTING);

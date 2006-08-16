@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44A28CB6 44A28CB6 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44BDEDE7 44BDEDE7 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -1058,11 +1058,14 @@ void debug_write_pk_info(){
 //Prints parameters, etc ...
 void print_headers_stat_file(FILE *pfile){
 	//Simulation parameters
-	int		RTS , BETA;
+	double	RTS;
+	int		BETA;
 	int		routing_mac = 0;
 	int		routing_up = 0;
 	int		position;
 	double	position_parameter;
+	double	priv_maxtime;
+	int		channels;
 
 	
 	
@@ -1071,25 +1074,38 @@ void print_headers_stat_file(FILE *pfile){
 	//				PARAMETERS
 	//-------------------------------------------
 	
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 			&RTS);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"RTS" , 			&RTS);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"BETA" , 			&BETA);
 	
 	if (op_ima_sim_attr_exists("ROUTING_MAC"))
 		op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ROUTING_MAC" , &routing_mac);
 	else
 		routing_mac = -1;
+	
 	if (op_ima_sim_attr_exists("ROUTING_UP"))
 		op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ROUTING_UP" ,	&routing_up);
 	else
 		routing_up = -1;
+	
 	if (op_ima_sim_attr_exists("POSITION"))
 		op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"POSITION" ,	&position);
 	else
-		routing_up = -1;
+		position = -1;
+	
 	if (op_ima_sim_attr_exists("POSITION_PARAMETER"))
 		op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"POSITION_PARAMETER" ,	&position_parameter);
 	else
-		routing_up = -1;
+		position_parameter = -1;
+	
+	if (op_ima_sim_attr_exists("PRIVILEGED_MAX_TIME"))
+		op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"PRIVILEGED_MAX_TIME" ,	&priv_maxtime);
+	else
+		priv_maxtime = -1;
+	
+	if (op_ima_sim_attr_exists("CHANNELS"))
+		op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"CHANNELS" ,	&channels);
+	else
+		channels = -1;
 	
 
 
@@ -1101,11 +1117,13 @@ void print_headers_stat_file(FILE *pfile){
 	fprintf(pfile , "Number of nodes							:	%d\n", 			nb_nodes);
 	fprintf(pfile , "Radio Range								:	%f\n", 			radio_range);
 	fprintf(pfile , "Grid Side								:	%f\n", 				grid_side);
-	fprintf(pfile , "Position								:	%f\n", 				position);
-	fprintf(pfile , "Position parameter								:	%f\n", 		position_parameter);
+	fprintf(pfile , "Position								:	%d\n", 				position);
+	fprintf(pfile , "Position parameter						:	%f\n", 				position_parameter);
 	fprintf(pfile , "Duration								:	%f\n", 				op_sim_time());
-	fprintf(pfile , "RTS									:	%d\n", 				RTS);
+	fprintf(pfile , "RTS									:	%f\n", 				RTS);
 	fprintf(pfile , "Inter Packet Time							:	%f\n", 			current_inter_pk_time);
+	fprintf(pfile , "Privileged Max Time						:	%f\n", 			priv_maxtime);
+	fprintf(pfile , "Nb of channels							:	%d\n", 				channels);
 	fprintf(pfile , "Routing MAC								:	%d\n", 			routing_mac);
 	fprintf(pfile , "Routing Up								:	%d\n", 				routing_up);
 	fprintf(pfile , "Beta									:	%d\n", 				BETA);
