@@ -1,21 +1,587 @@
-/* Process model C form file: cmac_process.pr.c */
-/* Portions of this file copyright 1992-2007 by OPNET Technologies, Inc. */
+<?xml version="1.0"?>
+<process-model model-name="cmac_process" code-language="C" tv-in-db="yes" tv-in-tb="yes">
+<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
+<model-attributes>
+<attribute name="Wireless LAN Parameters" type="compound">
+<properties type="compound" auto-assign="no" symbolic-only="no">
+<default-value value-symbol="Default"/>
+<symbol-map>
+<symbol name="Default">
+<sub-object>
+<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+<attribute creation-mechanics="Model" name="list" type="object list">
+<object-list>
+<sub-object>
+<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
+<sub-object>
+<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+<attribute creation-mechanics="Model" name="list" type="object list">
+<object-list>
+<sub-object/>
+</object-list>
+</attribute>
+</sub-object>
+</attribute>
+</sub-object>
+</object-list>
+</attribute>
+</sub-object>
+</symbol>
+</symbol-map>
+<comments>
+<![CDATA[
+Specifies parameters used by 
+the Wireless LAN Protocol 
+(WLAN). WLAN is used as the 
+MAC layer protocol in the 
+surrounding node. 
 
 
 
-/* This variable carries the header into the object file */
-const char cmac_process_pr_c [] = "MIL_3_Tfile_Hdr_ 120A 30A opnet 7 4A5DDCDE 4A5DDCDE 1 lefkada-laptop theoleyr 0 0 none none 0 0 none 0 0 0 0 0 0 0 0 11ab 5                                                                                                                                                                                                                                                                                                                                                                                                    ";
-#include <string.h>
 
 
 
-/* OPNET system definitions */
-#include <opnet.h>
+
+]]>
+</comments>
+<count-properties name="count" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="no">
+<default-value value="1"/>
+<lower-limit value="1" exclusive="no"/>
+<upper-limit value="1" exclusive="no"/>
+<comments>
+<![CDATA[
+
+
+]]>
+</comments>
+</properties>
+</count-properties>
+<list-properties name="list" type="object list">
+<properties type="object list" auto-assign="yes" symbolic-only="no">
+<object-list>
+<sub-object name="Data Rate" type="double">
+<properties type="double" units="bps" auto-assign="yes" symbolic-only="yes">
+<default-value value-symbol="11 Mbps"/>
+<symbol-map>
+<symbol name="1 Mbps" value="1,000,000"/>
+<symbol name="2 Mbps" value="2,000,000"/>
+<symbol name="5.5 Mbps" value="5,500,000"/>
+<symbol name="11 Mbps" value="11,000,000"/>
+</symbol-map>
+<comments>
+<![CDATA[
+1 Mbps, 2 Mbps, 5.5 Mbps and 
+11 Mbps  data rates 
+supported by the wlan model. 
+   
+]]>
+</comments>
+</properties>
+</sub-object>
+<sub-object name="Packet Reception-Power Threshold" type="double">
+<properties type="double" units="W" auto-assign="yes" symbolic-only="no">
+<default-value value="7.33E-14"/>
+<lower-limit value="0.0" exclusive="yes"/>
+<symbol-map>
+<symbol name="7.33E-14" value="7.33E-14"/>
+</symbol-map>
+<comments>
+<![CDATA[
+Defines the received power 
+threshold value in Watts at the 
+radio receiver for arriving WLAN 
+packets. Packets with a power 
+less than threshold considered as 
+noise packets and they don't 
+change the status of the receiver 
+to "busy" from MAC's point of 
+view, and don't turn on the 
+signal lock at the receiver. 
+These packets serve as 
+interference source against the 
+valid packets.
+
+The packets with a power higher
+than threshold are considered as 
+valid packets. Unless the default 
+transmission power is changed, 
+all the WLAN packets should reach 
+at their destinations with 
+sufficient power to be a valid 
+packet if the propagation 
+distance between the source and 
+destination is less than 300 
+meters as required by IEEE 802.11 
+WLAN standard.
+
+The value of the "high threshold 
+trigger" of the statwires between 
+the radio receiver and the MAC 
+module in the surrounding node 
+model will be overwritten by the 
+value of this attribute.
+
+]]>
+</comments>
+</properties>
+</sub-object>
+<sub-object name="Channel Settings" type="compound">
+<properties type="compound" auto-assign="yes" symbolic-only="no">
+<default-value>
+<sub-object>
+<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+<attribute creation-mechanics="Model" name="list" type="object list">
+<object-list>
+<sub-object/>
+</object-list>
+</attribute>
+</sub-object>
+</default-value>
+<comments>
+<![CDATA[
+In the wlan model there are 
+4 transmitting and receiving 
+channels. Each channel is 
+associated with a data rate 
+of (1, 2, 5,5, and 11 Mbps). 
+The user can set the minimum 
+frequency and the bandwidth 
+of these channels. Note that 
+these settings will be for 
+all four channels because 
+they belong to same station. 
+   
 
 
 
-/* Header Block */
+]]>
+</comments>
+<count-properties name="count" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="no">
+<default-value value="1"/>
+<lower-limit value="1" exclusive="no"/>
+<upper-limit value="1" exclusive="no"/>
+<comments>
+<![CDATA[
 
+
+]]>
+</comments>
+</properties>
+</count-properties>
+<list-properties name="list" type="object list">
+<properties type="object list" auto-assign="yes" symbolic-only="no">
+<object-list>
+<sub-object name="Bandwidth" type="double">
+<properties type="double" units="Khz" auto-assign="yes" symbolic-only="no">
+<default-value value="1,000"/>
+<lower-limit value="0.0" exclusive="no"/>
+<symbol-map>
+<symbol name="10" value="10"/>
+</symbol-map>
+<comments>
+<![CDATA[
+This attribute specifies the 
+bandwidth of the channel. 
+
+
+
+
+
+
+
+]]>
+</comments>
+</properties>
+</sub-object>
+<sub-object name="Min frequency" type="double">
+<properties type="double" units="MHz" auto-assign="yes" symbolic-only="no">
+<default-value value="2,405"/>
+</properties>
+</sub-object>
+</object-list>
+</properties>
+</list-properties>
+</properties>
+</sub-object>
+<sub-object name="Max Receive Lifetime" type="double">
+<properties type="double" units="secs" auto-assign="yes" symbolic-only="no">
+<default-value value-symbol="0.5"/>
+<lower-limit value="0.0" exclusive="yes"/>
+<symbol-map>
+<symbol name="0.5" value="0.5"/>
+<symbol name="1.0" value="1.0"/>
+<symbol name="1.5" value="1.5"/>
+<symbol name="2.0" value="2.0"/>
+</symbol-map>
+<comments>
+<![CDATA[
+Maximum time after the 
+initial reception of the 
+fragmented MSDU	after which 
+further attempts to  
+reassemble the MSDU will be 
+terminated.	 
+]]>
+</comments>
+</properties>
+</sub-object>
+</object-list>
+</properties>
+</list-properties>
+</properties>
+</attribute>
+<attribute name="Address" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value-symbol="From MAC Intf"/>
+<lower-limit value="0" exclusive="no"/>
+<symbol-map>
+<symbol name="From MAC Intf" value="-2"/>
+</symbol-map>
+<comments>
+<![CDATA[
+MAC layer address of the 
+surrounding node.  This 
+address should be unique 
+across all stations in the 
+network. 
+
+]]>
+</comments>
+</properties>
+</attribute>
+<attribute name="Transmission Power" type="double">
+<properties type="double" auto-assign="no" symbolic-only="no">
+<default-value value="0.001"/>
+</properties>
+</attribute>
+</model-attributes>
+<simulation-attributes>
+<attribute name="DEBUG" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="yes">
+<default-value value-symbol="NO"/>
+<symbol-map>
+<symbol name="NO" value="0"/>
+<symbol name="LOW" value="1"/>
+<symbol name="MEDIUM" value="2"/>
+<symbol name="MAX" value="3"/>
+</symbol-map>
+<comments>
+<![CDATA[
+
+
+]]>
+</comments>
+</properties>
+</attribute>
+<attribute name="RTS" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value-symbol="NO"/>
+<symbol-map>
+<symbol name="NO" value="-1"/>
+</symbol-map>
+</properties>
+</attribute>
+<attribute name="CTR" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="yes">
+<default-value value-symbol="YES"/>
+<symbol-map>
+<symbol name="YES" value="1"/>
+<symbol name="NO" value="0"/>
+</symbol-map>
+<comments>
+<![CDATA[
+The CTR are activated (optimization 
+in order to improve the capacity of 
+convergecast networks) 
+]]>
+</comments>
+</properties>
+</attribute>
+<attribute name="PRIVILEGED_MAX_TIME" type="double">
+<properties type="double" auto-assign="no" symbolic-only="no">
+<default-value value="0.01"/>
+<comments>
+<![CDATA[
+The time during which a node 
+remains privileged
+]]>
+</comments>
+</properties>
+</attribute>
+<attribute name="BETA" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value="4"/>
+</properties>
+</attribute>
+<attribute name="ROUTING_MAC" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="yes">
+<default-value value-symbol="BORDER"/>
+<symbol-map>
+<symbol name="BORDER" value="2"/>
+<symbol name="SHORT" value="1"/>
+<symbol name="NO" value="0"/>
+</symbol-map>
+<comments>
+<![CDATA[
+
+
+]]>
+</comments>
+</properties>
+</attribute>
+<attribute name="CHANNELS" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value="1"/>
+</properties>
+</attribute>
+</simulation-attributes>
+<attribute-assignments>
+<assignment attribute-name="Address" type="integer" status="promoted"/>
+<assignment attribute-name="Transmission Power" type="double" status="promoted"/>
+<assignment attribute-name="Wireless LAN Parameters" type="compound" status="promoted"/>
+<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
+<assignment attribute-name="doc file" type="string" status="hidden"/>
+<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="1"/>
+<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
+<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
+<assignment attribute-name="priority" type="integer" status="hidden"/>
+<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
+<assignment attribute-name="subqueue" type="compound" status="hidden">
+<sub-object>
+<attribute creation-mechanics="EMA" name="count" type="integer" value="4"/>
+<attribute creation-mechanics="EMA" name="list" type="object list">
+<object-list>
+<sub-object/>
+<sub-object/>
+<sub-object/>
+<sub-object/>
+</object-list>
+</attribute>
+</sub-object>
+</assignment>
+<assignment attribute-name="super priority" type="toggle" status="hidden"/>
+</attribute-assignments>
+<interfaces>
+<interface promoted-name="subqueue" type="compound" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
+<attribute-names>
+<![CDATA[
+subqueue
+]]>
+</attribute-names>
+<properties type="compound" auto-assign="no" symbolic-only="no">
+<count-properties name="count" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value="1"/>
+</properties>
+</count-properties>
+<list-properties name="list" type="object list">
+<properties type="object list" auto-assign="no" symbolic-only="no"/>
+</list-properties>
+</properties>
+</interface>
+</interfaces>
+<state-variables>
+<![CDATA[
+/* Station's own address */
+int	\my_address;
+
+/* The node must wait for a reply to its frame (CTS, ACK...) */
+Boolean	\is_reply_required;
+
+/* The reply to a frame is not what we expected */
+/* -> consider that the frame has timeouted     */
+Boolean	\is_reply_bad;
+
+/* We sent a packet, and we had a valid reply */
+/* (RTS -> CTS, or DATA->ACK...)              */
+Boolean	\is_reply_received;
+
+/* The next frame to send */
+/*                        */
+frame_struct	\next_frame_to_send;
+
+/* The last frame that was transmitted */
+frame_struct	\last_frame_sent;
+
+/* The buffer containing all the unicast data frames we must send */
+List*	\unicast_frame_buffer;
+
+/* The buffer containing all the multicast data frames we must send */
+List*	\multicast_frame_buffer;
+
+/* Used in storing data rate attribute. This is the rate at which	 */
+/* data frame is transmitted.										                            */
+double	\operational_speed;
+
+/* Is this node a border node ? */
+Boolean	\is_border_node;
+
+/* Has this node the priority to send all its data packets */
+/* (it received a CTR from its parent)                     */
+Boolean	\is_node_privileged;
+
+/* Is the node a sink ? */
+Boolean	\is_sink;
+
+/* The distance in hops to the sink */
+int	\my_dist_sink;
+
+/* The distance in hops to the nearest border node */
+int	\my_dist_border;
+
+/* The neighborhood table */
+List*	\my_neighborhood_table;
+
+/* Number of channels to use */
+int	\nb_channels;
+
+/* The transmitter is busy, i.e. a frame is transmitted */
+Boolean	\is_tx_busy;
+
+/* current power transmission for my main radio */
+double	\my_current_tx_power;
+
+/* the receive is busy, i.e. a frame has been transmitted by a neighbor */
+Boolean	\is_rx_busy;
+
+/* The power above we consider the channel is busy */
+double	\rx_power_threshold;
+
+/* The power of the last received SYNC frame */
+/* in 1E-14 W                                */
+double	\my_sync_rx_power;
+
+/* The list of the nodes which reserved the medium             */
+/* We can have several reservations in a multi-channel network */
+List*	\my_nav_list;
+
+/* my max backoff */
+int	\cw;
+
+/* My current backoff value */
+int	\my_backoff;
+
+/* The interruption for the backoff (can be stopped by a medium activity) */
+Evhandle	\backoff_intrpt;
+
+/* The backoff disribution */
+Distribution *	\backoff_dist;
+
+/* When did I become privileged ? */
+double	\time_start_privileged;
+
+/* The timeout interruption */
+Evhandle	\frame_timeout_intrpt;
+
+/* The interruption which triggers a timeout if the frame was not received */
+Evhandle	\timeout_intrpt;
+
+/* The interruption which triggers a return to the main frequency */
+Evhandle	\main_freq_return_intrpt;
+
+/* the debug level for the simulations */
+int	\DEBUG;
+
+/* The interruption for stop defering */
+Evhandle	\defer_intrpt;
+
+/* The next branch which will be polled by the sink */
+/* (with a CTR)                                     */
+int	\ctr_last_branch;
+
+/* The rx_power of the last received transmission    */
+/* (just before the rx_module leaves its busy state) */
+double	\last_rx_power;
+
+/* The frequency for my main radio (in Khz) */
+double	\my_main_frequency;
+
+/* The bandwidth for my main radio (in KHz) */
+double	\my_main_bandwidth;
+
+/* I am currently receiving a busy tone signal */
+Boolean	\is_busy_tone_rx;
+
+/* the speed for the busy tone channel */
+double	\busy_tone_speed;
+
+/* I must maintain the busy tone transmission */
+Boolean	\is_busy_tone_tx;
+
+/* The busy tone is activated in reception                             */
+/* But we do not care: the destination itself maintains this busy tone */
+/* (or we believe that)                                                */
+Boolean	\busy_tone_rx_ignored;
+
+/* Is the busy tone channel used ? */
+Boolean	\BUSY_TONE_ACTIVATED;
+
+/* The debug file (perso) */
+FILE*	\my_debug_file;
+
+/* local identification of the node                    */
+/* (id which has no signification outside the process) */
+int	\my_stat_id;
+
+/* Must an hello to be transmitted ? */
+Boolean	\is_hello_to_send;
+
+/* The list of frame_id already received */
+List*	\my_frame_id_seen;
+
+/* The next time the source will initiate data transfers */
+/* (No data frame -> we place ourself in a 'null' state) */
+double	\next_start_time;
+
+/* The time of the last verification                   */
+/* for the data frame generation in the source process */
+double	\last_next_start_time_verif;
+
+/* CTR are periodically sent by the sink */
+Boolean	\is_ctr_activated;
+
+/* Border nodes are allowed to send packets only when they are privileged */
+Boolean	\strict_privileged_mode;
+
+/* IS the directional antenna activated for the SYNC ? */
+int	\is_sync_direct_antenna;
+
+/* The branch pointed by the last SYNC frame */
+int	\sync_last_branch;
+
+/* My branch number (if I identified it) */
+int	\my_branch;
+
+/* The frequency used for my current transmissions */
+double	\my_privileged_frequency;
+
+/* The time during which a node remains privileged */
+double	\slot_privileged_duration;
+
+/* Offset time before I received the CTR from my parent */
+double	\slot_privileged_offset;
+
+/* The list of my border node */
+List*	\bn_list;
+
+/* BETA interference range */
+int	\BETA;
+
+/* A RTS/CTS is required gor longer packets (OPC_INT_INFINITY -> never required) */
+double	\RTS_PK_SIZE;
+
+/* Type of routing in the MAC layer */
+int	\MAC_ROUTING;
+
+/* transmission power */
+double	\POWER_TX;
+
+]]>
+</state-variables>
+<header-block>
+<![CDATA[
 /* Include files.		*/
 #include 	<math.h>
 #include 	<string.h>
@@ -602,181 +1168,10 @@ void 	maintain_busy_tone(double time);
 //antennas
 void 	change_antenna_direction(int stream , int branch);
 void 	change_tx_power(double power , int stream);
-
-/* End of Header Block */
-
-#if !defined (VOSD_NO_FIN)
-#undef	BIN
-#undef	BOUT
-#define	BIN		FIN_LOCAL_FIELD(_op_last_line_passed) = __LINE__ - _op_block_origin;
-#define	BOUT	BIN
-#define	BINIT	FIN_LOCAL_FIELD(_op_last_line_passed) = 0; _op_block_origin = __LINE__;
-#else
-#define	BINIT
-#endif /* #if !defined (VOSD_NO_FIN) */
-
-
-
-/* State variable definitions */
-typedef struct
-	{
-	/* Internal state tracking for FSM */
-	FSM_SYS_STATE
-	/* State Variables */
-	int	                    		my_address                                      ;	/* Station's own address */
-	Boolean	                		is_reply_required                               ;	/* The node must wait for a reply to its frame (CTS, ACK...) */
-	Boolean	                		is_reply_bad                                    ;	/* The reply to a frame is not what we expected */
-	                        		                                                	/* -> consider that the frame has timeouted     */
-	Boolean	                		is_reply_received                               ;	/* We sent a packet, and we had a valid reply */
-	                        		                                                	/* (RTS -> CTS, or DATA->ACK...)              */
-	frame_struct	           		next_frame_to_send                              ;	/* The next frame to send */
-	                        		                                                	/*                        */
-	frame_struct	           		last_frame_sent                                 ;	/* The last frame that was transmitted */
-	List*	                  		unicast_frame_buffer                            ;	/* The buffer containing all the unicast data frames we must send */
-	List*	                  		multicast_frame_buffer                          ;	/* The buffer containing all the multicast data frames we must send */
-	double	                 		operational_speed                               ;	/* Used in storing data rate attribute. This is the rate at which	 */
-	                        		                                                	/* data frame is transmitted.										                            */
-	Boolean	                		is_border_node                                  ;	/* Is this node a border node ? */
-	Boolean	                		is_node_privileged                              ;	/* Has this node the priority to send all its data packets */
-	                        		                                                	/* (it received a CTR from its parent)                     */
-	Boolean	                		is_sink                                         ;	/* Is the node a sink ? */
-	int	                    		my_dist_sink                                    ;	/* The distance in hops to the sink */
-	int	                    		my_dist_border                                  ;	/* The distance in hops to the nearest border node */
-	List*	                  		my_neighborhood_table                           ;	/* The neighborhood table */
-	int	                    		nb_channels                                     ;	/* Number of channels to use */
-	Boolean	                		is_tx_busy                                      ;	/* The transmitter is busy, i.e. a frame is transmitted */
-	double	                 		my_current_tx_power                             ;	/* current power transmission for my main radio */
-	Boolean	                		is_rx_busy                                      ;	/* the receive is busy, i.e. a frame has been transmitted by a neighbor */
-	double	                 		rx_power_threshold                              ;	/* The power above we consider the channel is busy */
-	double	                 		my_sync_rx_power                                ;	/* The power of the last received SYNC frame */
-	                        		                                                	/* in 1E-14 W                                */
-	List*	                  		my_nav_list                                     ;	/* The list of the nodes which reserved the medium             */
-	                        		                                                	/* We can have several reservations in a multi-channel network */
-	int	                    		cw                                              ;	/* my max backoff */
-	int	                    		my_backoff                                      ;	/* My current backoff value */
-	Evhandle	               		backoff_intrpt                                  ;	/* The interruption for the backoff (can be stopped by a medium activity) */
-	Distribution *	         		backoff_dist                                    ;	/* The backoff disribution */
-	double	                 		time_start_privileged                           ;	/* When did I become privileged ? */
-	Evhandle	               		frame_timeout_intrpt                            ;	/* The timeout interruption */
-	Evhandle	               		timeout_intrpt                                  ;	/* The interruption which triggers a timeout if the frame was not received */
-	Evhandle	               		main_freq_return_intrpt                         ;	/* The interruption which triggers a return to the main frequency */
-	int	                    		DEBUG                                           ;	/* the debug level for the simulations */
-	Evhandle	               		defer_intrpt                                    ;	/* The interruption for stop defering */
-	int	                    		ctr_last_branch                                 ;	/* The next branch which will be polled by the sink */
-	                        		                                                	/* (with a CTR)                                     */
-	double	                 		last_rx_power                                   ;	/* The rx_power of the last received transmission    */
-	                        		                                                	/* (just before the rx_module leaves its busy state) */
-	double	                 		my_main_frequency                               ;	/* The frequency for my main radio (in Khz) */
-	double	                 		my_main_bandwidth                               ;	/* The bandwidth for my main radio (in KHz) */
-	Boolean	                		is_busy_tone_rx                                 ;	/* I am currently receiving a busy tone signal */
-	double	                 		busy_tone_speed                                 ;	/* the speed for the busy tone channel */
-	Boolean	                		is_busy_tone_tx                                 ;	/* I must maintain the busy tone transmission */
-	Boolean	                		busy_tone_rx_ignored                            ;	/* The busy tone is activated in reception                             */
-	                        		                                                	/* But we do not care: the destination itself maintains this busy tone */
-	                        		                                                	/* (or we believe that)                                                */
-	Boolean	                		BUSY_TONE_ACTIVATED                             ;	/* Is the busy tone channel used ? */
-	FILE*	                  		my_debug_file                                   ;	/* The debug file (perso) */
-	int	                    		my_stat_id                                      ;	/* local identification of the node                    */
-	                        		                                                	/* (id which has no signification outside the process) */
-	Boolean	                		is_hello_to_send                                ;	/* Must an hello to be transmitted ? */
-	List*	                  		my_frame_id_seen                                ;	/* The list of frame_id already received */
-	double	                 		next_start_time                                 ;	/* The next time the source will initiate data transfers */
-	                        		                                                	/* (No data frame -> we place ourself in a 'null' state) */
-	double	                 		last_next_start_time_verif                      ;	/* The time of the last verification                   */
-	                        		                                                	/* for the data frame generation in the source process */
-	Boolean	                		is_ctr_activated                                ;	/* CTR are periodically sent by the sink */
-	Boolean	                		strict_privileged_mode                          ;	/* Border nodes are allowed to send packets only when they are privileged */
-	int	                    		is_sync_direct_antenna                          ;	/* IS the directional antenna activated for the SYNC ? */
-	int	                    		sync_last_branch                                ;	/* The branch pointed by the last SYNC frame */
-	int	                    		my_branch                                       ;	/* My branch number (if I identified it) */
-	double	                 		my_privileged_frequency                         ;	/* The frequency used for my current transmissions */
-	double	                 		slot_privileged_duration                        ;	/* The time during which a node remains privileged */
-	double	                 		slot_privileged_offset                          ;	/* Offset time before I received the CTR from my parent */
-	List*	                  		bn_list                                         ;	/* The list of my border node */
-	int	                    		BETA                                            ;	/* BETA interference range */
-	double	                 		RTS_PK_SIZE                                     ;	/* A RTS/CTS is required gor longer packets (OPC_INT_INFINITY -> never required) */
-	int	                    		MAC_ROUTING                                     ;	/* Type of routing in the MAC layer */
-	double	                 		POWER_TX                                        ;	/* transmission power */
-	} cmac_process_state;
-
-#define my_address              		op_sv_ptr->my_address
-#define is_reply_required       		op_sv_ptr->is_reply_required
-#define is_reply_bad            		op_sv_ptr->is_reply_bad
-#define is_reply_received       		op_sv_ptr->is_reply_received
-#define next_frame_to_send      		op_sv_ptr->next_frame_to_send
-#define last_frame_sent         		op_sv_ptr->last_frame_sent
-#define unicast_frame_buffer    		op_sv_ptr->unicast_frame_buffer
-#define multicast_frame_buffer  		op_sv_ptr->multicast_frame_buffer
-#define operational_speed       		op_sv_ptr->operational_speed
-#define is_border_node          		op_sv_ptr->is_border_node
-#define is_node_privileged      		op_sv_ptr->is_node_privileged
-#define is_sink                 		op_sv_ptr->is_sink
-#define my_dist_sink            		op_sv_ptr->my_dist_sink
-#define my_dist_border          		op_sv_ptr->my_dist_border
-#define my_neighborhood_table   		op_sv_ptr->my_neighborhood_table
-#define nb_channels             		op_sv_ptr->nb_channels
-#define is_tx_busy              		op_sv_ptr->is_tx_busy
-#define my_current_tx_power     		op_sv_ptr->my_current_tx_power
-#define is_rx_busy              		op_sv_ptr->is_rx_busy
-#define rx_power_threshold      		op_sv_ptr->rx_power_threshold
-#define my_sync_rx_power        		op_sv_ptr->my_sync_rx_power
-#define my_nav_list             		op_sv_ptr->my_nav_list
-#define cw                      		op_sv_ptr->cw
-#define my_backoff              		op_sv_ptr->my_backoff
-#define backoff_intrpt          		op_sv_ptr->backoff_intrpt
-#define backoff_dist            		op_sv_ptr->backoff_dist
-#define time_start_privileged   		op_sv_ptr->time_start_privileged
-#define frame_timeout_intrpt    		op_sv_ptr->frame_timeout_intrpt
-#define timeout_intrpt          		op_sv_ptr->timeout_intrpt
-#define main_freq_return_intrpt 		op_sv_ptr->main_freq_return_intrpt
-#define DEBUG                   		op_sv_ptr->DEBUG
-#define defer_intrpt            		op_sv_ptr->defer_intrpt
-#define ctr_last_branch         		op_sv_ptr->ctr_last_branch
-#define last_rx_power           		op_sv_ptr->last_rx_power
-#define my_main_frequency       		op_sv_ptr->my_main_frequency
-#define my_main_bandwidth       		op_sv_ptr->my_main_bandwidth
-#define is_busy_tone_rx         		op_sv_ptr->is_busy_tone_rx
-#define busy_tone_speed         		op_sv_ptr->busy_tone_speed
-#define is_busy_tone_tx         		op_sv_ptr->is_busy_tone_tx
-#define busy_tone_rx_ignored    		op_sv_ptr->busy_tone_rx_ignored
-#define BUSY_TONE_ACTIVATED     		op_sv_ptr->BUSY_TONE_ACTIVATED
-#define my_debug_file           		op_sv_ptr->my_debug_file
-#define my_stat_id              		op_sv_ptr->my_stat_id
-#define is_hello_to_send        		op_sv_ptr->is_hello_to_send
-#define my_frame_id_seen        		op_sv_ptr->my_frame_id_seen
-#define next_start_time         		op_sv_ptr->next_start_time
-#define last_next_start_time_verif		op_sv_ptr->last_next_start_time_verif
-#define is_ctr_activated        		op_sv_ptr->is_ctr_activated
-#define strict_privileged_mode  		op_sv_ptr->strict_privileged_mode
-#define is_sync_direct_antenna  		op_sv_ptr->is_sync_direct_antenna
-#define sync_last_branch        		op_sv_ptr->sync_last_branch
-#define my_branch               		op_sv_ptr->my_branch
-#define my_privileged_frequency 		op_sv_ptr->my_privileged_frequency
-#define slot_privileged_duration		op_sv_ptr->slot_privileged_duration
-#define slot_privileged_offset  		op_sv_ptr->slot_privileged_offset
-#define bn_list                 		op_sv_ptr->bn_list
-#define BETA                    		op_sv_ptr->BETA
-#define RTS_PK_SIZE             		op_sv_ptr->RTS_PK_SIZE
-#define MAC_ROUTING             		op_sv_ptr->MAC_ROUTING
-#define POWER_TX                		op_sv_ptr->POWER_TX
-
-/* These macro definitions will define a local variable called	*/
-/* "op_sv_ptr" in each function containing a FIN statement.	*/
-/* This variable points to the state variable data structure,	*/
-/* and can be used from a C debugger to display their values.	*/
-#undef FIN_PREAMBLE_DEC
-#undef FIN_PREAMBLE_CODE
-#define FIN_PREAMBLE_DEC	cmac_process_state *op_sv_ptr;
-#define FIN_PREAMBLE_CODE	\
-		op_sv_ptr = ((cmac_process_state *)(OP_SIM_CONTEXT_PTR->_op_mod_state_ptr));
-
-
-/* Function Block */
-
-#if !defined (VOSD_NO_FIN)
-enum { _op_block_origin = __LINE__ + 2};
-#endif
-
+]]>
+</header-block>
+<function-block>
+<![CDATA[
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2166,7 +2561,7 @@ int compare_election_struct(const void *value_a, const void * value_b){
 	if (a.pow == 0)
 		FRET(-1);
 	
-	//0° criterium: branch nb (for the sink, else no particular interest)
+	//0 criterium: branch nb (for the sink, else no particular interest)
 	if ((is_sink) && (is_sync_direct_antenna)){
 		if (a.branch < b.branch)
 			FRET(1);
@@ -4468,2044 +4863,1805 @@ void end_sim(){
 
 
 
+]]>
+</function-block>
+<termination-block>
+<![CDATA[
 
-/* End of Function Block */
-
-/* Undefine optional tracing in FIN/FOUT/FRET */
-/* The FSM has its own tracing code and the other */
-/* functions should not have any tracing.		  */
-#undef FIN_TRACING
-#define FIN_TRACING
-
-#undef FOUTRET_TRACING
-#define FOUTRET_TRACING
-
-#if defined (__cplusplus)
-extern "C" {
-#endif
-	void cmac_process (OP_SIM_CONTEXT_ARG_OPT);
-	VosT_Obtype _op_cmac_process_init (int * init_block_ptr);
-	void _op_cmac_process_diag (OP_SIM_CONTEXT_ARG_OPT);
-	void _op_cmac_process_terminate (OP_SIM_CONTEXT_ARG_OPT);
-	VosT_Address _op_cmac_process_alloc (VosT_Obtype, int);
-	void _op_cmac_process_svar (void *, const char *, void **);
-
-
-	VosT_Obtype Vos_Define_Object_Prstate (const char * _op_name, size_t _op_size);
-	VosT_Address Vos_Alloc_Object (VosT_Obtype _op_ob_hndl);
-	VosT_Fun_Status Vos_Poolmem_Dealloc (VosT_Address _op_ob_ptr);
-#if defined (__cplusplus)
-} /* end of 'extern "C"' */
-#endif
-
-
-
-
-/* Process model interrupt handling procedure */
-
-
-void
-cmac_process (OP_SIM_CONTEXT_ARG_OPT)
-	{
-#if !defined (VOSD_NO_FIN)
-	int _op_block_origin = 0;
-#endif
-	FIN_MT (cmac_process ());
-
-		{
-
-
-		FSM_ENTER ("cmac_process")
-
-		FSM_BLOCK_SWITCH
-			{
-			/*---------------------------------------------------------*/
-			/** state (INIT) enter executives **/
-			FSM_STATE_ENTER_UNFORCED_NOLABEL (0, "INIT", "cmac_process [INIT enter execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [INIT enter execs]", state0_enter_exec)
-				{
-				//Ids
-				Objid	mac_params_comp_attr_objid;
-				Objid	params_attr_objid;
-				//Parameters
-				Objid	chann_params_comp_attr_objid;
-				Objid	subchann_params_attr_objid;
-				//transmitters
-				int		nb_radio;
-				//Channels
-				int		num_chann;
-				Objid	chann_objid;
-				Objid	sub_chann_objid;
-				Objid	tx_id , rx_id;
-				//Control
-				int		i , j;
-				char	str[300];
-				//char	msg[500];
-				//Statwires
-				Objid	statwire_objid;
-				int		num_statwires;
-				double	threshold;
-				//Filenames
-				//char	filename[200];
-				//Position, routes...
-				int		x_int , y_int , x_sink, y_sink;
-				int		sink_destination;
-				//Id
-				int		intf_id;
-				
-				
-				
-					
-				//-----------------------------------------------
-				//		   		IDENTIFICATION
-				//-----------------------------------------------
-				
-				
-				//Process IDS 	
-				my_stat_id		= nb_mac_nodes++;
-				
-				
-				if (cmac_timestamp == 0)
-					cmac_timestamp = time(NULL);
-				
-				//Address
-				op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
-				my_address = atoi(str);
-				op_ima_obj_attr_set (op_id_self(), "Address", &my_address);
-				
-				
-				
-				
-				//-----------------------------------------------
-				//		   			ROUTING
-				//-----------------------------------------------
-				
-				
-				
-				
-				
-				//-------------  POSITIONS  -----------------
-				
-				y_int = my_address /  100;
-				x_int = my_address - y_int * 100;
-				
-				op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "wlan_mac_intf.Destination" , &sink_destination);
-				y_sink = (int)(sink_destination /  100);
-				x_sink = (int)(sink_destination - y_sink * 100);
-				
-				
-				
-				
-				
-				//-----------  IS_BORDER_NODE  --------------
-				
-				is_border_node = OPC_FALSE;
-				
-				
-				
-				//--------------  IS_SINK  -----------------
-				
-				//The upper process is the first one since I am the lowest layer
-				intf_id = op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_PROC , 0);
-				if (op_topo_assoc_count(intf_id , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_STRM) > 1)
-					is_sink = OPC_TRUE;
-				if (is_sink){
-					is_border_node 		= OPC_TRUE;
-					my_sync_rx_power 	= OPC_DBL_INFINITY;
-				}
-				
-				
-				
-				//---------  DISTANCES / ROUTING  ------------
-				
-				if (is_sink)
-					my_dist_sink = 0;
-				else
-					my_dist_sink = pow (2, 4) - 1;
-				
-				//dist border
-				if (is_border_node)
-					my_dist_border = 0;
-				else
-					my_dist_border = pow (2, 4) - 1;
-				
-				
-				
-				
-				
-				
-				//-----------------------------------------------
-				//		  		 PARAMETERS
-				//-----------------------------------------------
-				
-				//Parameters
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "DEBUG",					&DEBUG);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "BETA",					&BETA);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "CHANNELS",				&nb_channels);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING_MAC",			&MAC_ROUTING);
-				
-				//No RTS / CTS -> pk_size set to the infinity value
-				if (RTS_PK_SIZE == -1)
-					RTS_PK_SIZE = OPC_INT_INFINITY;
-				
-				
-				if (is_sink){
-					op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&slot_privileged_duration);
-					TIME_MAX_PRIVILEGED = slot_privileged_duration * 2;
-				}
-				else
-					slot_privileged_duration 	= 0;
-				
-				op_ima_obj_attr_get(op_id_self() ,  "Transmission Power",	&POWER_TX);
-				
-				
-				//A border node is allowed to send packets only when it is privileged
-				strict_privileged_mode = is_ctr_activated;
-				
-				//The busy tone is not activated if RTS are not used
-				//NB : the busy tone is currently descativated (no better performances for a more complex system)
-				BUSY_TONE_ACTIVATED = OPC_FALSE && (RTS_PK_SIZE < MTU_MAX);
-				
-				
-				
-				
-				
-				
-				//-----------------------------------------------
-				//		   		PROPERTIES
-				//-----------------------------------------------
-				
-				is_node_privileged			= OPC_FALSE;
-				last_frame_sent.type		= NO_PK_TYPE;
-				next_frame_to_send.type		= NO_PK_TYPE;
-				
-				unicast_frame_buffer		= op_prg_list_create();
-				multicast_frame_buffer		= op_prg_list_create();
-				my_neighborhood_table		= op_prg_list_create();
-				my_frame_id_seen			= op_prg_list_create();
-				bn_list						= op_prg_list_create();
-				my_nav_list					= op_prg_list_create();
-				
-				
-				
-				//Backoff distribution initialization
-				cw 							= MAX_BACKOFF;
-				backoff_dist 				= op_dist_load("uniform_int" , 0 , cw);
-				
-				//no reservation
-				is_reply_required 			= OPC_FALSE;
-				
-				//Power of the last received sync frame
-				my_sync_rx_power			= 0;
-				
-				//Power of the last received packet (when rx busy -> !busy)
-				last_rx_power				= 0;
-				busy_tone_rx_ignored		= OPC_FALSE;
-				
-				//next packet == hello
-				is_hello_to_send 			= OPC_FALSE;
-				
-				//Verification of the next start time for data frames (in the source process)
-				next_start_time				= 0;
-				last_next_start_time_verif 	= 0;
-				
-				//Branches id
-				ctr_last_branch 			= 0;
-				sync_last_branch			= 0;
-				my_branch					= -1;
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				//-----------------------------------------------
-				//		  				 DEBUG
-				//-----------------------------------------------
-				
-				if (my_stat_id == 0)
-					for(i=0 ; i < 20 ; i++)
-						debug_files[i] = NULL;
-				
-				if (DEBUG > NO){
-					if (my_stat_id == 0){
-						open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"results_cmac/%d_cmac_debug.txt" , 			cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_STATE] ,		"results_cmac/%d_cmac_debug_state.txt" , 	cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"results_cmac/%d_cmac_debug_backoff.txt" , 	cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_SEND] ,		"results_cmac/%d_cmac_debug_send.txt" , 	cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_RECEIVE] ,	"results_cmac/%d_cmac_debug_receive.txt" , 	cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_RADIO] ,		"results_cmac/%d_cmac_debug_radio.txt" , 	cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_CONTROL] ,	"results_cmac/%d_cmac_debug_control.txt" , 	cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"results_cmac/%d_cmac_debug_timeout.txt" , 	cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_HELLO] ,		"results_cmac/%d_cmac_debug_hello.txt" , 	cmac_timestamp);
-						open_debug_file(&debug_files[DEBUG_UP] ,		"results_cmac/%d_cmac_debug_up.txt" , 		cmac_timestamp);
-					}
-					open_debug_file(&my_debug_file,					"results_cmac/nodes/%d.txt" , 				my_address);
-						
-				}
-				
-				
-				
-				
-				//-----------------------------------------------
-				//		  	 	TRANSMISSION
-				//-----------------------------------------------
-				
-				
-				//RADIO Parameters
-				op_ima_obj_attr_get (op_id_self(), "Wireless LAN Parameters", &mac_params_comp_attr_objid);
-				params_attr_objid = op_topo_child (mac_params_comp_attr_objid, OPC_OBJTYPE_GENERIC, 0);
-				
-					
-				//Parameters
-				op_ima_obj_attr_get (params_attr_objid, "Data Rate", 						&operational_speed);
-				
-				//Power reception (to detect radio activity)
-				op_ima_obj_attr_get (params_attr_objid, "Packet Reception-Power Threshold", &rx_power_threshold);
-				
-				//Channel
-				op_ima_obj_attr_get (params_attr_objid, "Channel Settings", &chann_params_comp_attr_objid);
-				subchann_params_attr_objid = op_topo_child (chann_params_comp_attr_objid, OPC_OBJTYPE_GENERIC, 0);
-				op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 				&my_main_bandwidth);	
-				op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 			&my_main_frequency);	
-				
-				
-				if ((!is_ctr_activated) && (strict_privileged_mode))
-					op_sim_end("We can not desactivate the CTR" , "and function in BLOCKED_MODE" , "" , "");
-				
-				
-				
-				//-----------------------------------------------
-				//				NORMAL RADIO
-				//-----------------------------------------------
-				
-				
-				//----- TRANSMISSION ----
-				
-				nb_radio = op_topo_assoc_count(op_id_self() , OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX);
-				
-				for (i=0; i<nb_radio ; i++){
-					
-				
-					tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, i);
-					if (tx_id == OPC_OBJID_INVALID)
-						op_sim_end("No attached transmitter\n", "" , "" , "");
-				
-					//Channels nb
-					op_ima_obj_attr_get (tx_id, "channel", &chann_objid);
-				
-					//id access
-					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
-				
-					//Frequency + bandwidth
-					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency);
-					op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
-				
-				}
-				
-				my_current_tx_power = POWER_TX ;
-				
-				
-				//----- RECEPTION ----
-				
-				nb_radio = op_topo_assoc_count(op_id_self() , OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX);
-				
-				for (i=0; i<nb_radio ; i++){
-				
-					rx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, i);
-					if (rx_id == OPC_OBJID_INVALID)
-						op_sim_end("No attached receiver\n", "" , "" , "");
-				
-				
-					//Nb channels
-					op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
-					num_chann = op_topo_child_count (chann_objid, OPC_OBJTYPE_RARXCH);
-					
-				
-					//Frequency + bandwidth of the first received
-					for (j = 0; j < num_chann; j++){ 	
-						//Id
-						sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, j);
-					
-						//Frequency + bandwidth
-						op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth);
-						op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency);		
-						
-						//Reception power threshold
-						op_ima_obj_state_set (sub_chann_objid, &rx_power_threshold);
-					}
-				}
-				
-				
-				//-----------------------------------------------
-				//				BUSY TONE
-				//-----------------------------------------------
-				
-				//Such that one bit is transmitted in 1us
-				busy_tone_speed = 1E6;
-				
-				if (OPC_TRUE){
-				
-				//Transmission
-					tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, STREAM_TO_BUSY_TONE);
-					if (tx_id == OPC_OBJID_INVALID)
-						op_sim_end("No attached transmitter\n", "" , "" , "");
-				
-					//Channels nb
-					op_ima_obj_attr_get (tx_id, "channel", &chann_objid);
-				
-					//id access
-					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
-				
-					//Speed
-					op_ima_obj_attr_set (sub_chann_objid, "data rate", 		busy_tone_speed);
-					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_SEPARATION);
-					op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
-					
-					//NB: bandwidth in KHz, frequency in MHz
-					if (my_main_bandwidth * busy_tone_speed / operational_speed >= 1000 * SHIFT_FREQ_SEPARATION)
-						op_sim_end("The bandiwthd separation between the busy tone " , "and the principal radio is too small." , "Please increase the value of SHIFT_FREQ_BUSY_TONE", "to separate sufficiently the channels");
-				
-					
-				//reception	
-					rx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, STREAM_FROM_BUSY_TONE);
-					if (rx_id == OPC_OBJID_INVALID)
-						op_sim_end("No attached transmitter\n", "" , "" , "");
-				
-					//Channels nb
-					op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
-				
-					//id access
-					sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, 0);
-				
-					//Speed
-					op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
-					op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_SEPARATION);
-				}
-				
-				
-				
-				
-				
-				
-				
-				
-				//-----------------------------------------------
-				//		   			STATWIRES
-				//-----------------------------------------------
-				
-				//for all statswirs (tx, rx, busy tone, normal ...)
-				num_statwires = op_topo_assoc_count (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STATWIRE);
-				for (i = 0; i < num_statwires; i++){
-					//Id														*/
-					statwire_objid = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STATWIRE, i);
-					op_ima_obj_attr_get (statwire_objid, "high threshold trigger", &threshold);
-					
-					//value
-					op_ima_obj_attr_set (statwire_objid, "high threshold trigger", rx_power_threshold);	
-				}
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				//-----------------------------------------------
-				//		   	SYNCHRO WITH OTHER LAYERS
-				//-----------------------------------------------
-				
-				op_intrpt_schedule_self (op_sim_time (), 0);
-				
-				
-				}
-				FSM_PROFILE_SECTION_OUT (state0_enter_exec)
-
-			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (1,"cmac_process")
-
-
-			/** state (INIT) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (0, "INIT", "cmac_process [INIT exit execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [INIT exit execs]", state0_exit_exec)
-				{
-				
-				
-				}
-				FSM_PROFILE_SECTION_OUT (state0_exit_exec)
-
-
-			/** state (INIT) transition processing **/
-			FSM_TRANSIT_FORCE (2, state2_enter_exec, ;, "default", "", "INIT", "INFO_SYNCHRO", "cmac_process [INIT -> INFO_SYNCHRO : default / ]")
-				/*---------------------------------------------------------*/
-
-
-
-			/** state (IDLE) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (1, "IDLE", state1_enter_exec, "cmac_process [IDLE enter execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [IDLE enter execs]", state1_enter_exec)
-				{
-				
-				
-				
-				
-				}
-				FSM_PROFILE_SECTION_OUT (state1_enter_exec)
-
-			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (3,"cmac_process")
-
-
-			/** state (IDLE) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (1, "IDLE", "cmac_process [IDLE exit execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [IDLE exit execs]", state1_exit_exec)
-				{
-				debug_print(LOW , DEBUG_STATE , "ENTER - IDLE2 - %d\n", my_address);
-				
-				//Handles the possible interruptions (STREAM || STAT)
-				interrupt_process();
-				
-				
-				debug_print(LOW , DEBUG_STATE , "EXIT - IDLE2 - %d\n", my_address);
-				}
-				FSM_PROFILE_SECTION_OUT (state1_exit_exec)
-
-
-			/** state (IDLE) transition processing **/
-			FSM_PROFILE_SECTION_IN ("cmac_process [IDLE trans conditions]", state1_trans_conds)
-			FSM_INIT_COND (IS_PK_TO_SEND || PRIVILEGED_END)
-			FSM_DFLT_COND
-			FSM_TEST_LOGIC ("IDLE")
-			FSM_PROFILE_SECTION_OUT (state1_trans_conds)
-
-			FSM_TRANSIT_SWITCH
-				{
-				FSM_CASE_TRANSIT (0, 4, state4_enter_exec, ;, "IS_PK_TO_SEND || PRIVILEGED_END", "", "IDLE", "DEFER", "cmac_process [IDLE -> DEFER : IS_PK_TO_SEND || PRIVILEGED_END / ]")
-				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, ;, "default", "", "IDLE", "IDLE", "cmac_process [IDLE -> IDLE : default / ]")
-				}
-				/*---------------------------------------------------------*/
-
-
-
-			/** state (INFO_SYNCHRO) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (2, "INFO_SYNCHRO", state2_enter_exec, "cmac_process [INFO_SYNCHRO enter execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [INFO_SYNCHRO enter execs]", state2_enter_exec)
-				{
-				/* Schedule a self interrupt to wait for mac interface 	*/
-				/* to move to next state after registering				*/
-				op_intrpt_schedule_self (op_sim_time (), 0);
-				}
-				FSM_PROFILE_SECTION_OUT (state2_enter_exec)
-
-			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (5,"cmac_process")
-
-
-			/** state (INFO_SYNCHRO) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (2, "INFO_SYNCHRO", "cmac_process [INFO_SYNCHRO exit execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [INFO_SYNCHRO exit execs]", state2_exit_exec)
-				{
-				//Objid	mac_layer_intf_id;
-				//int		*int_ptr;
-				//List	**list_ptr_tmp;
-				
-				
-				
-				//----------------------------------------------
-				//					BRANCH LENGTH
-				//----------------------------------------------
-				
-				
-				if (my_stat_id == 0)
-					MAX_BRANCH_LENGTH = min_int(BETA + 1 , (int)(pow(nb_mac_nodes , 0.5) / 2) - 1);
-				
-				
-				
-				//----------------------------------------------
-				//					SINK 
-				//----------------------------------------------
-				
-				//The sink must send periodically a CTR (create it, not forward it)
-				//NB: let the routing info converge (dist_sink and dist_border)
-				if (is_sink){
-					if (is_ctr_activated)
-						op_intrpt_schedule_self(op_sim_time() + 5.0 + INTERVALL_HELLO * 1.1 , SINK_CTR_CODE); 
-				
-					op_intrpt_schedule_self(op_sim_time() + 0.1 , SINK_SYNC_CODE); 
-				}
-				
-				
-				
-				
-				//----------------------------------------------
-				//					HELLOS 
-				//----------------------------------------------
-				
-				//periodical hello for everyone (initally, shorter hello_interval to decrease convergence delays)
-				op_intrpt_schedule_self(op_sim_time() + 5.0 + op_dist_uniform(3.0) , HELLO_PK_CODE);
-				}
-				FSM_PROFILE_SECTION_OUT (state2_exit_exec)
-
-
-			/** state (INFO_SYNCHRO) transition processing **/
-			FSM_TRANSIT_FORCE (1, state1_enter_exec, ;, "default", "", "INFO_SYNCHRO", "IDLE", "cmac_process [INFO_SYNCHRO -> IDLE : default / ]")
-				/*---------------------------------------------------------*/
-
-
-
-			/** state (EMISSION) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (3, "EMISSION", state3_enter_exec, "cmac_process [EMISSION enter execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [EMISSION enter execs]", state3_enter_exec)
-				{
-				//----------------------------------------------------------------
-				//
-				//				FRAME TRANSMISSION
-				//
-				// - The medium is free
-				// - The backoff was decremented or not required
-				// - The frame 'next_frame_to_send' is ready to be transmitted
-				//
-				//-----------------------------------------------------------------
-				
-				//Control
-				char		msg[500];
-				//Packet
-				Packet*		frame_pk;
-				
-				debug_print(LOW , DEBUG_STATE , "ENTER - EMISSION1 - %d\n", my_address);
-				
-				
-				//------------------------------------------
-				//			  TRANSMISSION
-				//------------------------------------------
-				
-				//The transmitter is not busy -> we are not in transmission -> we send our packet
-				//- We have a default state self-transition (if the medium keeps on being used)
-				//  Consequently we must avoid to send the same frame although the current frame is already in transmission
-				if (!is_tx_busy){
-				
-					//debug
-					debug_print(LOW , DEBUG_SEND , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
-					debug_print(LOW , DEBUG_NODE , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
-				
-				
-					//Prepares the packet
-					is_tx_busy = OPC_TRUE;
-					frame_pk = create_packet(next_frame_to_send);
-					
-					
-					//The reply was sent (if it was a reply!)
-					is_reply_required = OPC_TRUE;
-				
-					
-					// ---- TRANSMISSION POWER ----
-					
-					/*if ((my_current_tx_power != next_frame_to_send.power_ratio) && (next_frame_to_send.type != SYNC_PK_TYPE)){
-						change_tx_power(POWER_TX * next_frame_to_send.power_ratio , STREAM_TO_RADIO);
-						my_current_tx_power = next_frame_to_send.power_ratio;
-					}
-					*/
-					
-					// -----  SPECIAL ACTIONS  -----
-				
-					
-					if (next_frame_to_send.destination == BROADCAST)
-						print_nav_list(DEBUG_HELLO);
-					
-					switch (next_frame_to_send.type){
-					
-						//Ack sent -> no more busy_tone required
-						case ACK_PK_TYPE:
-							is_busy_tone_tx = OPC_FALSE;
-						break;
-						
-						//RTS sent -> we ignore further busy tone in reception
-						case RTS_PK_TYPE:
-							busy_tone_rx_ignored = OPC_TRUE;
-						break;
-						
-						//CTS sent -> we activate the busy tone
-						case CTS_PK_TYPE:
-							maintain_busy_tone(SIFS);
-						break;
-						
-						//Increases power (to 10W, that is enormous and all the nodes will get it)
-						//If a node does not receive the SYNC it is not a problem: the branch will not expand to the network extremities
-						case SYNC_PK_TYPE:
-					
-							if (is_sync_direct_antenna)	
-								change_antenna_direction(STREAM_TO_DIRECT_SYNC , sync_last_branch);
-							else
-								change_tx_power(1000 , STREAM_TO_RADIO);
-						break;
-						
-						case HELLO_PK_TYPE:
-							is_hello_to_send = OPC_FALSE;
-						break;
-					}
-					
-					
-					
-					// -----  TRANSMISSSION  -----
-					if ((next_frame_to_send.type == SYNC_PK_TYPE) && (is_sync_direct_antenna))
-						op_pk_send(frame_pk , STREAM_TO_DIRECT_SYNC);
-					else 
-						op_pk_send(frame_pk , STREAM_TO_RADIO);
-				
-					
-					//Registers the frame as sent (if a reply is required: ACK/CTS/...)
-					last_frame_sent = next_frame_to_send;
-					last_frame_sent.released = OPC_FALSE;
-					set_next_frame_null();
-				}
-				//else -> nothing, we just stay in this state while the transmission and keep to treat other interrupts
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				//Timeouts -> an interruption will be scheduled when we finished the transmission (the medium becomes idle)
-				
-				debug_print(LOW , DEBUG_STATE , "EXIT - EMISSION1 - %d\n", my_address);
-				}
-				FSM_PROFILE_SECTION_OUT (state3_enter_exec)
-
-			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (7,"cmac_process")
-
-
-			/** state (EMISSION) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (3, "EMISSION", "cmac_process [EMISSION exit execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [EMISSION exit execs]", state3_exit_exec)
-				{
-				
-				
-				debug_print(MAX , DEBUG_STATE , "ENTER - EMISSION2 - %d\n", my_address);
-				
-				
-				//Handles the possible interruptions (STREAM || STAT)
-				debug_print(LOW , DEBUG_STATE , "EMISSION\n");
-				interrupt_process();
-				
-				
-				
-				
-					
-					
-				//Transmission finished !
-				if (!is_tx_busy){
-					debug_print(LOW , DEBUG_SEND , "transmission ended\n");
-				
-				
-					//-----------------------------------------------------
-					//	NORMAL TRANSMISSION POWER
-					//-----------------------------------------------------
-				
-				
-					//Decrease the power to a normal value
-					if (last_frame_sent.type == SYNC_PK_TYPE){
-						
-						//normal power transmission
-						if (!is_sync_direct_antenna)
-							change_tx_power(POWER_TX , STREAM_TO_RADIO);
-						
-						//Next sync if we have a directional antenna
-						if ((sync_last_branch != MAX_NB_BRANCHES - 1) && (is_sync_direct_antenna)){
-							sync_last_branch++;
-							generate_sync();
-						}
-						else
-							sync_last_branch = 0;
-					}
-						
-					
-					
-					//-----------------------------------------------------
-					//	MULTI_CHANNEL -> COMMUTES
-					//-----------------------------------------------------
-				
-					if (nb_channels > 1){
-					
-						//CTR sent -> changes to the privileged channel
-						if (last_frame_sent.type == CTR_PK_TYPE){
-							change_tx_rx_freq(my_privileged_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
-							
-							if (op_ev_valid(main_freq_return_intrpt))
-								op_ev_cancel(main_freq_return_intrpt);
-							main_freq_return_intrpt = op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration , MAIN_FREQ_RETURN_CODE);
-						}
-						
-						
-						//CTR-ACK sent -> changes to the privileged channel
-						if ((last_frame_sent.type == CTR_ACK_PK_TYPE) && (last_frame_sent.nb_retry == 0)){
-						
-							//Channel change
-							change_tx_rx_freq(my_privileged_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
-							
-							//sends a CTR-ACK through the privileged channel if no data frame to send
-							if (is_frame_buffer_empty()){
-								last_frame_sent.nb_retry++;
-								change_next_frame(last_frame_sent);
-							}
-							
-						}
-						
-						
-						
-					}
-						
-						
-					//-----------------------------------------------------
-					//	Must the node wait a reply for this frame ?
-					//-----------------------------------------------------
-				
-					//BROADCAST Frame 
-					if (last_frame_sent.destination == BROADCAST)
-						is_reply_required = OPC_FALSE;
-					
-					//Ack Frame
-					else if (last_frame_sent.type == ACK_PK_TYPE)
-						is_reply_required = OPC_FALSE;
-					
-					//Ctr and no farther border node
-					else if (last_frame_sent.type == CTR_END_PK_TYPE)
-						is_reply_required = OPC_FALSE;
-					
-					else if (last_frame_sent.type == CTR_ACK_PK_TYPE)
-						is_reply_required = OPC_FALSE;
-				
-					//default behavior	
-					else	
-						is_reply_required = OPC_TRUE;
-				
-					
-					
-					
-					
-					//-----------------------------------------------------
-					//					Privileged mode
-					//-----------------------------------------------------	
-					//I sent a CTR-END -> I am no longer priviledged
-					if (last_frame_sent.type == CTR_END_PK_TYPE){
-						is_node_privileged = OPC_FALSE;
-						debug_print(LOW , DEBUG_CONTROL , "the node becomes unpriviledged\n");
-					}
-				
-					
-					
-					
-					//-----------------------------------------------------
-					//						Timeout
-					//-----------------------------------------------------	
-					//Timeout of a reply is required
-					if (is_reply_required){
-				
-						//DATA sent -> a ack only is required
-						if ((is_node_privileged) && (nb_channels > 1) && (last_frame_sent.type == DATA_UNICAST_PK_TYPE))
-							add_frame_timeout(compute_ack_pk_size());
-						else 
-							add_frame_timeout(MTU_MAX);
-					}
-						
-					//-----------------------------------------------------
-					//						Acks
-					//-----------------------------------------------------	
-					//Deletes the corresponding data frame (no ack required)
-					else if ((last_frame_sent.type == DATA_MULTICAST_PK_TYPE) || (last_frame_sent.type == HELLO_PK_TYPE))
-						del_frame_buffer_with_id(last_frame_sent.frame_id , OPC_FALSE);
-					
-				
-				}
-				debug_print(LOW , DEBUG_STATE , "EXIT - EMISSION2 - %d\n", my_address);
-				}
-				FSM_PROFILE_SECTION_OUT (state3_exit_exec)
-
-
-			/** state (EMISSION) transition processing **/
-			FSM_PROFILE_SECTION_IN ("cmac_process [EMISSION trans conditions]", state3_trans_conds)
-			FSM_INIT_COND (!is_tx_busy)
-			FSM_DFLT_COND
-			FSM_TEST_LOGIC ("EMISSION")
-			FSM_PROFILE_SECTION_OUT (state3_trans_conds)
-
-			FSM_TRANSIT_SWITCH
-				{
-				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "!is_tx_busy", "", "EMISSION", "END_TRANSMIT", "cmac_process [EMISSION -> END_TRANSMIT : !is_tx_busy / ]")
-				FSM_CASE_TRANSIT (1, 3, state3_enter_exec, ;, "default", "", "EMISSION", "EMISSION", "cmac_process [EMISSION -> EMISSION : default / ]")
-				}
-				/*---------------------------------------------------------*/
-
-
-
-			/** state (DEFER) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (4, "DEFER", state4_enter_exec, "cmac_process [DEFER enter execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [DEFER enter execs]", state4_enter_exec)
-				{
-				//Next data frame to send
-				frame_struct	*frame_ptr;
-				frame_struct	data_frame;
-				frame_struct	next_data_frame;
-				//transmission time
-				double			time_for_first_data;
-				double			time_for_second_data;
-				//Control
-				char			msg[200];
-				
-				
-				debug_print(LOW , DEBUG_STATE , "ENTER - DEFER1 - %d\n", my_address);
-				
-				
-				//------------------------------------------
-				//			   GET DATA FRAME
-				//------------------------------------------
-				
-				
-				debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, border %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg) ,  IS_PK_TO_SEND , is_border_node , is_node_privileged);
-				if (is_node_privileged)
-					debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d (medium %d, high %d)\n", time_start_privileged , slot_privileged_duration * PRIV_MIN_RATIO , time_start_privileged + slot_privileged_duration * PRIV_MIN_RATIO <= op_sim_time() , PRIVILEGED_END , PRIVILEGED_MEDIUM_LIMIT , PRIVILEGED_HIGH_LIMIT);
-						
-				
-				//We have no frame which is scheduled to be transmitted
-				if (next_frame_to_send.type == NO_PK_TYPE){
-				
-				
-					//----------------------------------------------
-					//			BORDER & PRIVILEGED 
-					//----------------------------------------------
-					if (is_node_privileged){
-					
-						//Buffer empty -> I will lose my priviledged status
-						if ((PRIVILEGED_MEDIUM_LIMIT) || (PRIVILEGED_HIGH_LIMIT))
-							generate_ctr();
-				
-						else if ((is_frame_buffer_empty()) && (!PRIVILEGED_MEDIUM_LIMIT))
-							op_sim_end("We should not be in this state if we have nothing to send", "and we cannot end the priviledge mode" , "" , "");
-							
-						//I send the first data_frame of the queue
-						else{
-							//first frame
-							frame_ptr			= get_frame_buffer(0);
-							data_frame 			= *frame_ptr;
-							time_for_first_data = compute_rts_cts_data_ack_time(data_frame.pk_size) ;
-							
-							//An eventual second frame
-							frame_ptr	= get_frame_buffer(1);
-							if (frame_ptr != NULL){
-								next_data_frame 		= *frame_ptr;
-								time_for_second_data 	= compute_rts_cts_data_ack_time(next_data_frame.pk_size) ;
-							}
-							else
-								time_for_second_data = 0;
-							
-							//We have not the time to send this data packet !
-							if (time_for_first_data + op_sim_time() >= slot_privileged_duration + time_start_privileged)
-								generate_ctr();
-							
-							else{
-								
-								//Medium reservation if a second packet has to be transmitted
-								if ((time_for_second_data == 0) || (time_for_first_data + time_for_second_data + op_sim_time() >= slot_privileged_duration + time_start_privileged))
-									data_frame.duration = 0;
-								else
-									data_frame.duration = next_data_frame.pk_size;
-								
-								//Prepare the next transmission
-								change_next_frame(data_frame);
-							}
-							
-							
-						}
-					}
-					
-					//----------------------------------------------
-					//			NORMAL NODE
-					//----------------------------------------------
-					else if (!is_frame_buffer_empty()){
-				
-						//get the first data packet to send
-						frame_ptr = get_frame_buffer(0);		
-						if (frame_ptr != NULL)
-							data_frame = *frame_ptr;
-					
-						//broadcast frames do not need any RTS
-						if ((data_frame.destination == BROADCAST) || (data_frame.pk_size  > RTS_PK_SIZE))
-							change_next_frame(data_frame);
-						
-						//Generates a new RTS, it will be automatically registered as the new frame to send
-						else{
-				
-							generate_rts(data_frame.destination , data_frame.pk_size , data_frame.frame_id , data_frame.power_ratio);
-				
-							if (DEBUG >= MAX){
-								print_unicast_frame_buffer(DEBUG_SEND);
-								print_multicast_frame_buffer(DEBUG_SEND);
-							}
-						}
-					}
-					else
-						printf("It is strange, I entered in DEFER wihtout any packet to send\n");
-				}
-				
-				
-				
-				
-				
-				
-				
-				//debug
-				debug_print(MEDIUM , DEBUG_SEND , "has a packet to send to %d (type %s, id %d, nb_retry %d)\n", next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , next_frame_to_send.nb_retry);
-				
-				
-				
-				
-				//------------------------------------------
-				//			   INTER FRAME TIME
-				//------------------------------------------
-				
-				
-				//The medium becomes free -> we must wait the inter_frame time
-				if (!IS_MEDIUM_BUSY){
-					if ((is_node_privileged) && ((next_frame_to_send.type == CTR_PK_TYPE) || (next_frame_to_send.type == CTR_END_PK_TYPE)) )
-						next_frame_to_send.ifs = PIFS;
-					else if ((is_node_privileged) && (nb_channels > 1))
-						next_frame_to_send.ifs = 0;
-					else if (is_node_privileged)
-						next_frame_to_send.ifs = SIFS;
-					else if ((next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == HELLO_PK_TYPE))
-						next_frame_to_send.ifs = DIFS;
-					else
-						next_frame_to_send.ifs = SIFS;
-				
-					//We will verify that the medium remains idle
-					op_intrpt_schedule_self(op_sim_time() + next_frame_to_send.ifs , DEFER_CODE);
-				}
-				
-				
-				
-				
-				
-				debug_print(LOW , DEBUG_STATE , "EXIT - DEFER1 - %d - timeout %f\n", my_address , next_frame_to_send.ifs *1E6);
-				debug_print(LOW, DEBUG_STATE , "%d : %d %d %d %d %d %d %d\n", IS_MEDIUM_BUSY , is_rx_busy , is_tx_busy , get_nav_main_freq() >= op_sim_time() , is_busy_tone_rx , !busy_tone_rx_ignored , BUSY_TONE_ACTIVATED , !is_border_node);
-				print_nav_list(DEBUG_STATE);
-				}
-				FSM_PROFILE_SECTION_OUT (state4_enter_exec)
-
-			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (9,"cmac_process")
-
-
-			/** state (DEFER) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (4, "DEFER", "cmac_process [DEFER exit execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [DEFER exit execs]", state4_exit_exec)
-				{
-				//The inter-frame time
-				//double		time_to_wait;
-				//To verify if we must terminate the simulation
-				double		max;
-				int			node_id;
-				//control
-				int			i;
-				
-				
-				
-				
-				
-				debug_print(LOW , DEBUG_STATE , "ENTER - DEFER2 - %d\n", my_address);
-				
-				
-				//Handles the possible interruptions (STREAM || STAT)
-				interrupt_process();
-				
-				
-				
-				
-				
-				
-				//------------------------------------------
-				//			   BACKOFF
-				//------------------------------------------
-				
-				// STAT_INTRPT + !MEDIUM_BUSY -> I must wait the IFS (and not take directly a transition)
-				// If such an interruptions occurs, we schedule the IFS verification, but don't change the backoff
-				// Thus, the default behavior is to have an invalid backoff in order to avoid any state transition
-				my_backoff = -1;
-				
-				
-				
-				//I try to transmit or decrement the backoff only if :
-				// -> No transmission (this is never the case since the transmission state is not here)
-				// -> No reception
-				// -> The medium was not previously reserved (verify the value of my NAV)
-				//
-				if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
-					
-					if (!IS_MEDIUM_BUSY){
-						if ((!is_node_privileged) &&     (     (next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.destination == BROADCAST) || ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE))   )      ){
-				
-							//Takes a new backoff
-							my_backoff = op_dist_outcome (backoff_dist);
-						
-							//Schedules the backoff interrupt (deletes an eventual old interruption)
-							if (op_ev_valid(backoff_intrpt))
-								op_ev_cancel(backoff_intrpt);			
-							backoff_intrpt = op_intrpt_schedule_self(op_sim_time() + SLOT_BACKOFF * my_backoff , BACKOFF_CODE);
-					
-							//debug
-							debug_print(LOW , DEBUG_BACKOFF , "new backoff %d\n", my_backoff);
-						}
-						else{
-							my_backoff = 0;
-							debug_print(MEDIUM , DEBUG_BACKOFF , "no backoff required (priviledged %d, next=rts %d, broadcast %d)\n", my_backoff , is_node_privileged , next_frame_to_send.type == RTS_PK_TYPE , next_frame_to_send.destination == BROADCAST);
-						}
-						
-						
-					}
-					else
-						debug_print(MEDIUM , DEBUG_SEND , "the medium is busy, we must wait\n");
-				
-				
-					//The medium is busy and we have the priority -> that is not regular !
-					if (PRIORITY_AND_MEDIUM_BUSY){
-						debug_print(LOW , DEBUG_SEND , "a collision occurred (we have the priority and the medium is busy, we discard the current flow\n");
-						
-						//Discard the current packet
-						set_next_frame_null();
-						
-					}
-				}
-				
-				
-				
-				//------------------------------------------
-				//		  CANCEL OBSOLETE TRANSMISSIONS
-				//------------------------------------------
-				
-				if 	((next_frame_to_send.type == RTS_PK_TYPE) && (is_unicast_frame_buffer_empty())){
-					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: RTS and the frame buffer is empty\n");
-					set_next_frame_null();
-				}
-				
-				
-				if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
-					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
-					set_next_frame_null();
-				}
-				
-				if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && IS_BROADCAST_FORBIDDEN){
-					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
-					set_next_frame_null();
-				}
-				
-					
-				
-				
-				//------------------------------------------
-				//	 TERMINATE SIMULATION (if required)
-				//------------------------------------------
-				
-				//Get the nex start time for data frames 
-				// ->but avoids too frequent verifications (it will slow the simulation)
-				
-				if (last_next_start_time_verif < op_sim_time() - 30.0){
-					next_start_time = 0;
-					for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
-				
-						node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
-				
-						if (op_ima_obj_attr_exists(node_id , "source.Start Time Packet Generation"))
-							op_ima_obj_attr_get(node_id , "source.Start Time Packet Generation" , &max);
-						if (max > next_start_time)
-							next_start_time = max;
-					}	
-					
-					last_next_start_time_verif = op_sim_time();
-				}
-				
-				
-				
-				
-				
-				debug_print(LOW , DEBUG_STATE , "EXIT - DEFER2 - %d (%d, %d)\n", my_address, IS_MEDIUM_BUSY , my_backoff);
-				
-				
-				debug_print(MAX , DEBUG_SEND , "busy -> rx_busy %d tx_busy %d nav %f -> %d medium busy %d\n", is_rx_busy , is_tx_busy , get_nav_main_freq() , get_nav_main_freq() > op_sim_time() , IS_MEDIUM_BUSY   );
-				}
-				FSM_PROFILE_SECTION_OUT (state4_exit_exec)
-
-
-			/** state (DEFER) transition processing **/
-			FSM_PROFILE_SECTION_IN ("cmac_process [DEFER trans conditions]", state4_trans_conds)
-			FSM_INIT_COND (GO_TO_SEND && !END_SIMULATION)
-			FSM_TEST_COND (GO_TO_BACKOFF && !END_SIMULATION)
-			FSM_TEST_COND (TRANSMISSION_CANCELED && !END_SIMULATION)
-			FSM_TEST_COND (END_SIMULATION)
-			FSM_DFLT_COND
-			FSM_TEST_LOGIC ("DEFER")
-			FSM_PROFILE_SECTION_OUT (state4_trans_conds)
-
-			FSM_TRANSIT_SWITCH
-				{
-				FSM_CASE_TRANSIT (0, 3, state3_enter_exec, ;, "GO_TO_SEND && !END_SIMULATION", "", "DEFER", "EMISSION", "cmac_process [DEFER -> EMISSION : GO_TO_SEND && !END_SIMULATION / ]")
-				FSM_CASE_TRANSIT (1, 5, state5_enter_exec, ;, "GO_TO_BACKOFF && !END_SIMULATION", "", "DEFER", "BACKOFF", "cmac_process [DEFER -> BACKOFF : GO_TO_BACKOFF && !END_SIMULATION / ]")
-				FSM_CASE_TRANSIT (2, 1, state1_enter_exec, ;, "TRANSMISSION_CANCELED && !END_SIMULATION", "", "DEFER", "IDLE", "cmac_process [DEFER -> IDLE : TRANSMISSION_CANCELED && !END_SIMULATION / ]")
-				FSM_CASE_TRANSIT (3, 8, state8_enter_exec, ;, "END_SIMULATION", "", "DEFER", "END", "cmac_process [DEFER -> END : END_SIMULATION / ]")
-				FSM_CASE_TRANSIT (4, 4, state4_enter_exec, ;, "default", "", "DEFER", "DEFER", "cmac_process [DEFER -> DEFER : default / ]")
-				}
-				/*---------------------------------------------------------*/
-
-
-
-			/** state (BACKOFF) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (5, "BACKOFF", state5_enter_exec, "cmac_process [BACKOFF enter execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [BACKOFF enter execs]", state5_enter_exec)
-				{
-				
-				debug_print(LOW , DEBUG_STATE , "Enter in backoff state\n");
-				
-				
-				}
-				FSM_PROFILE_SECTION_OUT (state5_enter_exec)
-
-			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (11,"cmac_process")
-
-
-			/** state (BACKOFF) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (5, "BACKOFF", "cmac_process [BACKOFF exit execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [BACKOFF exit execs]", state5_exit_exec)
-				{
-				//Inter frame time
-				//double		time_to_wait;
-				
-				debug_print(LOW , DEBUG_STATE , "ENTER - BACKOFF2 - %d\n", my_address);
-				
-				
-				
-				
-				//Handles the possible interruptions (STREAM || STAT)
-				interrupt_process();
-				
-				
-				//The backoff is finished
-				if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == BACKOFF_CODE)){
-					debug_print(MEDIUM, DEBUG_BACKOFF , "the backoff is finished, we can transmit our frame\n");
-					my_backoff = 0;
-				}
-				
-				
-				
-				
-				//------------------------------------------
-				//			   STOP  BACKOFF
-				//------------------------------------------
-				
-				//The medium is busy OR medium reserved -> stop the backoff
-				if ((op_ev_valid(backoff_intrpt)) && (IS_MEDIUM_BUSY)){
-					
-					//Stores the remaining backoff
-					my_backoff = ceil((op_ev_time(backoff_intrpt) - op_sim_time()) / SLOT_BACKOFF);
-				
-					//disable the previous backoff interrupt (the backoff must not be decremented during medium activity)
-					op_ev_cancel(backoff_intrpt);
-				
-					//debug
-					debug_print(MEDIUM , DEBUG_BACKOFF , "stoping backoff %d (busy %d, nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
-				}
-				
-				
-				
-				
-				
-				//------------------------------------------
-				//			  RESTART  BACKOFF
-				//------------------------------------------
-				
-				//the medium becomes idle OR reservation expired -> resume the backoff
-				if ((!op_ev_valid(backoff_intrpt)) && (!IS_MEDIUM_BUSY) && ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE))){
-				
-					//Schedules the backoff interrupt
-					backoff_intrpt = op_intrpt_schedule_self(op_sim_time() + SLOT_BACKOFF * my_backoff , BACKOFF_CODE);
-				
-					//debug
-					debug_print(MEDIUM , DEBUG_BACKOFF , "resuming backoff %d (busy %d nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
-				}
-				
-				
-				
-				
-				
-				
-				
-				//------------------------------------------
-				//			   INTER FRAME TIME
-				//------------------------------------------
-				
-				
-				//The medium becomes free -> we must wait the inter_frame time
-				if ((!op_ev_valid(backoff_intrpt)) && (!IS_MEDIUM_BUSY) && (!op_ev_valid(defer_intrpt))){
-				
-					//We will verify that the medium remains idle (inter frame space was already computed in the state DEFER)
-					defer_intrpt = op_intrpt_schedule_self(op_sim_time() + next_frame_to_send.ifs , DEFER_CODE);
-				
-					//debug
-					debug_print(MEDIUM , DEBUG_BACKOFF , "defer %f for the inter frame time\n", next_frame_to_send.ifs * 1E6);
-				}
-				
-				
-				
-				
-				
-				
-				//------------------------------------------
-				//		  CANCEL OBSOLETE TRANSMISSIONS
-				//------------------------------------------
-				// This case can occur if we received an ack athough we already entered in backoff mode
-				
-				if 	((next_frame_to_send.type == RTS_PK_TYPE) && (is_unicast_frame_buffer_empty())){
-					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: RTS and the frame buffer is empty\n");
-					set_next_frame_null();
-				}
-				
-				
-				if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
-					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
-					set_next_frame_null();
-				}
-				
-				if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && IS_BROADCAST_FORBIDDEN){
-					debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
-					set_next_frame_null();
-				}
-				
-				
-				
-				
-				//------------------------------------------
-				//			   DEBUG
-				//------------------------------------------
-				
-				//Debug
-				
-				debug_print(MAX , DEBUG_BACKOFF , "IS_BACK_TO_DEFER %d backoff %d (conditions %d %d %d %d)\n", IS_BACK_TO_DEFER , my_backoff , next_frame_to_send.type == CTR_PK_TYPE , IS_FRAME_RECEIVED , IS_REPLY_TO_SEND , is_rx_busy);
-				
-				
-				debug_print(MAX , DEBUG_BACKOFF , "TYPE %d (self %d stream %d stat %d), code %d\n", op_intrpt_type() , OPC_INTRPT_SELF , OPC_INTRPT_STRM , OPC_INTRPT_STAT , op_intrpt_code());
-				if (op_intrpt_type() == OPC_INTRPT_STRM){
-					debug_print(MAX , DEBUG_BACKOFF , "stream %d\n", op_intrpt_strm());
-					debug_print(MAX , DEBUG_BACKOFF , "%d %d %d %d %d\n", op_intrpt_type() , OPC_INTRPT_STRM , (op_intrpt_type() == OPC_INTRPT_STRM) , (op_intrpt_strm() == STREAM_FROM_RADIO) , IS_FRAME_RECEIVED);
-				}
-				
-				
-				
-				
-				
-				
-				
-				
-				//---------------------------------------------
-				//		EXIT BACKOFF -> CANCEL the INTRPT
-				//---------------------------------------------
-				
-				if ((IS_BACK_TO_DEFER) || (TRANSMISSION_CANCELED))
-					if (op_ev_valid(backoff_intrpt))
-						op_ev_cancel(backoff_intrpt);
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				debug_print(LOW , DEBUG_STATE , "EXIT - BACKOFF2 - %d\n", my_address);
-				}
-				FSM_PROFILE_SECTION_OUT (state5_exit_exec)
-
-
-			/** state (BACKOFF) transition processing **/
-			FSM_PROFILE_SECTION_IN ("cmac_process [BACKOFF trans conditions]", state5_trans_conds)
-			FSM_INIT_COND (!IS_BACK_TO_DEFER && !TRANSMISSION_CANCELED  && (my_backoff == 0))
-			FSM_TEST_COND (!TRANSMISSION_CANCELED && IS_BACK_TO_DEFER)
-			FSM_TEST_COND (TRANSMISSION_CANCELED)
-			FSM_DFLT_COND
-			FSM_TEST_LOGIC ("BACKOFF")
-			FSM_PROFILE_SECTION_OUT (state5_trans_conds)
-
-			FSM_TRANSIT_SWITCH
-				{
-				FSM_CASE_TRANSIT (0, 3, state3_enter_exec, ;, "!IS_BACK_TO_DEFER && !TRANSMISSION_CANCELED  && (my_backoff == 0)", "", "BACKOFF", "EMISSION", "cmac_process [BACKOFF -> EMISSION : !IS_BACK_TO_DEFER && !TRANSMISSION_CANCELED  && (my_backoff == 0) / ]")
-				FSM_CASE_TRANSIT (1, 4, state4_enter_exec, ;, "!TRANSMISSION_CANCELED && IS_BACK_TO_DEFER", "", "BACKOFF", "DEFER", "cmac_process [BACKOFF -> DEFER : !TRANSMISSION_CANCELED && IS_BACK_TO_DEFER / ]")
-				FSM_CASE_TRANSIT (2, 1, state1_enter_exec, ;, "TRANSMISSION_CANCELED", "", "BACKOFF", "IDLE", "cmac_process [BACKOFF -> IDLE : TRANSMISSION_CANCELED / ]")
-				FSM_CASE_TRANSIT (3, 5, state5_enter_exec, ;, "default", "", "BACKOFF", "BACKOFF", "cmac_process [BACKOFF -> BACKOFF : default / ]")
-				}
-				/*---------------------------------------------------------*/
-
-
-
-			/** state (END_TRANSMIT) enter executives **/
-			FSM_STATE_ENTER_FORCED (6, "END_TRANSMIT", state6_enter_exec, "cmac_process [END_TRANSMIT enter execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [END_TRANSMIT enter execs]", state6_enter_exec)
-				{
-				//Control
-				char	msg[500];
-				
-				
-				
-				//Just a debug message when we start to wait the reply for one of our frame
-				if (is_reply_required){
-					//debug
-					debug_print(MAX , DEBUG_SEND , "%s sent, it must wait a reply\n", pk_type_to_str(last_frame_sent.type , msg));
-				
-				
-					//We did not received yet a reply for our transmission (we just leave it !)
-					is_reply_received = OPC_FALSE;
-				}
-				}
-				FSM_PROFILE_SECTION_OUT (state6_enter_exec)
-
-			/** state (END_TRANSMIT) exit executives **/
-			FSM_STATE_EXIT_FORCED (6, "END_TRANSMIT", "cmac_process [END_TRANSMIT exit execs]")
-
-
-			/** state (END_TRANSMIT) transition processing **/
-			FSM_PROFILE_SECTION_IN ("cmac_process [END_TRANSMIT trans conditions]", state6_trans_conds)
-			FSM_INIT_COND (is_reply_required)
-			FSM_TEST_COND (!is_reply_required&& !IS_PK_TO_SEND && ! PRIVILEGED_END)
-			FSM_TEST_COND (!is_reply_required && (IS_PK_TO_SEND || PRIVILEGED_END))
-			FSM_TEST_LOGIC ("END_TRANSMIT")
-			FSM_PROFILE_SECTION_OUT (state6_trans_conds)
-
-			FSM_TRANSIT_SWITCH
-				{
-				FSM_CASE_TRANSIT (0, 7, state7_enter_exec, ;, "is_reply_required", "", "END_TRANSMIT", "WAIT_NEXT", "cmac_process [END_TRANSMIT -> WAIT_NEXT : is_reply_required / ]")
-				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, ;, "!is_reply_required&& !IS_PK_TO_SEND && ! PRIVILEGED_END", "", "END_TRANSMIT", "IDLE", "cmac_process [END_TRANSMIT -> IDLE : !is_reply_required&& !IS_PK_TO_SEND && ! PRIVILEGED_END / ]")
-				FSM_CASE_TRANSIT (2, 4, state4_enter_exec, ;, "!is_reply_required && (IS_PK_TO_SEND || PRIVILEGED_END)", "", "END_TRANSMIT", "DEFER", "cmac_process [END_TRANSMIT -> DEFER : !is_reply_required && (IS_PK_TO_SEND || PRIVILEGED_END) / ]")
-				}
-				/*---------------------------------------------------------*/
-
-
-
-			/** state (WAIT_NEXT) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (7, "WAIT_NEXT", state7_enter_exec, "cmac_process [WAIT_NEXT enter execs]")
-
-			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (15,"cmac_process")
-
-
-			/** state (WAIT_NEXT) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (7, "WAIT_NEXT", "cmac_process [WAIT_NEXT exit execs]")
-				FSM_PROFILE_SECTION_IN ("cmac_process [WAIT_NEXT exit execs]", state7_exit_exec)
-				{
-				//Control
-				char		msg[500];
-				//char		msg2[500];
-				//packet and info
-				//Packet		*frame;
-				//int			source , destination , type;
-				
-				
-				//Default (will change of the received packet is not that we expect
-				is_reply_bad = OPC_FALSE;
-				
-				
-				debug_print(LOW , DEBUG_STATE , "ENTER - WAIT_NEXT2 - %d\n", my_address);
-				
-				
-				//Handles the possible interruptions (STREAM || STAT)
-				//NB: if we had a timeout, and we received a packet, we can answer to the received packet and discard temporarily the retransmission (rather delay it)
-				interrupt_process();
-				
-				
-				
-				//The frame timeouted -> we must retransmit it
-				if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
-					
-					//Failed -> we increments the nb_retry for the corresponding data_frame
-					//NB: it is a unicast frame since multicast frame are not acknowledged
-					if ((last_frame_sent.type == DATA_UNICAST_PK_TYPE) || (last_frame_sent.type == RTS_PK_TYPE))
-						increment_nb_rety_unicast_frame_buffer(last_frame_sent.frame_id);
-						
-					debug_print(LOW , DEBUG_TIMEOUT , "the flow to %d is broken for one of my frame (type %s, retry %d , id %d, next type %d) (timeout %d bad_reply %d)\n", last_frame_sent.destination , pk_type_to_str(last_frame_sent.type, msg) , last_frame_sent.nb_retry , last_frame_sent.frame_id , next_frame_to_send.type , IS_FRAME_TIMEOUT , is_reply_bad);
-					
-					
-					//CTR -> we must retransmit it
-					if ((last_frame_sent.type == CTR_PK_TYPE) && (last_frame_sent.nb_retry < MAX_NB_RETRY)){
-					
-						//increase the nb of retries
-						last_frame_sent.nb_retry ++;
-						
-						//And retransmission !
-						change_next_frame(last_frame_sent);
-						
-						//Failed -> go to the main channel
-						if (nb_channels > 1)
-							change_tx_rx_freq(my_main_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
-					}
-					
-				
-					//Error time when a packet failed
-					if (!is_node_privileged)
-						update_nav_time(EIFS , my_address , my_main_frequency , -1);
-					
-					
-					//The frame timeouted: no more busy tone in transmission
-					is_busy_tone_tx 		= OPC_FALSE;
-				}
-				
-				
-				
-				//The medium is no longer reserved for this flow
-				if ((is_reply_received) || (IS_FRAME_TIMEOUT) || is_reply_bad) {
-					is_reply_required 		= OPC_FALSE;
-					
-					//The transmission whatever it is succefull or not is ended: we must take into account the current busy tones
-					busy_tone_rx_ignored 	= OPC_FALSE;
-				}
-				
-				
-				
-				
-				
-				
-				
-				
-				debug_print(LOW , DEBUG_STATE , "EXIT - WAIT_NEXT2 - %d\n", my_address);
-				
-				}
-				FSM_PROFILE_SECTION_OUT (state7_exit_exec)
-
-
-			/** state (WAIT_NEXT) transition processing **/
-			FSM_PROFILE_SECTION_IN ("cmac_process [WAIT_NEXT trans conditions]", state7_trans_conds)
-			FSM_INIT_COND (is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad)
-			FSM_DFLT_COND
-			FSM_TEST_LOGIC ("WAIT_NEXT")
-			FSM_PROFILE_SECTION_OUT (state7_trans_conds)
-
-			FSM_TRANSIT_SWITCH
-				{
-				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad", "", "WAIT_NEXT", "END_TRANSMIT", "cmac_process [WAIT_NEXT -> END_TRANSMIT : is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad / ]")
-				FSM_CASE_TRANSIT (1, 7, state7_enter_exec, ;, "default", "", "WAIT_NEXT", "WAIT_NEXT", "cmac_process [WAIT_NEXT -> WAIT_NEXT : default / ]")
-				}
-				/*---------------------------------------------------------*/
-
-
-
-			/** state (END) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (8, "END", state8_enter_exec, "cmac_process [END enter execs]")
-
-			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (17,"cmac_process")
-
-
-			/** state (END) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (8, "END", "cmac_process [END exit execs]")
-
-
-			/** state (END) transition processing **/
-			FSM_TRANSIT_FORCE (8, state8_enter_exec, ;, "default", "", "END", "END", "cmac_process [END -> END : default / ]")
-				/*---------------------------------------------------------*/
-
-
-
-			}
-
-
-		FSM_EXIT (0,"cmac_process")
-		}
+]]>
+</termination-block>
+<states initial-state-id="40">
+<state id="40" x="90" y="90">
+<attribute name="name" type="string" value="INIT"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
+<![CDATA[
+//Ids
+Objid	mac_params_comp_attr_objid;
+Objid	params_attr_objid;
+//Parameters
+Objid	chann_params_comp_attr_objid;
+Objid	subchann_params_attr_objid;
+//transmitters
+int		nb_radio;
+//Channels
+int		num_chann;
+Objid	chann_objid;
+Objid	sub_chann_objid;
+Objid	tx_id , rx_id;
+//Control
+int		i , j;
+char	str[300];
+//char	msg[500];
+//Statwires
+Objid	statwire_objid;
+int		num_statwires;
+double	threshold;
+//Filenames
+//char	filename[200];
+//Position, routes...
+int		x_int , y_int , x_sink, y_sink;
+int		sink_destination;
+//Id
+int		intf_id;
+
+
+
+	
+//-----------------------------------------------
+//		   		IDENTIFICATION
+//-----------------------------------------------
+
+
+//Process IDS 	
+my_stat_id		= nb_mac_nodes++;
+
+
+if (cmac_timestamp == 0)
+	cmac_timestamp = time(NULL);
+
+//Address
+op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
+my_address = atoi(str);
+op_ima_obj_attr_set (op_id_self(), "Address", &my_address);
+
+
+
+
+//-----------------------------------------------
+//		   			ROUTING
+//-----------------------------------------------
+
+
+
+
+
+//-------------  POSITIONS  -----------------
+
+y_int = my_address /  100;
+x_int = my_address - y_int * 100;
+
+op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "wlan_mac_intf.Destination" , &sink_destination);
+y_sink = (int)(sink_destination /  100);
+x_sink = (int)(sink_destination - y_sink * 100);
+
+
+
+
+
+//-----------  IS_BORDER_NODE  --------------
+
+is_border_node = OPC_FALSE;
+
+
+
+//--------------  IS_SINK  -----------------
+
+//The upper process is the first one since I am the lowest layer
+intf_id = op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_PROC , 0);
+if (op_topo_assoc_count(intf_id , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_STRM) > 1)
+	is_sink = OPC_TRUE;
+if (is_sink){
+	is_border_node 		= OPC_TRUE;
+	my_sync_rx_power 	= OPC_DBL_INFINITY;
+}
+
+
+
+//---------  DISTANCES / ROUTING  ------------
+
+if (is_sink)
+	my_dist_sink = 0;
+else
+	my_dist_sink = pow (2, 4) - 1;
+
+//dist border
+if (is_border_node)
+	my_dist_border = 0;
+else
+	my_dist_border = pow (2, 4) - 1;
+
+
+
+
+
+
+//-----------------------------------------------
+//		  		 PARAMETERS
+//-----------------------------------------------
+
+//Parameters
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "DEBUG",					&DEBUG);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "BETA",					&BETA);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "CHANNELS",				&nb_channels);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING_MAC",			&MAC_ROUTING);
+
+//No RTS / CTS -> pk_size set to the infinity value
+if (RTS_PK_SIZE == -1)
+	RTS_PK_SIZE = OPC_INT_INFINITY;
+
+
+if (is_sink){
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&slot_privileged_duration);
+	TIME_MAX_PRIVILEGED = slot_privileged_duration * 2;
+}
+else
+	slot_privileged_duration 	= 0;
+
+op_ima_obj_attr_get(op_id_self() ,  "Transmission Power",	&POWER_TX);
+
+
+//A border node is allowed to send packets only when it is privileged
+strict_privileged_mode = is_ctr_activated;
+
+//The busy tone is not activated if RTS are not used
+//NB : the busy tone is currently descativated (no better performances for a more complex system)
+BUSY_TONE_ACTIVATED = OPC_FALSE && (RTS_PK_SIZE < MTU_MAX);
+
+
+
+
+
+
+//-----------------------------------------------
+//		   		PROPERTIES
+//-----------------------------------------------
+
+is_node_privileged			= OPC_FALSE;
+last_frame_sent.type		= NO_PK_TYPE;
+next_frame_to_send.type		= NO_PK_TYPE;
+
+unicast_frame_buffer		= op_prg_list_create();
+multicast_frame_buffer		= op_prg_list_create();
+my_neighborhood_table		= op_prg_list_create();
+my_frame_id_seen			= op_prg_list_create();
+bn_list						= op_prg_list_create();
+my_nav_list					= op_prg_list_create();
+
+
+
+//Backoff distribution initialization
+cw 							= MAX_BACKOFF;
+backoff_dist 				= op_dist_load("uniform_int" , 0 , cw);
+
+//no reservation
+is_reply_required 			= OPC_FALSE;
+
+//Power of the last received sync frame
+my_sync_rx_power			= 0;
+
+//Power of the last received packet (when rx busy -> !busy)
+last_rx_power				= 0;
+busy_tone_rx_ignored		= OPC_FALSE;
+
+//next packet == hello
+is_hello_to_send 			= OPC_FALSE;
+
+//Verification of the next start time for data frames (in the source process)
+next_start_time				= 0;
+last_next_start_time_verif 	= 0;
+
+//Branches id
+ctr_last_branch 			= 0;
+sync_last_branch			= 0;
+my_branch					= -1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+//-----------------------------------------------
+//		  				 DEBUG
+//-----------------------------------------------
+
+if (my_stat_id == 0)
+	for(i=0 ; i < 20 ; i++)
+		debug_files[i] = NULL;
+
+if (DEBUG > NO){
+	if (my_stat_id == 0){
+		open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"results_cmac/%d_cmac_debug.txt" , 			cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_STATE] ,		"results_cmac/%d_cmac_debug_state.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"results_cmac/%d_cmac_debug_backoff.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_SEND] ,		"results_cmac/%d_cmac_debug_send.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_RECEIVE] ,	"results_cmac/%d_cmac_debug_receive.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_RADIO] ,		"results_cmac/%d_cmac_debug_radio.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"results_cmac/%d_cmac_debug_control.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"results_cmac/%d_cmac_debug_timeout.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_HELLO] ,		"results_cmac/%d_cmac_debug_hello.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_UP] ,		"results_cmac/%d_cmac_debug_up.txt" , 		cmac_timestamp);
 	}
-
-
-
-
-void
-_op_cmac_process_diag (OP_SIM_CONTEXT_ARG_OPT)
-	{
-	/* No Diagnostic Block */
-	}
-
-
-
-
-void
-_op_cmac_process_terminate (OP_SIM_CONTEXT_ARG_OPT)
-	{
-#if !defined (VOSD_NO_FIN)
-	int _op_block_origin = __LINE__;
-#endif
-
-	FIN_MT (_op_cmac_process_terminate ())
-
-	if (1)
-		{
-
-		/* Termination Block */
-
-		BINIT
-		{
+	open_debug_file(&my_debug_file,					"results_cmac/nodes/%d.txt" , 				my_address);
 		
+}
+
+
+
+
+//-----------------------------------------------
+//		  	 	TRANSMISSION
+//-----------------------------------------------
+
+
+//RADIO Parameters
+op_ima_obj_attr_get (op_id_self(), "Wireless LAN Parameters", &mac_params_comp_attr_objid);
+params_attr_objid = op_topo_child (mac_params_comp_attr_objid, OPC_OBJTYPE_GENERIC, 0);
+
+	
+//Parameters
+op_ima_obj_attr_get (params_attr_objid, "Data Rate", 						&operational_speed);
+
+//Power reception (to detect radio activity)
+op_ima_obj_attr_get (params_attr_objid, "Packet Reception-Power Threshold", &rx_power_threshold);
+
+//Channel
+op_ima_obj_attr_get (params_attr_objid, "Channel Settings", &chann_params_comp_attr_objid);
+subchann_params_attr_objid = op_topo_child (chann_params_comp_attr_objid, OPC_OBJTYPE_GENERIC, 0);
+op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 				&my_main_bandwidth);	
+op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 			&my_main_frequency);	
+
+
+if ((!is_ctr_activated) && (strict_privileged_mode))
+	op_sim_end("We can not desactivate the CTR" , "and function in BLOCKED_MODE" , "" , "");
+
+
+
+//-----------------------------------------------
+//				NORMAL RADIO
+//-----------------------------------------------
+
+
+//----- TRANSMISSION ----
+
+nb_radio = op_topo_assoc_count(op_id_self() , OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX);
+
+for (i=0; i<nb_radio ; i++){
+	
+
+	tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, i);
+	if (tx_id == OPC_OBJID_INVALID)
+		op_sim_end("No attached transmitter\n", "" , "" , "");
+
+	//Channels nb
+	op_ima_obj_attr_get (tx_id, "channel", &chann_objid);
+
+	//id access
+	sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
+
+	//Frequency + bandwidth
+	op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth);
+	op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency);
+	op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
+
+}
+
+my_current_tx_power = POWER_TX ;
+
+
+//----- RECEPTION ----
+
+nb_radio = op_topo_assoc_count(op_id_self() , OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX);
+
+for (i=0; i<nb_radio ; i++){
+
+	rx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, i);
+	if (rx_id == OPC_OBJID_INVALID)
+		op_sim_end("No attached receiver\n", "" , "" , "");
+
+
+	//Nb channels
+	op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
+	num_chann = op_topo_child_count (chann_objid, OPC_OBJTYPE_RARXCH);
+	
+
+	//Frequency + bandwidth of the first received
+	for (j = 0; j < num_chann; j++){ 	
+		//Id
+		sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, j);
+	
+		//Frequency + bandwidth
+		op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth);
+		op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency);		
+		
+		//Reception power threshold
+		op_ima_obj_state_set (sub_chann_objid, &rx_power_threshold);
+	}
+}
+
+
+//-----------------------------------------------
+//				BUSY TONE
+//-----------------------------------------------
+
+//Such that one bit is transmitted in 1us
+busy_tone_speed = 1E6;
+
+if (OPC_TRUE){
+
+//Transmission
+	tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, STREAM_TO_BUSY_TONE);
+	if (tx_id == OPC_OBJID_INVALID)
+		op_sim_end("No attached transmitter\n", "" , "" , "");
+
+	//Channels nb
+	op_ima_obj_attr_get (tx_id, "channel", &chann_objid);
+
+	//id access
+	sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
+
+	//Speed
+	op_ima_obj_attr_set (sub_chann_objid, "data rate", 		busy_tone_speed);
+	op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
+	op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_SEPARATION);
+	op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
+	
+	//NB: bandwidth in KHz, frequency in MHz
+	if (my_main_bandwidth * busy_tone_speed / operational_speed >= 1000 * SHIFT_FREQ_SEPARATION)
+		op_sim_end("The bandiwthd separation between the busy tone " , "and the principal radio is too small." , "Please increase the value of SHIFT_FREQ_BUSY_TONE", "to separate sufficiently the channels");
+
+	
+//reception	
+	rx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, STREAM_FROM_BUSY_TONE);
+	if (rx_id == OPC_OBJID_INVALID)
+		op_sim_end("No attached transmitter\n", "" , "" , "");
+
+	//Channels nb
+	op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
+
+	//id access
+	sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, 0);
+
+	//Speed
+	op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
+	op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_SEPARATION);
+}
+
+
+
+
+
+
+
+
+//-----------------------------------------------
+//		   			STATWIRES
+//-----------------------------------------------
+
+//for all statswirs (tx, rx, busy tone, normal ...)
+num_statwires = op_topo_assoc_count (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STATWIRE);
+for (i = 0; i < num_statwires; i++){
+	//Id														*/
+	statwire_objid = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STATWIRE, i);
+	op_ima_obj_attr_get (statwire_objid, "high threshold trigger", &threshold);
+	
+	//value
+	op_ima_obj_attr_set (statwire_objid, "high threshold trigger", rx_power_threshold);	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//-----------------------------------------------
+//		   	SYNCHRO WITH OTHER LAYERS
+//-----------------------------------------------
+
+op_intrpt_schedule_self (op_sim_time (), 0);
+
+
+]]>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+
+
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="41" x="450" y="90">
+<attribute name="name" type="string" value="IDLE"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
+<![CDATA[
+
+
+
+
+]]>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+debug_print(LOW , DEBUG_STATE , "ENTER - IDLE2 - %d\n", my_address);
+
+//Handles the possible interruptions (STREAM || STAT)
+interrupt_process();
+
+
+debug_print(LOW , DEBUG_STATE , "EXIT - IDLE2 - %d\n", my_address);
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="52" x="270" y="90">
+<attribute name="name" type="string" value="INFO_SYNCHRO"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
+<![CDATA[
+/* Schedule a self interrupt to wait for mac interface 	*/
+/* to move to next state after registering				*/
+op_intrpt_schedule_self (op_sim_time (), 0);
+]]>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+//Objid	mac_layer_intf_id;
+//int		*int_ptr;
+//List	**list_ptr_tmp;
+
+
+
+//----------------------------------------------
+//					BRANCH LENGTH
+//----------------------------------------------
+
+
+if (my_stat_id == 0)
+	MAX_BRANCH_LENGTH = min_int(BETA + 1 , (int)(pow(nb_mac_nodes , 0.5) / 2) - 1);
+
+
+
+//----------------------------------------------
+//					SINK 
+//----------------------------------------------
+
+//The sink must send periodically a CTR (create it, not forward it)
+//NB: let the routing info converge (dist_sink and dist_border)
+if (is_sink){
+	if (is_ctr_activated)
+		op_intrpt_schedule_self(op_sim_time() + 5.0 + INTERVALL_HELLO * 1.1 , SINK_CTR_CODE); 
+
+	op_intrpt_schedule_self(op_sim_time() + 0.1 , SINK_SYNC_CODE); 
+}
+
+
+
+
+//----------------------------------------------
+//					HELLOS 
+//----------------------------------------------
+
+//periodical hello for everyone (initally, shorter hello_interval to decrease convergence delays)
+op_intrpt_schedule_self(op_sim_time() + 5.0 + op_dist_uniform(3.0) , HELLO_PK_CODE);
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="54" x="690" y="510">
+<attribute name="name" type="string" value="EMISSION"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
+<![CDATA[
+//----------------------------------------------------------------
+//
+//				FRAME TRANSMISSION
+//
+// - The medium is free
+// - The backoff was decremented or not required
+// - The frame 'next_frame_to_send' is ready to be transmitted
+//
+//-----------------------------------------------------------------
+
+//Control
+char		msg[500];
+//Packet
+Packet*		frame_pk;
+
+debug_print(LOW , DEBUG_STATE , "ENTER - EMISSION1 - %d\n", my_address);
+
+
+//------------------------------------------
+//			  TRANSMISSION
+//------------------------------------------
+
+//The transmitter is not busy -> we are not in transmission -> we send our packet
+//- We have a default state self-transition (if the medium keeps on being used)
+//  Consequently we must avoid to send the same frame although the current frame is already in transmission
+if (!is_tx_busy){
+
+	//debug
+	debug_print(LOW , DEBUG_SEND , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
+	debug_print(LOW , DEBUG_NODE , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
+
+
+	//Prepares the packet
+	is_tx_busy = OPC_TRUE;
+	frame_pk = create_packet(next_frame_to_send);
+	
+	
+	//The reply was sent (if it was a reply!)
+	is_reply_required = OPC_TRUE;
+
+	
+	// ---- TRANSMISSION POWER ----
+	
+	/*if ((my_current_tx_power != next_frame_to_send.power_ratio) && (next_frame_to_send.type != SYNC_PK_TYPE)){
+		change_tx_power(POWER_TX * next_frame_to_send.power_ratio , STREAM_TO_RADIO);
+		my_current_tx_power = next_frame_to_send.power_ratio;
+	}
+	*/
+	
+	// -----  SPECIAL ACTIONS  -----
+
+	
+	if (next_frame_to_send.destination == BROADCAST)
+		print_nav_list(DEBUG_HELLO);
+	
+	switch (next_frame_to_send.type){
+	
+		//Ack sent -> no more busy_tone required
+		case ACK_PK_TYPE:
+			is_busy_tone_tx = OPC_FALSE;
+		break;
+		
+		//RTS sent -> we ignore further busy tone in reception
+		case RTS_PK_TYPE:
+			busy_tone_rx_ignored = OPC_TRUE;
+		break;
+		
+		//CTS sent -> we activate the busy tone
+		case CTS_PK_TYPE:
+			maintain_busy_tone(SIFS);
+		break;
+		
+		//Increases power (to 10W, that is enormous and all the nodes will get it)
+		//If a node does not receive the SYNC it is not a problem: the branch will not expand to the network extremities
+		case SYNC_PK_TYPE:
+	
+			if (is_sync_direct_antenna)	
+				change_antenna_direction(STREAM_TO_DIRECT_SYNC , sync_last_branch);
+			else
+				change_tx_power(1000 , STREAM_TO_RADIO);
+		break;
+		
+		case HELLO_PK_TYPE:
+			is_hello_to_send = OPC_FALSE;
+		break;
+	}
+	
+	
+	
+	// -----  TRANSMISSSION  -----
+	if ((next_frame_to_send.type == SYNC_PK_TYPE) && (is_sync_direct_antenna))
+		op_pk_send(frame_pk , STREAM_TO_DIRECT_SYNC);
+	else 
+		op_pk_send(frame_pk , STREAM_TO_RADIO);
+
+	
+	//Registers the frame as sent (if a reply is required: ACK/CTS/...)
+	last_frame_sent = next_frame_to_send;
+	last_frame_sent.released = OPC_FALSE;
+	set_next_frame_null();
+}
+//else -> nothing, we just stay in this state while the transmission and keep to treat other interrupts
+
+
+
+
+
+
+
+
+
+//Timeouts -> an interruption will be scheduled when we finished the transmission (the medium becomes idle)
+
+debug_print(LOW , DEBUG_STATE , "EXIT - EMISSION1 - %d\n", my_address);
+]]>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+
+
+debug_print(MAX , DEBUG_STATE , "ENTER - EMISSION2 - %d\n", my_address);
+
+
+//Handles the possible interruptions (STREAM || STAT)
+debug_print(LOW , DEBUG_STATE , "EMISSION\n");
+interrupt_process();
+
+
+
+
+	
+	
+//Transmission finished !
+if (!is_tx_busy){
+	debug_print(LOW , DEBUG_SEND , "transmission ended\n");
+
+
+	//-----------------------------------------------------
+	//	NORMAL TRANSMISSION POWER
+	//-----------------------------------------------------
+
+
+	//Decrease the power to a normal value
+	if (last_frame_sent.type == SYNC_PK_TYPE){
+		
+		//normal power transmission
+		if (!is_sync_direct_antenna)
+			change_tx_power(POWER_TX , STREAM_TO_RADIO);
+		
+		//Next sync if we have a directional antenna
+		if ((sync_last_branch != MAX_NB_BRANCHES - 1) && (is_sync_direct_antenna)){
+			sync_last_branch++;
+			generate_sync();
 		}
+		else
+			sync_last_branch = 0;
+	}
+		
+	
+	
+	//-----------------------------------------------------
+	//	MULTI_CHANNEL -> COMMUTES
+	//-----------------------------------------------------
 
-		/* End of Termination Block */
-
+	if (nb_channels > 1){
+	
+		//CTR sent -> changes to the privileged channel
+		if (last_frame_sent.type == CTR_PK_TYPE){
+			change_tx_rx_freq(my_privileged_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
+			
+			if (op_ev_valid(main_freq_return_intrpt))
+				op_ev_cancel(main_freq_return_intrpt);
+			main_freq_return_intrpt = op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration , MAIN_FREQ_RETURN_CODE);
 		}
-	Vos_Poolmem_Dealloc (op_sv_ptr);
+		
+		
+		//CTR-ACK sent -> changes to the privileged channel
+		if ((last_frame_sent.type == CTR_ACK_PK_TYPE) && (last_frame_sent.nb_retry == 0)){
+		
+			//Channel change
+			change_tx_rx_freq(my_privileged_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
+			
+			//sends a CTR-ACK through the privileged channel if no data frame to send
+			if (is_frame_buffer_empty()){
+				last_frame_sent.nb_retry++;
+				change_next_frame(last_frame_sent);
+			}
+			
+		}
+		
+		
+		
+	}
+		
+		
+	//-----------------------------------------------------
+	//	Must the node wait a reply for this frame ?
+	//-----------------------------------------------------
 
-	FOUT
+	//BROADCAST Frame 
+	if (last_frame_sent.destination == BROADCAST)
+		is_reply_required = OPC_FALSE;
+	
+	//Ack Frame
+	else if (last_frame_sent.type == ACK_PK_TYPE)
+		is_reply_required = OPC_FALSE;
+	
+	//Ctr and no farther border node
+	else if (last_frame_sent.type == CTR_END_PK_TYPE)
+		is_reply_required = OPC_FALSE;
+	
+	else if (last_frame_sent.type == CTR_ACK_PK_TYPE)
+		is_reply_required = OPC_FALSE;
+
+	//default behavior	
+	else	
+		is_reply_required = OPC_TRUE;
+
+	
+	
+	
+	
+	//-----------------------------------------------------
+	//					Privileged mode
+	//-----------------------------------------------------	
+	//I sent a CTR-END -> I am no longer priviledged
+	if (last_frame_sent.type == CTR_END_PK_TYPE){
+		is_node_privileged = OPC_FALSE;
+		debug_print(LOW , DEBUG_CONTROL , "the node becomes unpriviledged\n");
 	}
 
+	
+	
+	
+	//-----------------------------------------------------
+	//						Timeout
+	//-----------------------------------------------------	
+	//Timeout of a reply is required
+	if (is_reply_required){
 
-/* Undefine shortcuts to state variables to avoid */
-/* syntax error in direct access to fields of */
-/* local variable prs_ptr in _op_cmac_process_svar function. */
-#undef my_address
-#undef is_reply_required
-#undef is_reply_bad
-#undef is_reply_received
-#undef next_frame_to_send
-#undef last_frame_sent
-#undef unicast_frame_buffer
-#undef multicast_frame_buffer
-#undef operational_speed
-#undef is_border_node
-#undef is_node_privileged
-#undef is_sink
-#undef my_dist_sink
-#undef my_dist_border
-#undef my_neighborhood_table
-#undef nb_channels
-#undef is_tx_busy
-#undef my_current_tx_power
-#undef is_rx_busy
-#undef rx_power_threshold
-#undef my_sync_rx_power
-#undef my_nav_list
-#undef cw
-#undef my_backoff
-#undef backoff_intrpt
-#undef backoff_dist
-#undef time_start_privileged
-#undef frame_timeout_intrpt
-#undef timeout_intrpt
-#undef main_freq_return_intrpt
-#undef DEBUG
-#undef defer_intrpt
-#undef ctr_last_branch
-#undef last_rx_power
-#undef my_main_frequency
-#undef my_main_bandwidth
-#undef is_busy_tone_rx
-#undef busy_tone_speed
-#undef is_busy_tone_tx
-#undef busy_tone_rx_ignored
-#undef BUSY_TONE_ACTIVATED
-#undef my_debug_file
-#undef my_stat_id
-#undef is_hello_to_send
-#undef my_frame_id_seen
-#undef next_start_time
-#undef last_next_start_time_verif
-#undef is_ctr_activated
-#undef strict_privileged_mode
-#undef is_sync_direct_antenna
-#undef sync_last_branch
-#undef my_branch
-#undef my_privileged_frequency
-#undef slot_privileged_duration
-#undef slot_privileged_offset
-#undef bn_list
-#undef BETA
-#undef RTS_PK_SIZE
-#undef MAC_ROUTING
-#undef POWER_TX
-
-#undef FIN_PREAMBLE_DEC
-#undef FIN_PREAMBLE_CODE
-
-#define FIN_PREAMBLE_DEC
-#define FIN_PREAMBLE_CODE
-
-VosT_Obtype
-_op_cmac_process_init (int * init_block_ptr)
-	{
-	VosT_Obtype obtype = OPC_NIL;
-	FIN_MT (_op_cmac_process_init (init_block_ptr))
-
-	obtype = Vos_Define_Object_Prstate ("proc state vars (cmac_process)",
-		sizeof (cmac_process_state));
-	*init_block_ptr = 0;
-
-	FRET (obtype)
+		//DATA sent -> a ack only is required
+		if ((is_node_privileged) && (nb_channels > 1) && (last_frame_sent.type == DATA_UNICAST_PK_TYPE))
+			add_frame_timeout(compute_ack_pk_size());
+		else 
+			add_frame_timeout(MTU_MAX);
 	}
+		
+	//-----------------------------------------------------
+	//						Acks
+	//-----------------------------------------------------	
+	//Deletes the corresponding data frame (no ack required)
+	else if ((last_frame_sent.type == DATA_MULTICAST_PK_TYPE) || (last_frame_sent.type == HELLO_PK_TYPE))
+		del_frame_buffer_with_id(last_frame_sent.frame_id , OPC_FALSE);
+	
 
-VosT_Address
-_op_cmac_process_alloc (VosT_Obtype obtype, int init_block)
-	{
-#if !defined (VOSD_NO_FIN)
-	int _op_block_origin = 0;
-#endif
-	cmac_process_state * ptr;
-	FIN_MT (_op_cmac_process_alloc (obtype))
+}
+debug_print(LOW , DEBUG_STATE , "EXIT - EMISSION2 - %d\n", my_address);
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="56" x="510" y="270">
+<attribute name="name" type="string" value="DEFER"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
+<![CDATA[
+//Next data frame to send
+frame_struct	*frame_ptr;
+frame_struct	data_frame;
+frame_struct	next_data_frame;
+//transmission time
+double			time_for_first_data;
+double			time_for_second_data;
+//Control
+char			msg[200];
 
-	ptr = (cmac_process_state *)Vos_Alloc_Object (obtype);
-	if (ptr != OPC_NIL)
-		{
-		ptr->_op_current_block = init_block;
-#if defined (OPD_ALLOW_ODB)
-		ptr->_op_current_state = "cmac_process [INIT enter execs]";
-#endif
+
+debug_print(LOW , DEBUG_STATE , "ENTER - DEFER1 - %d\n", my_address);
+
+
+//------------------------------------------
+//			   GET DATA FRAME
+//------------------------------------------
+
+
+debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, border %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg) ,  IS_PK_TO_SEND , is_border_node , is_node_privileged);
+if (is_node_privileged)
+	debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d (medium %d, high %d)\n", time_start_privileged , slot_privileged_duration * PRIV_MIN_RATIO , time_start_privileged + slot_privileged_duration * PRIV_MIN_RATIO <= op_sim_time() , PRIVILEGED_END , PRIVILEGED_MEDIUM_LIMIT , PRIVILEGED_HIGH_LIMIT);
+		
+
+//We have no frame which is scheduled to be transmitted
+if (next_frame_to_send.type == NO_PK_TYPE){
+
+
+	//----------------------------------------------
+	//			BORDER & PRIVILEGED 
+	//----------------------------------------------
+	if (is_node_privileged){
+	
+		//Buffer empty -> I will lose my priviledged status
+		if ((PRIVILEGED_MEDIUM_LIMIT) || (PRIVILEGED_HIGH_LIMIT))
+			generate_ctr();
+
+		else if ((is_frame_buffer_empty()) && (!PRIVILEGED_MEDIUM_LIMIT))
+			op_sim_end("We should not be in this state if we have nothing to send", "and we cannot end the priviledge mode" , "" , "");
+			
+		//I send the first data_frame of the queue
+		else{
+			//first frame
+			frame_ptr			= get_frame_buffer(0);
+			data_frame 			= *frame_ptr;
+			time_for_first_data = compute_rts_cts_data_ack_time(data_frame.pk_size) ;
+			
+			//An eventual second frame
+			frame_ptr	= get_frame_buffer(1);
+			if (frame_ptr != NULL){
+				next_data_frame 		= *frame_ptr;
+				time_for_second_data 	= compute_rts_cts_data_ack_time(next_data_frame.pk_size) ;
+			}
+			else
+				time_for_second_data = 0;
+			
+			//We have not the time to send this data packet !
+			if (time_for_first_data + op_sim_time() >= slot_privileged_duration + time_start_privileged)
+				generate_ctr();
+			
+			else{
+				
+				//Medium reservation if a second packet has to be transmitted
+				if ((time_for_second_data == 0) || (time_for_first_data + time_for_second_data + op_sim_time() >= slot_privileged_duration + time_start_privileged))
+					data_frame.duration = 0;
+				else
+					data_frame.duration = next_data_frame.pk_size;
+				
+				//Prepare the next transmission
+				change_next_frame(data_frame);
+			}
+			
+			
 		}
-	FRET ((VosT_Address)ptr)
 	}
+	
+	//----------------------------------------------
+	//			NORMAL NODE
+	//----------------------------------------------
+	else if (!is_frame_buffer_empty()){
 
+		//get the first data packet to send
+		frame_ptr = get_frame_buffer(0);		
+		if (frame_ptr != NULL)
+			data_frame = *frame_ptr;
+	
+		//broadcast frames do not need any RTS
+		if ((data_frame.destination == BROADCAST) || (data_frame.pk_size  > RTS_PK_SIZE))
+			change_next_frame(data_frame);
+		
+		//Generates a new RTS, it will be automatically registered as the new frame to send
+		else{
 
+			generate_rts(data_frame.destination , data_frame.pk_size , data_frame.frame_id , data_frame.power_ratio);
 
-void
-_op_cmac_process_svar (void * gen_ptr, const char * var_name, void ** var_p_ptr)
-	{
-	cmac_process_state		*prs_ptr;
-
-	FIN_MT (_op_cmac_process_svar (gen_ptr, var_name, var_p_ptr))
-
-	if (var_name == OPC_NIL)
-		{
-		*var_p_ptr = (void *)OPC_NIL;
-		FOUT
+			if (DEBUG >= MAX){
+				print_unicast_frame_buffer(DEBUG_SEND);
+				print_multicast_frame_buffer(DEBUG_SEND);
+			}
 		}
-	prs_ptr = (cmac_process_state *)gen_ptr;
-
-	if (strcmp ("my_address" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_address);
-		FOUT
-		}
-	if (strcmp ("is_reply_required" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_reply_required);
-		FOUT
-		}
-	if (strcmp ("is_reply_bad" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_reply_bad);
-		FOUT
-		}
-	if (strcmp ("is_reply_received" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_reply_received);
-		FOUT
-		}
-	if (strcmp ("next_frame_to_send" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->next_frame_to_send);
-		FOUT
-		}
-	if (strcmp ("last_frame_sent" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->last_frame_sent);
-		FOUT
-		}
-	if (strcmp ("unicast_frame_buffer" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->unicast_frame_buffer);
-		FOUT
-		}
-	if (strcmp ("multicast_frame_buffer" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->multicast_frame_buffer);
-		FOUT
-		}
-	if (strcmp ("operational_speed" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->operational_speed);
-		FOUT
-		}
-	if (strcmp ("is_border_node" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_border_node);
-		FOUT
-		}
-	if (strcmp ("is_node_privileged" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_node_privileged);
-		FOUT
-		}
-	if (strcmp ("is_sink" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_sink);
-		FOUT
-		}
-	if (strcmp ("my_dist_sink" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_dist_sink);
-		FOUT
-		}
-	if (strcmp ("my_dist_border" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_dist_border);
-		FOUT
-		}
-	if (strcmp ("my_neighborhood_table" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_neighborhood_table);
-		FOUT
-		}
-	if (strcmp ("nb_channels" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->nb_channels);
-		FOUT
-		}
-	if (strcmp ("is_tx_busy" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_tx_busy);
-		FOUT
-		}
-	if (strcmp ("my_current_tx_power" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_current_tx_power);
-		FOUT
-		}
-	if (strcmp ("is_rx_busy" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_rx_busy);
-		FOUT
-		}
-	if (strcmp ("rx_power_threshold" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->rx_power_threshold);
-		FOUT
-		}
-	if (strcmp ("my_sync_rx_power" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_sync_rx_power);
-		FOUT
-		}
-	if (strcmp ("my_nav_list" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_nav_list);
-		FOUT
-		}
-	if (strcmp ("cw" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->cw);
-		FOUT
-		}
-	if (strcmp ("my_backoff" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_backoff);
-		FOUT
-		}
-	if (strcmp ("backoff_intrpt" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->backoff_intrpt);
-		FOUT
-		}
-	if (strcmp ("backoff_dist" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->backoff_dist);
-		FOUT
-		}
-	if (strcmp ("time_start_privileged" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->time_start_privileged);
-		FOUT
-		}
-	if (strcmp ("frame_timeout_intrpt" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->frame_timeout_intrpt);
-		FOUT
-		}
-	if (strcmp ("timeout_intrpt" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->timeout_intrpt);
-		FOUT
-		}
-	if (strcmp ("main_freq_return_intrpt" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->main_freq_return_intrpt);
-		FOUT
-		}
-	if (strcmp ("DEBUG" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->DEBUG);
-		FOUT
-		}
-	if (strcmp ("defer_intrpt" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->defer_intrpt);
-		FOUT
-		}
-	if (strcmp ("ctr_last_branch" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->ctr_last_branch);
-		FOUT
-		}
-	if (strcmp ("last_rx_power" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->last_rx_power);
-		FOUT
-		}
-	if (strcmp ("my_main_frequency" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_main_frequency);
-		FOUT
-		}
-	if (strcmp ("my_main_bandwidth" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_main_bandwidth);
-		FOUT
-		}
-	if (strcmp ("is_busy_tone_rx" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_busy_tone_rx);
-		FOUT
-		}
-	if (strcmp ("busy_tone_speed" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->busy_tone_speed);
-		FOUT
-		}
-	if (strcmp ("is_busy_tone_tx" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_busy_tone_tx);
-		FOUT
-		}
-	if (strcmp ("busy_tone_rx_ignored" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->busy_tone_rx_ignored);
-		FOUT
-		}
-	if (strcmp ("BUSY_TONE_ACTIVATED" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->BUSY_TONE_ACTIVATED);
-		FOUT
-		}
-	if (strcmp ("my_debug_file" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_debug_file);
-		FOUT
-		}
-	if (strcmp ("my_stat_id" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_stat_id);
-		FOUT
-		}
-	if (strcmp ("is_hello_to_send" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_hello_to_send);
-		FOUT
-		}
-	if (strcmp ("my_frame_id_seen" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_frame_id_seen);
-		FOUT
-		}
-	if (strcmp ("next_start_time" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->next_start_time);
-		FOUT
-		}
-	if (strcmp ("last_next_start_time_verif" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->last_next_start_time_verif);
-		FOUT
-		}
-	if (strcmp ("is_ctr_activated" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_ctr_activated);
-		FOUT
-		}
-	if (strcmp ("strict_privileged_mode" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->strict_privileged_mode);
-		FOUT
-		}
-	if (strcmp ("is_sync_direct_antenna" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->is_sync_direct_antenna);
-		FOUT
-		}
-	if (strcmp ("sync_last_branch" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->sync_last_branch);
-		FOUT
-		}
-	if (strcmp ("my_branch" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_branch);
-		FOUT
-		}
-	if (strcmp ("my_privileged_frequency" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->my_privileged_frequency);
-		FOUT
-		}
-	if (strcmp ("slot_privileged_duration" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->slot_privileged_duration);
-		FOUT
-		}
-	if (strcmp ("slot_privileged_offset" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->slot_privileged_offset);
-		FOUT
-		}
-	if (strcmp ("bn_list" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->bn_list);
-		FOUT
-		}
-	if (strcmp ("BETA" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->BETA);
-		FOUT
-		}
-	if (strcmp ("RTS_PK_SIZE" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->RTS_PK_SIZE);
-		FOUT
-		}
-	if (strcmp ("MAC_ROUTING" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->MAC_ROUTING);
-		FOUT
-		}
-	if (strcmp ("POWER_TX" , var_name) == 0)
-		{
-		*var_p_ptr = (void *) (&prs_ptr->POWER_TX);
-		FOUT
-		}
-	*var_p_ptr = (void *)OPC_NIL;
-
-	FOUT
 	}
+	else
+		printf("It is strange, I entered in DEFER wihtout any packet to send\n");
+}
 
+
+
+
+
+
+
+//debug
+debug_print(MEDIUM , DEBUG_SEND , "has a packet to send to %d (type %s, id %d, nb_retry %d)\n", next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , next_frame_to_send.nb_retry);
+
+
+
+
+//------------------------------------------
+//			   INTER FRAME TIME
+//------------------------------------------
+
+
+//The medium becomes free -> we must wait the inter_frame time
+if (!IS_MEDIUM_BUSY){
+	if ((is_node_privileged) && ((next_frame_to_send.type == CTR_PK_TYPE) || (next_frame_to_send.type == CTR_END_PK_TYPE)) )
+		next_frame_to_send.ifs = PIFS;
+	else if ((is_node_privileged) && (nb_channels > 1))
+		next_frame_to_send.ifs = 0;
+	else if (is_node_privileged)
+		next_frame_to_send.ifs = SIFS;
+	else if ((next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == HELLO_PK_TYPE))
+		next_frame_to_send.ifs = DIFS;
+	else
+		next_frame_to_send.ifs = SIFS;
+
+	//We will verify that the medium remains idle
+	op_intrpt_schedule_self(op_sim_time() + next_frame_to_send.ifs , DEFER_CODE);
+}
+
+
+
+
+
+debug_print(LOW , DEBUG_STATE , "EXIT - DEFER1 - %d - timeout %f\n", my_address , next_frame_to_send.ifs *1E6);
+debug_print(LOW, DEBUG_STATE , "%d : %d %d %d %d %d %d %d\n", IS_MEDIUM_BUSY , is_rx_busy , is_tx_busy , get_nav_main_freq() >= op_sim_time() , is_busy_tone_rx , !busy_tone_rx_ignored , BUSY_TONE_ACTIVATED , !is_border_node);
+print_nav_list(DEBUG_STATE);
+]]>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+//The inter-frame time
+//double		time_to_wait;
+//To verify if we must terminate the simulation
+double		max;
+int			node_id;
+//control
+int			i;
+
+
+
+
+
+debug_print(LOW , DEBUG_STATE , "ENTER - DEFER2 - %d\n", my_address);
+
+
+//Handles the possible interruptions (STREAM || STAT)
+interrupt_process();
+
+
+
+
+
+
+//------------------------------------------
+//			   BACKOFF
+//------------------------------------------
+
+// STAT_INTRPT + !MEDIUM_BUSY -> I must wait the IFS (and not take directly a transition)
+// If such an interruptions occurs, we schedule the IFS verification, but don't change the backoff
+// Thus, the default behavior is to have an invalid backoff in order to avoid any state transition
+my_backoff = -1;
+
+
+
+//I try to transmit or decrement the backoff only if :
+// -> No transmission (this is never the case since the transmission state is not here)
+// -> No reception
+// -> The medium was not previously reserved (verify the value of my NAV)
+//
+if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
+	
+	if (!IS_MEDIUM_BUSY){
+		if ((!is_node_privileged) &&     (     (next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.destination == BROADCAST) || ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE))   )      ){
+
+			//Takes a new backoff
+			my_backoff = op_dist_outcome (backoff_dist);
+		
+			//Schedules the backoff interrupt (deletes an eventual old interruption)
+			if (op_ev_valid(backoff_intrpt))
+				op_ev_cancel(backoff_intrpt);			
+			backoff_intrpt = op_intrpt_schedule_self(op_sim_time() + SLOT_BACKOFF * my_backoff , BACKOFF_CODE);
+	
+			//debug
+			debug_print(LOW , DEBUG_BACKOFF , "new backoff %d\n", my_backoff);
+		}
+		else{
+			my_backoff = 0;
+			debug_print(MEDIUM , DEBUG_BACKOFF , "no backoff required (priviledged %d, next=rts %d, broadcast %d)\n", my_backoff , is_node_privileged , next_frame_to_send.type == RTS_PK_TYPE , next_frame_to_send.destination == BROADCAST);
+		}
+		
+		
+	}
+	else
+		debug_print(MEDIUM , DEBUG_SEND , "the medium is busy, we must wait\n");
+
+
+	//The medium is busy and we have the priority -> that is not regular !
+	if (PRIORITY_AND_MEDIUM_BUSY){
+		debug_print(LOW , DEBUG_SEND , "a collision occurred (we have the priority and the medium is busy, we discard the current flow\n");
+		
+		//Discard the current packet
+		set_next_frame_null();
+		
+	}
+}
+
+
+
+//------------------------------------------
+//		  CANCEL OBSOLETE TRANSMISSIONS
+//------------------------------------------
+
+if 	((next_frame_to_send.type == RTS_PK_TYPE) && (is_unicast_frame_buffer_empty())){
+	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: RTS and the frame buffer is empty\n");
+	set_next_frame_null();
+}
+
+
+if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
+	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
+	set_next_frame_null();
+}
+
+if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && IS_BROADCAST_FORBIDDEN){
+	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
+	set_next_frame_null();
+}
+
+	
+
+
+//------------------------------------------
+//	 TERMINATE SIMULATION (if required)
+//------------------------------------------
+
+//Get the nex start time for data frames 
+// ->but avoids too frequent verifications (it will slow the simulation)
+
+if (last_next_start_time_verif < op_sim_time() - 30.0){
+	next_start_time = 0;
+	for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
+
+		node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
+
+		if (op_ima_obj_attr_exists(node_id , "source.Start Time Packet Generation"))
+			op_ima_obj_attr_get(node_id , "source.Start Time Packet Generation" , &max);
+		if (max > next_start_time)
+			next_start_time = max;
+	}	
+	
+	last_next_start_time_verif = op_sim_time();
+}
+
+
+
+
+
+debug_print(LOW , DEBUG_STATE , "EXIT - DEFER2 - %d (%d, %d)\n", my_address, IS_MEDIUM_BUSY , my_backoff);
+
+
+debug_print(MAX , DEBUG_SEND , "busy -> rx_busy %d tx_busy %d nav %f -> %d medium busy %d\n", is_rx_busy , is_tx_busy , get_nav_main_freq() , get_nav_main_freq() > op_sim_time() , IS_MEDIUM_BUSY   );
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="58" x="270" y="510">
+<attribute name="name" type="string" value="BACKOFF"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
+<![CDATA[
+
+debug_print(LOW , DEBUG_STATE , "Enter in backoff state\n");
+
+
+]]>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+//Inter frame time
+//double		time_to_wait;
+
+debug_print(LOW , DEBUG_STATE , "ENTER - BACKOFF2 - %d\n", my_address);
+
+
+
+
+//Handles the possible interruptions (STREAM || STAT)
+interrupt_process();
+
+
+//The backoff is finished
+if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == BACKOFF_CODE)){
+	debug_print(MEDIUM, DEBUG_BACKOFF , "the backoff is finished, we can transmit our frame\n");
+	my_backoff = 0;
+}
+
+
+
+
+//------------------------------------------
+//			   STOP  BACKOFF
+//------------------------------------------
+
+//The medium is busy OR medium reserved -> stop the backoff
+if ((op_ev_valid(backoff_intrpt)) && (IS_MEDIUM_BUSY)){
+	
+	//Stores the remaining backoff
+	my_backoff = ceil((op_ev_time(backoff_intrpt) - op_sim_time()) / SLOT_BACKOFF);
+
+	//disable the previous backoff interrupt (the backoff must not be decremented during medium activity)
+	op_ev_cancel(backoff_intrpt);
+
+	//debug
+	debug_print(MEDIUM , DEBUG_BACKOFF , "stoping backoff %d (busy %d, nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
+}
+
+
+
+
+
+//------------------------------------------
+//			  RESTART  BACKOFF
+//------------------------------------------
+
+//the medium becomes idle OR reservation expired -> resume the backoff
+if ((!op_ev_valid(backoff_intrpt)) && (!IS_MEDIUM_BUSY) && ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE))){
+
+	//Schedules the backoff interrupt
+	backoff_intrpt = op_intrpt_schedule_self(op_sim_time() + SLOT_BACKOFF * my_backoff , BACKOFF_CODE);
+
+	//debug
+	debug_print(MEDIUM , DEBUG_BACKOFF , "resuming backoff %d (busy %d nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
+}
+
+
+
+
+
+
+
+//------------------------------------------
+//			   INTER FRAME TIME
+//------------------------------------------
+
+
+//The medium becomes free -> we must wait the inter_frame time
+if ((!op_ev_valid(backoff_intrpt)) && (!IS_MEDIUM_BUSY) && (!op_ev_valid(defer_intrpt))){
+
+	//We will verify that the medium remains idle (inter frame space was already computed in the state DEFER)
+	defer_intrpt = op_intrpt_schedule_self(op_sim_time() + next_frame_to_send.ifs , DEFER_CODE);
+
+	//debug
+	debug_print(MEDIUM , DEBUG_BACKOFF , "defer %f for the inter frame time\n", next_frame_to_send.ifs * 1E6);
+}
+
+
+
+
+
+
+//------------------------------------------
+//		  CANCEL OBSOLETE TRANSMISSIONS
+//------------------------------------------
+// This case can occur if we received an ack athough we already entered in backoff mode
+
+if 	((next_frame_to_send.type == RTS_PK_TYPE) && (is_unicast_frame_buffer_empty())){
+	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: RTS and the frame buffer is empty\n");
+	set_next_frame_null();
+}
+
+
+if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
+	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
+	set_next_frame_null();
+}
+
+if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && IS_BROADCAST_FORBIDDEN){
+	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
+	set_next_frame_null();
+}
+
+
+
+
+//------------------------------------------
+//			   DEBUG
+//------------------------------------------
+
+//Debug
+
+debug_print(MAX , DEBUG_BACKOFF , "IS_BACK_TO_DEFER %d backoff %d (conditions %d %d %d %d)\n", IS_BACK_TO_DEFER , my_backoff , next_frame_to_send.type == CTR_PK_TYPE , IS_FRAME_RECEIVED , IS_REPLY_TO_SEND , is_rx_busy);
+
+
+debug_print(MAX , DEBUG_BACKOFF , "TYPE %d (self %d stream %d stat %d), code %d\n", op_intrpt_type() , OPC_INTRPT_SELF , OPC_INTRPT_STRM , OPC_INTRPT_STAT , op_intrpt_code());
+if (op_intrpt_type() == OPC_INTRPT_STRM){
+	debug_print(MAX , DEBUG_BACKOFF , "stream %d\n", op_intrpt_strm());
+	debug_print(MAX , DEBUG_BACKOFF , "%d %d %d %d %d\n", op_intrpt_type() , OPC_INTRPT_STRM , (op_intrpt_type() == OPC_INTRPT_STRM) , (op_intrpt_strm() == STREAM_FROM_RADIO) , IS_FRAME_RECEIVED);
+}
+
+
+
+
+
+
+
+
+//---------------------------------------------
+//		EXIT BACKOFF -> CANCEL the INTRPT
+//---------------------------------------------
+
+if ((IS_BACK_TO_DEFER) || (TRANSMISSION_CANCELED))
+	if (op_ev_valid(backoff_intrpt))
+		op_ev_cancel(backoff_intrpt);
+
+
+
+
+
+
+
+
+
+
+
+
+debug_print(LOW , DEBUG_STATE , "EXIT - BACKOFF2 - %d\n", my_address);
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="62" x="810" y="150">
+<attribute name="name" type="string" value="END_TRANSMIT"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
+<![CDATA[
+//Control
+char	msg[500];
+
+
+
+//Just a debug message when we start to wait the reply for one of our frame
+if (is_reply_required){
+	//debug
+	debug_print(MAX , DEBUG_SEND , "%s sent, it must wait a reply\n", pk_type_to_str(last_frame_sent.type , msg));
+
+
+	//We did not received yet a reply for our transmission (we just leave it !)
+	is_reply_received = OPC_FALSE;
+}
+]]>
+</value-text>
+</attribute>
+<attribute name="status" type="toggle" value="1"/>
+</state>
+<state id="63" x="1110" y="150">
+<attribute name="name" type="string" value="WAIT_NEXT"/>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+//Control
+char		msg[500];
+//char		msg2[500];
+//packet and info
+//Packet		*frame;
+//int			source , destination , type;
+
+
+//Default (will change of the received packet is not that we expect
+is_reply_bad = OPC_FALSE;
+
+
+debug_print(LOW , DEBUG_STATE , "ENTER - WAIT_NEXT2 - %d\n", my_address);
+
+
+//Handles the possible interruptions (STREAM || STAT)
+//NB: if we had a timeout, and we received a packet, we can answer to the received packet and discard temporarily the retransmission (rather delay it)
+interrupt_process();
+
+
+
+//The frame timeouted -> we must retransmit it
+if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
+	
+	//Failed -> we increments the nb_retry for the corresponding data_frame
+	//NB: it is a unicast frame since multicast frame are not acknowledged
+	if ((last_frame_sent.type == DATA_UNICAST_PK_TYPE) || (last_frame_sent.type == RTS_PK_TYPE))
+		increment_nb_rety_unicast_frame_buffer(last_frame_sent.frame_id);
+		
+	debug_print(LOW , DEBUG_TIMEOUT , "the flow to %d is broken for one of my frame (type %s, retry %d , id %d, next type %d) (timeout %d bad_reply %d)\n", last_frame_sent.destination , pk_type_to_str(last_frame_sent.type, msg) , last_frame_sent.nb_retry , last_frame_sent.frame_id , next_frame_to_send.type , IS_FRAME_TIMEOUT , is_reply_bad);
+	
+	
+	//CTR -> we must retransmit it
+	if ((last_frame_sent.type == CTR_PK_TYPE) && (last_frame_sent.nb_retry < MAX_NB_RETRY)){
+	
+		//increase the nb of retries
+		last_frame_sent.nb_retry ++;
+		
+		//And retransmission !
+		change_next_frame(last_frame_sent);
+		
+		//Failed -> go to the main channel
+		if (nb_channels > 1)
+			change_tx_rx_freq(my_main_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
+	}
+	
+
+	//Error time when a packet failed
+	if (!is_node_privileged)
+		update_nav_time(EIFS , my_address , my_main_frequency , -1);
+	
+	
+	//The frame timeouted: no more busy tone in transmission
+	is_busy_tone_tx 		= OPC_FALSE;
+}
+
+
+
+//The medium is no longer reserved for this flow
+if ((is_reply_received) || (IS_FRAME_TIMEOUT) || is_reply_bad) {
+	is_reply_required 		= OPC_FALSE;
+	
+	//The transmission whatever it is succefull or not is ended: we must take into account the current busy tones
+	busy_tone_rx_ignored 	= OPC_FALSE;
+}
+
+
+
+
+
+
+
+
+debug_print(LOW , DEBUG_STATE , "EXIT - WAIT_NEXT2 - %d\n", my_address);
+
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="68" x="1230" y="450">
+<attribute name="name" type="string" value="END"/>
+</state>
+</states>
+<transitions>
+<transition source-state-id="40" destination-state-id="52" label-x="181" label-y="88">
+<path-point x="116" y="88"/>
+<path-point x="243" y="88"/>
+<attribute name="name" type="string" value="tr_292"/>
+</transition>
+<transition source-state-id="52" destination-state-id="41" label-x="360" label-y="88">
+<path-point x="297" y="90"/>
+<path-point x="428" y="90"/>
+<attribute name="name" type="string" value="tr_293"/>
+</transition>
+<transition source-state-id="41" destination-state-id="56" label-x="484" label-y="167">
+<path-point x="436" y="94"/>
+<path-point x="506" y="265"/>
+<attribute name="name" type="string" value="tr_307"/>
+<attribute name="condition" type="string" value="IS_PK_TO_SEND || PRIVILEGED_END"/>
+</transition>
+<transition source-state-id="56" destination-state-id="54" label-x="600" label-y="416">
+<path-point x="506" y="268"/>
+<path-point x="687" y="509"/>
+<attribute name="name" type="string" value="tr_308"/>
+<attribute name="condition" type="string" value="GO_TO_SEND &amp;&amp; !END_SIMULATION"/>
+</transition>
+<transition source-state-id="56" destination-state-id="58" label-x="409" label-y="391">
+<path-point x="510" y="274"/>
+<path-point x="274" y="501"/>
+<attribute name="name" type="string" value="tr_309"/>
+<attribute name="condition" type="string" value="GO_TO_BACKOFF &amp;&amp; !END_SIMULATION"/>
+</transition>
+<transition source-state-id="58" destination-state-id="54" label-x="479" label-y="552">
+<path-point x="278" y="513"/>
+<path-point x="666" y="515"/>
+<attribute name="name" type="string" value="tr_310"/>
+<attribute name="condition" type="string" value="!IS_BACK_TO_DEFER &amp;&amp; !TRANSMISSION_CANCELED  &amp;&amp; (my_backoff == 0)"/>
+</transition>
+<transition source-state-id="58" destination-state-id="56" label-x="297" label-y="322">
+<path-point x="267" y="503"/>
+<path-point x="300" y="334"/>
+<path-point x="480" y="277"/>
+<attribute name="name" type="string" value="tr_312"/>
+<attribute name="condition" type="string" value="!TRANSMISSION_CANCELED &amp;&amp; IS_BACK_TO_DEFER"/>
+</transition>
+<transition source-state-id="54" destination-state-id="62" label-x="755" label-y="323">
+<path-point x="692" y="497"/>
+<path-point x="817" y="149"/>
+<attribute name="name" type="string" value="tr_314"/>
+<attribute name="condition" type="string" value="!is_tx_busy"/>
+</transition>
+<transition source-state-id="62" destination-state-id="63" label-x="954" label-y="126">
+<path-point x="807" y="134"/>
+<path-point x="1102" y="142"/>
+<attribute name="name" type="string" value="tr_315"/>
+<attribute name="condition" type="string" value="is_reply_required"/>
+</transition>
+<transition source-state-id="63" destination-state-id="62" label-x="986" label-y="187">
+<path-point x="1107" y="159"/>
+<path-point x="827" y="151"/>
+<attribute name="name" type="string" value="tr_316"/>
+<attribute name="condition" type="string" value="is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad"/>
+</transition>
+<transition source-state-id="62" destination-state-id="41" label-x="662" label-y="81">
+<path-point x="794" y="147"/>
+<path-point x="444" y="73"/>
+<attribute name="name" type="string" value="tr_317"/>
+<attribute name="condition" type="string" value="!is_reply_required&amp;&amp; !IS_PK_TO_SEND &amp;&amp; ! PRIVILEGED_END"/>
+</transition>
+<transition source-state-id="62" destination-state-id="56" label-x="648" label-y="199">
+<path-point x="817" y="159"/>
+<path-point x="520" y="266"/>
+<attribute name="name" type="string" value="tr_318"/>
+<attribute name="condition" type="string" value="!is_reply_required &amp;&amp; (IS_PK_TO_SEND || PRIVILEGED_END)"/>
+</transition>
+<transition source-state-id="54" destination-state-id="54" label-x="821" label-y="512">
+<path-point x="704" y="507"/>
+<path-point x="791" y="499"/>
+<path-point x="781" y="534"/>
+<path-point x="705" y="517"/>
+<attribute name="name" type="string" value="tr_321"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="58" destination-state-id="58" label-x="238" label-y="587">
+<path-point x="257" y="518"/>
+<path-point x="236" y="553"/>
+<path-point x="257" y="573"/>
+<path-point x="259" y="525"/>
+<attribute name="name" type="string" value="tr_323"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="41" destination-state-id="41" label-x="457" label-y="10">
+<path-point x="452" y="78"/>
+<path-point x="424" y="29"/>
+<path-point x="476" y="28"/>
+<path-point x="446" y="65"/>
+<attribute name="name" type="string" value="tr_327"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="56" destination-state-id="56" label-x="611" label-y="280">
+<path-point x="527" y="276"/>
+<path-point x="579" y="292"/>
+<path-point x="580" y="260"/>
+<path-point x="529" y="273"/>
+<attribute name="name" type="string" value="tr_329"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="56" destination-state-id="41" label-x="280" label-y="218">
+<path-point x="497" y="255"/>
+<path-point x="282" y="224"/>
+<path-point x="439" y="106"/>
+<attribute name="name" type="string" value="tr_332"/>
+<attribute name="condition" type="string" value="TRANSMISSION_CANCELED &amp;&amp; !END_SIMULATION"/>
+</transition>
+<transition source-state-id="58" destination-state-id="41" label-x="80" label-y="275">
+<path-point x="261" y="501"/>
+<path-point x="51" y="288"/>
+<path-point x="151" y="181"/>
+<path-point x="440" y="97"/>
+<attribute name="name" type="string" value="tr_337"/>
+<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
+</transition>
+<transition source-state-id="63" destination-state-id="63" label-x="1235" label-y="151">
+<path-point x="1124" y="138"/>
+<path-point x="1207" y="130"/>
+<path-point x="1194" y="184"/>
+<path-point x="1122" y="154"/>
+<attribute name="name" type="string" value="tr_322"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="68" destination-state-id="68" label-x="1228" label-y="368">
+<path-point x="1234" y="430"/>
+<path-point x="1178" y="390"/>
+<path-point x="1294" y="385"/>
+<path-point x="1234" y="423"/>
+<attribute name="name" type="string" value="tr_341"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="56" destination-state-id="68" label-x="925" label-y="307">
+<path-point x="537" y="265"/>
+<path-point x="724" y="246"/>
+<path-point x="1221" y="445"/>
+<attribute name="name" type="string" value="tr_340"/>
+<attribute name="condition" type="string" value="END_SIMULATION"/>
+</transition>
+</transitions>
+<packet-formats>
+<![CDATA[
+wlan_control
+wlan_mac
+]]>
+</packet-formats>
+<local-statistics>
+<statistic name="Backoff Slots (slots)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Number of slots station needs to backoff before transmission while contenting for the medium, and the number of slots in the contention windows after station's successful transmissions.
+]]>
+</description>
+</statistic>
+<statistic name="Channel Reservation (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+The amount of time the channel will be 
+busy (network allocation vector). 
+
+
+
+]]>
+</description>
+</statistic>
+<statistic name="Control Traffic Rcvd (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Wlan control (Rts,Cts or Ack) traffic 
+received by the station in bits/sec 
+
+]]>
+</description>
+</statistic>
+<statistic name="Control Traffic Rcvd (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Wlan control (Rts,Cts or Ack( traffic 
+received by the station in packets/sec 
+
+]]>
+</description>
+</statistic>
+<statistic name="Control Traffic Sent (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Wlan control (Rts,Cts or Ack) traffic 
+transmitted by the station in bits/sec 
+
+]]>
+</description>
+</statistic>
+<statistic name="Control Traffic Sent (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Wlan control (Rts,Cts or Ack) traffic 
+transmitted by the station in 
+packets/sec 
+
+]]>
+</description>
+</statistic>
+<statistic name="Data Traffic Rcvd (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Wlan data traffic received by the 
+station in bits/sec 
+]]>
+</description>
+</statistic>
+<statistic name="Data Traffic Rcvd (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Wlan data traffic rcvd by the station 
+from the network.  
+]]>
+</description>
+</statistic>
+<statistic name="Data Traffic Sent (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Wlan data traffic transmitted by the 
+station in bits/sec  
+]]>
+</description>
+</statistic>
+<statistic name="Data Traffic Sent (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Wlan data traffic transmitted by the 
+station. 
+]]>
+</description>
+</statistic>
+<statistic name="Delay (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Represents the end to end delay of all the packets received by the wireless LAN MAC of this node and forwarded to the higher layer.
+
+This delay includes medium access delay at the source MAC, reception of all the fragments individually, and the transfer of the frame via AP, if acccess point functionality is enabled.
+]]>
+</description>
+</statistic>
+<statistic name="Dropped Data Packets (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+The packets dropped in bits by the WLAN MAC due to 
+a) the overflow of higher layer buffer, or
+b) failure of all retransmissions until retry limit.
+
+]]>
+</description>
+</statistic>
+<statistic name="Dropped Data Packets (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+The packets dropped by the WLAN MAC due to 
+a) the overflow of higher layer buffer, or
+b) failure of all retransmissions until retry limit.
+
+]]>
+</description>
+</statistic>
+<statistic name="Hld Queue Size (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/time average" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Size of the queue that holds the frames received from higher layer until they are forwarded to the physical layer by the MAC for transmission.   
+
+
+
+]]>
+</description>
+</statistic>
+<statistic name="Load (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Load (in bits/sec) submitted to wlan 
+layer by all other higher layers in 
+this node. 
+]]>
+</description>
+</statistic>
+<statistic name="Load (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Load (in packets) submitted to wlan 
+layer by all other higher layers in 
+this node. 
+]]>
+</description>
+</statistic>
+<statistic name="Media Access Delay (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+The total of queue and contention delays of data packets received by WLAN MAC from higher layer. For each packet, the delay is recorded when the packet is sent to the physical layer for the first time. 
+Hence, it also includes the period for the successful RTS/CTS exchange, if this exchange is used for that packet.
+]]>
+</description>
+</statistic>
+<statistic name="Retransmission Attempts (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Number of retransmission attempts 
+before the packet was successfully 
+transmitted.
+
+
+
+]]>
+</description>
+</statistic>
+<statistic name="Throughput (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Number of bits sent to the higher layer.
+
+]]>
+</description>
+</statistic>
+</local-statistics>
+<global-statistics>
+<statistic name="Data Dropped (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+The total size of higher layer data packets (in bits/sec) dropped by all the WLAN MACs in the network due to: 
+a) the overflow of higher layer buffer, or
+b) failure of all retransmissions until retry limit.
+]]>
+</description>
+</statistic>
+<statistic name="Delay (sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Represents the end to end delay of all the packets received by the wireless LAN MACs of all WLAN nodes in the network and forwarded to the higher layer. 
+
+This delay includes medium access delay at the source MAC, reception of all the fragments individually, and transfer of the frames via AP, if acccess point functionality is enabled.
+]]>
+</description>
+</statistic>
+<statistic name="Load (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Represents the total load (in bits/sec) submitted to wireless LAN layers by all other higher layers in all WLAN nodes of the network.
+]]>
+</description>
+</statistic>
+<statistic name="Media Access Delay (sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Represents the global statistic for the total of queue and contention delays of data packets received by all WLAN MACs in the network from higher layer.
+
+For each packet, the delay is recorded when the packet is sent to the physical layer for the first time. Hence, it also includes the period for the successful RTS/CTS exchange, if this exchange is used for that packet.
+]]>
+</description>
+</statistic>
+<statistic name="Throughput (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Represents the total number of bits (in bits/sec) forwarded from wireless LAN layers to higher layers in all WLAN nodes of the network.
+]]>
+</description>
+</statistic>
+</global-statistics>
+<comments>
+<![CDATA[
+General Process Description:
+
+----------------------------
+
+The IEEE802.11 (wireless lan) process model is a MAC layer protocol. The 
+role of the wlan_mac is to accept data packets from the higher layer 
+protocols, encapsulate this data into wlan frames, and to send these 
+frames in first-in-first-out order to the destination station. It provides 
+efficient and fair sharing of bandwidth among all the stations attached to 
+the wireless lan. Collision avoidance and deference is handled by the   
+individual station.  
+
+
+
+ Packet Formats:
+
+---------------
+
+"wlan_mac" packet format is used to encapsulate higher layer data into 
+wireless lan frames. It carries control fields such as the source and 
+destination addresses and the protocol type. In addition, the frame check 
+sequence and preamble components are modeled as fields of the packet.
+
+
+
+Statistic Wires:
+
+----------------
+
+On input statistic 1, the wlan_mac process expects to receive a boolean 
+statistic indicating whether a transmission is in progress by this 
+station. This statistic wire comes from the busy statistic of the 
+transmitter channel. The "rising edge trigger" should only be enabled for 
+this statistic wire.
+
+
+
+On input statistic 2, the wlan_mac process expects to receive a boolean 
+statistic indicating whether a reception is in progress or a complete 
+packet has been received by this station. This statistic wire comes from 
+the busy statistic of the receiver channel. The "rising edge trigger"  
+should only be enabled for this statistic wire.
+
+
+
+Process Registry:
+
+-----------------
+
+Published Attributes: protocol, address
+
+Expected Attributes: None
+
+
+
+Streams:
+
+
+
+-------
+
+There are four input streams from the receiver to the MAC process and four 
+output streams from the MAC process to the transmitter. Each of these 
+streams are dedicated to a data rate (1Mbps, 2Mbps, 5.5Mbps, and 11Mbps). 
+The stream numbers are hardwired to be (0,1,2,and 3). The process model 
+use these stream numbers to process incoming and outgoing packets. 
+
+
+
+]]>
+</comments>
+</process-model>
