@@ -1,10 +1,10 @@
 /* Process model C form file: wlan_mac_modif.pr.c */
-/* Portions of this file copyright 1992-2002 by OPNET Technologies, Inc. */
+/* Portions of this file copyright 1992-2007 by OPNET Technologies, Inc. */
 
 
 
 /* This variable carries the header into the object file */
-static const char wlan_mac_modif_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44E30680 44E30680 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+const char wlan_mac_modif_pr_c [] = "MIL_3_Tfile_Hdr_ 120A 30A opnet 7 4A5DDAC3 4A5DDAC3 1 lefkada-laptop theoleyr 0 0 none none 0 0 none 0 0 0 0 0 0 0 0 11ab 5                                                                                                                                                                                                                                                                                                                                                                                                    ";
 #include <string.h>
 
 
@@ -12,13 +12,6 @@ static const char wlan_mac_modif_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4
 /* OPNET system definitions */
 #include <opnet.h>
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-FSM_EXT_DECS
-#if defined (__cplusplus)
-} /* end of 'extern "C"' */
-#endif
 
 
 /* Header Block */
@@ -352,13 +345,12 @@ static void			wlan_frame_type_conv(int frame_type, char* frame_type_name);
 
 /* End of Header Block */
 
-
 #if !defined (VOSD_NO_FIN)
 #undef	BIN
 #undef	BOUT
-#define	BIN		FIN_LOCAL_FIELD(last_line_passed) = __LINE__ - _block_origin;
+#define	BIN		FIN_LOCAL_FIELD(_op_last_line_passed) = __LINE__ - _op_block_origin;
 #define	BOUT	BIN
-#define	BINIT	FIN_LOCAL_FIELD(last_line_passed) = 0; _block_origin = __LINE__;
+#define	BINIT	FIN_LOCAL_FIELD(_op_last_line_passed) = 0; _op_block_origin = __LINE__;
 #else
 #define	BINIT
 #endif /* #if !defined (VOSD_NO_FIN) */
@@ -371,285 +363,360 @@ typedef struct
 	/* Internal state tracking for FSM */
 	FSM_SYS_STATE
 	/* State Variables */
-	int	                    		retry_count;
-	int	                    		intrpt_type;
-	WlanT_Mac_Intrpt_Code	  		intrpt_code;
-	int	                    		my_address;
-	Objid	                  		my_objid;
-	Objid	                  		my_node_objid;
-	Objid	                  		my_subnet_objid;
-	Objid	                  		tx_objid;
-	Objid	                  		rx_objid;
-	OmsT_Pr_Handle	         		own_process_record_handle;
-	List*	                  		hld_list_ptr;
-	double	                 		operational_speed;
-	int	                    		frag_threshold;
-	int	                    		packet_seq_number;
-	int	                    		packet_frag_number;
-	int	                    		destination_addr;
-	Sbhandle	               		fragmentation_buffer_ptr;
-	WlanT_Mac_Frame_Type	   		fresp_to_send;
-	double	                 		nav_duration;
-	int	                    		rts_threshold;
-	int	                    		duplicate_entry;
-	WlanT_Mac_Frame_Type	   		expected_frame_type;
-	int	                    		remote_sta_addr;
-	double	                 		backoff_slots;
-	Stathandle	             		packet_load_handle;
-	double	                 		intrpt_time;
-	Packet *	               		wlan_transmit_frame_copy_ptr;
-	Stathandle	             		backoff_slots_handle;
-	int	                    		instrm_from_mac_if;
-	int	                    		outstrm_to_mac_if;
-	int	                    		num_fragments;
-	int	                    		remainder_size;
-	List*	                  		defragmentation_list_ptr;
-	WlanT_Mac_Flags*	       		wlan_flags;
-	OmsT_Aa_Address_Handle	 		oms_aa_handle;
-	double	                 		current_time;
-	double	                 		rcv_idle_time;
-	WlanT_Mac_Duplicate_Buffer_Entry**			duplicate_list_ptr;
-	Pmohandle	              		hld_pmh;
-	int	                    		max_backoff;
-	char	                   		current_state_name [32];
-	Stathandle	             		hl_packets_rcvd;
-	Stathandle	             		media_access_delay;
-	Stathandle	             		ete_delay_handle;
-	Stathandle	             		global_ete_delay_handle;
-	Stathandle	             		global_throughput_handle;
-	Stathandle	             		global_load_handle;
-	Stathandle	             		global_dropped_data_handle;
-	Stathandle	             		global_mac_delay_handle;
-	Stathandle	             		ctrl_traffic_rcvd_handle_inbits;
-	Stathandle	             		ctrl_traffic_sent_handle_inbits;
-	Stathandle	             		ctrl_traffic_rcvd_handle;
-	Stathandle	             		ctrl_traffic_sent_handle;
-	Stathandle	             		data_traffic_rcvd_handle_inbits;
-	Stathandle	             		data_traffic_sent_handle_inbits;
-	Stathandle	             		data_traffic_rcvd_handle;
-	Stathandle	             		data_traffic_sent_handle;
-	double	                 		sifs_time;
-	double	                 		slot_time;
-	int	                    		cw_min;
-	int	                    		cw_max;
-	double	                 		difs_time;
-	double	                 		plcp_overhead_control;
-	double	                 		plcp_overhead_data;
-	Stathandle	             		channel_reserv_handle;
-	Stathandle	             		retrans_handle;
-	Stathandle	             		throughput_handle;
-	int	                    		long_retry_limit;
-	int	                    		short_retry_limit;
-	int	                    		retry_limit;
-	WlanT_Mac_Frame_Type	   		last_frametx_type;
-	Evhandle	               		deference_evh;
-	Evhandle	               		backoff_elapsed_evh;
-	Evhandle	               		frame_timeout_evh;
-	double	                 		eifs_time;
-	int	                    		i_strm;
-	Boolean	                		wlan_trace_active;
-	int	                    		pkt_in_service;
-	Stathandle	             		bits_load_handle;
-	int	                    		ap_flag;
-	int	                    		bss_flag;
-	int	                    		ap_mac_address;
-	int	                    		hld_max_size;
-	double	                 		max_receive_lifetime;
-	Boolean	                		accept_large_packets;
-	WlanT_Phy_Char_Code	    		phy_char_flag;
-	OmsT_Aa_Address_Handle	 		oms_aa_wlan_handle;
-	int	                    		total_hlpk_size;
-	Stathandle	             		drop_packet_handle;
-	Stathandle	             		drop_packet_handle_inbits;
-	Log_Handle	             		drop_pkt_log_handle;
-	int	                    		drop_pkt_entry_log_flag;
-	int	                    		packet_size;
-	double	                 		receive_time;
-	Ici*	                   		llc_iciptr;
-	int	                    		rcv_channel_status;
-	double	                 		rx_power_threshold;
-	int*	                   		bss_stn_list;
-	int	                    		bss_stn_count;
-	int	                    		bss_id;
-	int	                    		pcf_retry_count;
-	int	                    		poll_fail_count;
-	int	                    		max_poll_fails;
-	List*	                  		cfpd_list_ptr;
-	int	                    		pcf_queue_offset;
-	double	                 		beacon_int;
-	Sbhandle	               		pcf_frag_buffer_ptr;
-	Packet *	               		wlan_pcf_transmit_frame_copy_ptr;
-	int	                    		pcf_num_fragments;
-	int	                    		pcf_remainder_size;
-	int*	                   		polling_list;
-	int	                    		poll_list_size;
-	int	                    		poll_index;
-	double	                 		pifs_time;
-	Evhandle	               		beacon_evh;
-	Evhandle	               		cfp_end_evh;
-	int	                    		pcf_pkt_in_service;
-	int	                    		pcf_flag;
-	Boolean	                		active_pc;
-	int	                    		cfp_prd;
-	int	                    		cfp_offset;
-	double	                 		cfp_length;
-	int	                    		ap_relay;
-	int	                    		total_cfpd_size;
-	int	                    		packet_size_dcf;
-	int	                    		packet_size_pcf;
-	double	                 		receive_time_dcf;
-	double	                 		receive_time_pcf;
-	Boolean	                		cfp_ap_medium_control;
-	int	                    		pcf_network;
-	int	                    		IS_EXPO_BACKOFF;
-	int	                    		ONE_MBPS_HEADER;
+	int	                    		retry_count                                     ;	/* Incremented each time a frame was unsuccessful in transmission */
+	int	                    		intrpt_type                                     ;	/* Intrpt type is stored in this variable */
+	WlanT_Mac_Intrpt_Code	  		intrpt_code                                     ;	/* Enumerated intrpt code for interrupts */
+	int	                    		my_address                                      ;	/* Station's own address				 */
+	Objid	                  		my_objid                                        ;	/* The object ID of the surrounding module.	 */
+	Objid	                  		my_node_objid                                   ;	/* The object ID of the surronding node.	 */
+	Objid	                  		my_subnet_objid                                 ;	/* The object ID of the subnet in which the	 */
+	                        		                                                	/* surrounding node model resides.			        */
+	Objid	                  		tx_objid                                        ;	/* Object ID of the radio transmitter that	 */
+	                        		                                                	/* we are connected to.						               */
+	Objid	                  		rx_objid                                        ;	/* Object ID of the radio receiver that we	 */
+	                        		                                                	/* are connected to.						                  */
+	OmsT_Pr_Handle	         		own_process_record_handle                       ;	/* Handle to the own process record in the network wide process	 */
+	                        		                                                	/* registery.													                                       */
+	List*	                  		hld_list_ptr                                    ;	/* Higher layer data arrival queue or list */
+	double	                 		operational_speed                               ;	/* Used in storing data rate attribute. This is the rate at which	 */
+	                        		                                                	/* data frame is transmitted.										                            */
+	int	                    		frag_threshold                                  ;	/* Used in storing fragmentation threshold attribute */
+	int	                    		packet_seq_number                               ;	/* Counter to determine packet sequence number for each transmitted packet */
+	int	                    		packet_frag_number                              ;	/* Counter to determine fragment number for each packet fragment */
+	int	                    		destination_addr                                ;	/* Used in storing destination address */
+	Sbhandle	               		fragmentation_buffer_ptr                        ;	/* Fragmentation buffer used to store transmit packet fragments */
+	WlanT_Mac_Frame_Type	   		fresp_to_send                                   ;	/* After receivng a frame station will  */
+	                        		                                                	/* determine that what response need to */
+	                        		                                                	/* be sent								                      */
+	double	                 		nav_duration                                    ;	/* Network allocation vector duration    */
+	                        		                                                	/* this an absolute time from the        */
+	                        		                                                	/* beginning of the simulation. It will  */
+	                        		                                                	/* be considered as zero if it is set to */
+	                        		                                                	/* the current time						                */
+	int	                    		rts_threshold                                   ;	/* Used in storing Rts threshold attribute */
+	int	                    		duplicate_entry                                 ;	/* Flag for duplicate entry  Keeps track that whether the receive frame was a duplicate frame or not.	 */
+	                        		                                                	/* This information is transmitted in ACK frame.														                                         */
+	WlanT_Mac_Frame_Type	   		expected_frame_type                             ;	/* Set the expected frame type needed in response	 */
+	                        		                                                	/* to the transmitted frame							                 */
+	int	                    		remote_sta_addr                                 ;	/* Extracting remote station's address from	 */
+	                        		                                                	/* the received packet	                	     */
+	double	                 		backoff_slots                                   ;	/* Random number of backoff slots determined by */
+	                        		                                                	/* a uniform distribution	                 	    */
+	Stathandle	             		packet_load_handle                              ;	/* Recording number of packets received from the	 */
+	                        		                                                	/* higher layer		                        		       */
+	double	                 		intrpt_time                                     ;	/* Storing total backoff time when backoff duration is set */
+	Packet *	               		wlan_transmit_frame_copy_ptr                    ;	/* Make copy of the transmit frame before transmission */
+	Stathandle	             		backoff_slots_handle                            ;	/* Number of backoff slots before transmission. */
+	int	                    		instrm_from_mac_if                              ;	/* Stream index coming from the higher layer MAC interface. */
+	int	                    		outstrm_to_mac_if                               ;	/* Stream index connected to the higher layer MAC interface. */
+	int	                    		num_fragments                                   ;	/* Number of data fragments that need to be transmitted */
+	                        		                                                	/* for each data frame received from higher layer       */
+	int	                    		remainder_size                                  ;	/* Size of the last data fragment 		 */
+	List*	                  		defragmentation_list_ptr                        ;	/* This buffer contains the fragments received from		   */
+	                        		                                                	/* remote station and maintains following information	  */
+	                        		                                                	/* for each fragment:									                          */
+	                        		                                                	/* 1. remote station address 						   	              	  */
+	                        		                                                	/* 2. time the last fragment was received             	 */
+	                        		                                                	/* 3. reassembly buffer 			                   	         */
+	WlanT_Mac_Flags*	       		wlan_flags                                      ;	/* This structure contains all the flags which the process    */
+	                        		                                                	/* model used to convey information from one state to another */
+	                        		                                                	/* for details check the header block where the structure is  */
+	                        		                                                	/* defined.													                                      */
+	OmsT_Aa_Address_Handle	 		oms_aa_handle                                   ;	/* used to obtain address handle to resolve wlan MAC address */
+	double	                 		current_time                                    ;	/* Keeps track of the current simulation time at each interrupt */
+	double	                 		rcv_idle_time                                   ;	/* Last simulation time when the receiver became idle again. */
+	WlanT_Mac_Duplicate_Buffer_Entry**			duplicate_list_ptr                              ;	/* This list stores the information of the received packet.	 */
+	                        		                                                	/* The information includes source station address, packet   */
+	                        		                                                	/* sequeunce id, and packet fragment number. This            */
+	                        		                                                	/* is used to keep track that wether the recieved packet is  */
+	                        		                                                	/* a duplicate of the previously received frame. If that's   */
+	                        		                                                	/* the case then packet is simply discarded.			              */
+	Pmohandle	              		hld_pmh                                         ;	/* Pool memory handle used to allocate memory for the data  */
+	                        		                                                	/* received from the higher layer and inserted in the queue */
+	int	                    		max_backoff                                     ;	/* maximum backoff value for picking random backoff inteval */
+	char	                   		current_state_name [32]                         ;	/* Keeping track of the current state of the station.	 */
+	                        		                                                	/*                                                     */
+	Stathandle	             		hl_packets_rcvd                                 ;	/* Monitor queue size as the packets arrive from higher layer.	 */
+	Stathandle	             		media_access_delay                              ;	/* Keep tracks of the delay from the time the packet is received		      */
+	                        		                                                	/* from the higher layer to the time it is transmitted by the station.	 */
+	Stathandle	             		ete_delay_handle                                ;	/* Handle for the end to end delay statistic that is recorded for	   */
+	                        		                                                	/* the packets that are accepted and forwarded to the higher layer.	 */
+	Stathandle	             		global_ete_delay_handle                         ;	/* Handle for global end-to-end delay statistic.					 */
+	Stathandle	             		global_throughput_handle                        ;	/* Handle for global WLAN throughput statistic.						 */
+	Stathandle	             		global_load_handle                              ;	/* Handle for global WLAN load statistic.							 */
+	Stathandle	             		global_dropped_data_handle                      ;	/* Handle for global dropped higher layer data statistic.			 */
+	Stathandle	             		global_mac_delay_handle                         ;	/* Handle for global media access delay statistic.					 */
+	Stathandle	             		ctrl_traffic_rcvd_handle_inbits                 ;	/* Control Traffic (Rts,Cts or Ack) received by the station in bits	 */
+	Stathandle	             		ctrl_traffic_sent_handle_inbits                 ;	/* Control Traffic (Rts,Cts or Ack) sent by the station in bits	 */
+	Stathandle	             		ctrl_traffic_rcvd_handle                        ;	/* Control Traffic (Rts,Cts or Ack) received by the station in packets	 */
+	Stathandle	             		ctrl_traffic_sent_handle                        ;	/* Control Traffic (Rts,Cts or Ack) sent by the station	 */
+	Stathandle	             		data_traffic_rcvd_handle_inbits                 ;	/* Data Traffic received by the station in bits	 */
+	Stathandle	             		data_traffic_sent_handle_inbits                 ;	/* Data Traffic sent  by the station in bits	 */
+	Stathandle	             		data_traffic_rcvd_handle                        ;	/* Data Traffic received by the station */
+	Stathandle	             		data_traffic_sent_handle                        ;	/* Data Traffic sent by the station	 */
+	double	                 		sifs_time                                       ;	/* Read the SIFS time from the model attributes	 */
+	double	                 		slot_time                                       ;	/* Read the Slot time from the model attributes	 */
+	int	                    		cw_min                                          ;	/* Read the minimum contention window size from the model attribute.	 */
+	int	                    		cw_max                                          ;	/* Read the maximum contention window size from the model attribute.	 */
+	double	                 		difs_time                                       ;	/* DIFS interval is used by the stations to transmit data frames.		 */
+	double	                 		plcp_overhead_control                           ;	/* Delay in seconds to transmit PLCP Preamble and PLCP Header at lowest	 */
+	                        		                                                	/* mandatory data rate of the physical layer for WLAN control frames.	   */
+	double	                 		plcp_overhead_data                              ;	/* Delay in seconds to transmit PLCP Preamble and PLCP Header for WLAN	 */
+	                        		                                                	/* data frames.															                                          */
+	Stathandle	             		channel_reserv_handle                           ;	/* Statisitic for network allocation vector	 */
+	Stathandle	             		retrans_handle                                  ;	/* Keep track of the number of retransmissions before the packet was	 */
+	                        		                                                	/* successfully transmitted.											                               */
+	Stathandle	             		throughput_handle                               ;	/* Keep track of the number of data bits sent to the higher layer.	 */
+	int	                    		long_retry_limit                                ;	/* This is the retry limit for the frames which are greater than or equal to	 */
+	                        		                                                	/* Rts threshold.															                                              */
+	int	                    		short_retry_limit                               ;	/* This is the retry limit for the frames which are less than or equal to	 */
+	                        		                                                	/* Rts threshold.		                                                        */
+	int	                    		retry_limit                                     ;	/* This variable is either intialize to short or long retry limit	 */
+	                        		                                                	/* depending on the Rts and data packet sizes.						               */
+	WlanT_Mac_Frame_Type	   		last_frametx_type                               ;	/* This frame keeps track of the last transmitted frame that needs	 */
+	                        		                                                	/* a frame response (like Cts or Ack). This is actually used when	  */
+	                        		                                                	/* there is a need for retransmission.								                      */
+	Evhandle	               		deference_evh                                   ;	/* Event handle that keeps track of the self interrupt due to Deference.	 */
+	Evhandle	               		backoff_elapsed_evh                             ;	/* Event handle that keeps track of the self interrupt due to backoff.	 */
+	Evhandle	               		frame_timeout_evh                               ;	/* Event handle that keeps track of the self interrupt due to frame timeout	 */
+	                        		                                                	/* when the station is waiting for a response.								                       */
+	double	                 		eifs_time                                       ;	/* EIFS duration which is used when the station receives an erroneous frame	 */
+	                        		                                                	/*                                                                           */
+	int	                    		i_strm                                          ;	/* Keeping track of incoming packet stream from the lower layer.	 */
+	Boolean	                		wlan_trace_active                               ;	/* Debugging/trace flag for all activities in this MAC. */
+	int	                    		pkt_in_service                                  ;	/* Store packet id of the data packet in service.	 */
+	Stathandle	             		bits_load_handle                                ;	/* Reporting the packet size arrived from higher layer.	 */
+	int	                    		ap_flag                                         ;	/* Flag to read the attribute which indicates whether	 */
+	                        		                                                	/* the station has Access point functional or not.		   */
+	int	                    		bss_flag                                        ;	/* Flag to check whether the network is configured for BSS or IBSS.	 */
+	int	                    		ap_mac_address                                  ;	/* kc: address of the access point . prev :Bss id of the network if it is an infrastructured network.	 */
+	                        		                                                	/*                                                                                                     */
+	int	                    		hld_max_size                                    ;	/* This variable maintains the maximum size of the higher layer	 */
+	                        		                                                	/* data buffer as specified by the user.						                   */
+	double	                 		max_receive_lifetime                            ;	/* Maximum time after the initial reception of the fragmented MSDU			       */
+	                        		                                                	/* after which further attempts to reassemble the MSDU will be terminated.	 */
+	Boolean	                		accept_large_packets                            ;	/* Flag to accept packets larger than MAXMSDU size.							 */
+	WlanT_Phy_Char_Code	    		phy_char_flag                                   ;	/* This variable stores the physical layer characteristic type information.		 */
+	OmsT_Aa_Address_Handle	 		oms_aa_wlan_handle                              ;	/* Creating a pool of station addresses within a subnet.	 */
+	                        		                                                	/* This pool is identified by the subnet name.				        */
+	int	                    		total_hlpk_size                                 ;	/* Maintaining total size of the packets in higher layer queue.	 */
+	Stathandle	             		drop_packet_handle                              ;	/* Keep track of the dropped packet by the higher layer queue due	 */
+	                        		                                                	/* to the overflow of the buffer.									                         */
+	Stathandle	             		drop_packet_handle_inbits                       ;	/* Keep track of the dropped packet by the higher layer queue due	 */
+	                        		                                                	/* to the overflow of the buffer.									                         */
+	Log_Handle	             		drop_pkt_log_handle                             ;	/* logging information if the packet is dropped due to higher layer queue overflow	 */
+	int	                    		drop_pkt_entry_log_flag                         ;	/* This is to make sure that the entry is written only once.	 	 */
+	int	                    		packet_size                                     ;	/* The full size of the packet that is currently handled.			 */
+	double	                 		receive_time                                    ;	/* The arrival time of the packet that is currently handled.	 	 */
+	Ici*	                   		llc_iciptr                                      ;	/* Sending ici to the bridge queue with final destination address.	 */
+	int	                    		rcv_channel_status                              ;	/* Variable that stores the busy status of different channels of	    */
+	                        		                                                	/* MAC's receiver. The n'th bit is reserved for n'th channel. Hence	 */
+	                        		                                                	/* only least 4 bits are used. If the value of a bit is zero that	   */
+	                        		                                                	/* means the corresponding channel is idle (not busy). That bit is	  */
+	                        		                                                	/* set to 1 one when the channel becomes busy.						                 */
+	double	                 		rx_power_threshold                              ;	/* Receiver power threshold for valid WLAN packets.					 */
+	int*	                   		bss_stn_list                                    ;
+	int	                    		bss_stn_count                                   ;
+	int	                    		bss_id                                          ;	/* When BSS_ID attribute is being used , this variable identifies	  */
+	                        		                                                	/* the BSS to which a node belongs. Otherwise, each subnet defines	 */
+	                        		                                                	/* a BSS, and this state variable just retains its default value,	  */
+	                        		                                                	/* which is -1.														                                       */
+	int	                    		pcf_retry_count                                 ;	/* Incremented each time a frame was unsuccessful in transmission */
+	int	                    		poll_fail_count                                 ;	/* This variable counts the number of times a poll is sent, and */
+	                        		                                                	/* receives no response.                                        */
+	int	                    		max_poll_fails                                  ;	/* The variable determines the maximum number of failed polls */
+	                        		                                                	/* allowed before a station is skipped in sequence            */
+	List*	                  		cfpd_list_ptr                                   ;	/* Higher layer data arrival queue or list for CFP */
+	int	                    		pcf_queue_offset                                ;	/* Used in storing fragmentation threshold attribute */
+	double	                 		beacon_int                                      ;	/* Beacon Interval in seconds */
+	Sbhandle	               		pcf_frag_buffer_ptr                             ;	/* PCF Fragmentation buffer used to store transmit packet fragments */
+	Packet *	               		wlan_pcf_transmit_frame_copy_ptr                ;	/* Make separate copy of pcf transmit frames before transmission */
+	int	                    		pcf_num_fragments                               ;	/* Number of data fragments that need to be transmitted */
+	                        		                                                	/* for each pcf data frame received from higher layer   */
+	int	                    		pcf_remainder_size                              ;	/* Size of the last PCF data fragment 		 */
+	int*	                   		polling_list                                    ;	/* This structure is used to maintain the polling list for the PCF */
+	                        		                                                	/*                                                                 */
+	int	                    		poll_list_size                                  ;	/* This variable contains the size of the polling list */
+	int	                    		poll_index                                      ;	/* This is the index into the polling list indicating the STA */
+	                        		                                                	/* currently being polled.                                    */
+	double	                 		pifs_time                                       ;	/* PIFS interval is used by the stations during CFP 			 */
+	Evhandle	               		beacon_evh                                      ;	/* Event handle that keeps track of self interrupt for Beacon transmit time. */
+	Evhandle	               		cfp_end_evh                                     ;	/* Event handle that keeps track of self interrupt for end of CFP. */
+	int	                    		pcf_pkt_in_service                              ;	/* Store packet id of the data packet in service. */
+	int	                    		pcf_flag                                        ;	/* Flag to read the attribute which indicates whether */
+	                        		                                                	/* the station has PCF functional or not.	            */
+	Boolean	                		active_pc                                       ;	/* The variable indicates the presence of an active PC in the BSS */
+	int	                    		cfp_prd                                         ;	/* This variable contain the number of beacon periods between */
+	                        		                                                	/* Contention free periods                                    */
+	int	                    		cfp_offset                                      ;	/* This variable is used to track the "phase" of the cfp	   */
+	                        		                                                	/* occurance relative to time =0.  It indicates the number	 */
+	                        		                                                	/* of beacon periods the first cfp is offset from time=0.	  */
+	double	                 		cfp_length                                      ;	/* This variable contains the default length in seconds of the */
+	                        		                                                	/* CFP assuming the CFP starts at the TTBT.                    */
+	int	                    		ap_relay                                        ;	/* This variable determines if station to station traffic in 	 */
+	                        		                                                	/* the presence of an AP is relayed through the AP, or sent  	 */
+	                        		                                                	/* between stations directly 									                         */
+	int	                    		total_cfpd_size                                 ;	/* Maintaining total size of the packets in higher layer CFP queue.	 */
+	int	                    		packet_size_dcf                                 ;	/* The full size of the DCF packet that is currently handled.	 */
+	int	                    		packet_size_pcf                                 ;	/* The full size of the PCF packet that is currently handled.	 */
+	double	                 		receive_time_dcf                                ;	/* The arrival time of the packet that is currently handled by the DCF.	 */
+	double	                 		receive_time_pcf                                ;	/* The arrival time of the packet that is currently handled by the PCF.	 */
+	Boolean	                		cfp_ap_medium_control                           ;	/* Indicates the CFP during which AP controls the medium.	 */
+	int	                    		pcf_network                                     ;	/* Number of PCF enabled nodes in the network.				 */
+	int	                    		IS_EXPO_BACKOFF                                 ;	/* Is the exponential backoff activated ? */
+	int	                    		ONE_MBPS_HEADER                                 ;	/* Must the prehamble and header be sent at 1 Mbps (bitrate compatbility) */
 	} wlan_mac_modif_state;
 
-#define pr_state_ptr            		((wlan_mac_modif_state*) SimI_Mod_State_Ptr)
-#define retry_count             		pr_state_ptr->retry_count
-#define intrpt_type             		pr_state_ptr->intrpt_type
-#define intrpt_code             		pr_state_ptr->intrpt_code
-#define my_address              		pr_state_ptr->my_address
-#define my_objid                		pr_state_ptr->my_objid
-#define my_node_objid           		pr_state_ptr->my_node_objid
-#define my_subnet_objid         		pr_state_ptr->my_subnet_objid
-#define tx_objid                		pr_state_ptr->tx_objid
-#define rx_objid                		pr_state_ptr->rx_objid
-#define own_process_record_handle		pr_state_ptr->own_process_record_handle
-#define hld_list_ptr            		pr_state_ptr->hld_list_ptr
-#define operational_speed       		pr_state_ptr->operational_speed
-#define frag_threshold          		pr_state_ptr->frag_threshold
-#define packet_seq_number       		pr_state_ptr->packet_seq_number
-#define packet_frag_number      		pr_state_ptr->packet_frag_number
-#define destination_addr        		pr_state_ptr->destination_addr
-#define fragmentation_buffer_ptr		pr_state_ptr->fragmentation_buffer_ptr
-#define fresp_to_send           		pr_state_ptr->fresp_to_send
-#define nav_duration            		pr_state_ptr->nav_duration
-#define rts_threshold           		pr_state_ptr->rts_threshold
-#define duplicate_entry         		pr_state_ptr->duplicate_entry
-#define expected_frame_type     		pr_state_ptr->expected_frame_type
-#define remote_sta_addr         		pr_state_ptr->remote_sta_addr
-#define backoff_slots           		pr_state_ptr->backoff_slots
-#define packet_load_handle      		pr_state_ptr->packet_load_handle
-#define intrpt_time             		pr_state_ptr->intrpt_time
-#define wlan_transmit_frame_copy_ptr		pr_state_ptr->wlan_transmit_frame_copy_ptr
-#define backoff_slots_handle    		pr_state_ptr->backoff_slots_handle
-#define instrm_from_mac_if      		pr_state_ptr->instrm_from_mac_if
-#define outstrm_to_mac_if       		pr_state_ptr->outstrm_to_mac_if
-#define num_fragments           		pr_state_ptr->num_fragments
-#define remainder_size          		pr_state_ptr->remainder_size
-#define defragmentation_list_ptr		pr_state_ptr->defragmentation_list_ptr
-#define wlan_flags              		pr_state_ptr->wlan_flags
-#define oms_aa_handle           		pr_state_ptr->oms_aa_handle
-#define current_time            		pr_state_ptr->current_time
-#define rcv_idle_time           		pr_state_ptr->rcv_idle_time
-#define duplicate_list_ptr      		pr_state_ptr->duplicate_list_ptr
-#define hld_pmh                 		pr_state_ptr->hld_pmh
-#define max_backoff             		pr_state_ptr->max_backoff
-#define current_state_name      		pr_state_ptr->current_state_name
-#define hl_packets_rcvd         		pr_state_ptr->hl_packets_rcvd
-#define media_access_delay      		pr_state_ptr->media_access_delay
-#define ete_delay_handle        		pr_state_ptr->ete_delay_handle
-#define global_ete_delay_handle 		pr_state_ptr->global_ete_delay_handle
-#define global_throughput_handle		pr_state_ptr->global_throughput_handle
-#define global_load_handle      		pr_state_ptr->global_load_handle
-#define global_dropped_data_handle		pr_state_ptr->global_dropped_data_handle
-#define global_mac_delay_handle 		pr_state_ptr->global_mac_delay_handle
-#define ctrl_traffic_rcvd_handle_inbits		pr_state_ptr->ctrl_traffic_rcvd_handle_inbits
-#define ctrl_traffic_sent_handle_inbits		pr_state_ptr->ctrl_traffic_sent_handle_inbits
-#define ctrl_traffic_rcvd_handle		pr_state_ptr->ctrl_traffic_rcvd_handle
-#define ctrl_traffic_sent_handle		pr_state_ptr->ctrl_traffic_sent_handle
-#define data_traffic_rcvd_handle_inbits		pr_state_ptr->data_traffic_rcvd_handle_inbits
-#define data_traffic_sent_handle_inbits		pr_state_ptr->data_traffic_sent_handle_inbits
-#define data_traffic_rcvd_handle		pr_state_ptr->data_traffic_rcvd_handle
-#define data_traffic_sent_handle		pr_state_ptr->data_traffic_sent_handle
-#define sifs_time               		pr_state_ptr->sifs_time
-#define slot_time               		pr_state_ptr->slot_time
-#define cw_min                  		pr_state_ptr->cw_min
-#define cw_max                  		pr_state_ptr->cw_max
-#define difs_time               		pr_state_ptr->difs_time
-#define plcp_overhead_control   		pr_state_ptr->plcp_overhead_control
-#define plcp_overhead_data      		pr_state_ptr->plcp_overhead_data
-#define channel_reserv_handle   		pr_state_ptr->channel_reserv_handle
-#define retrans_handle          		pr_state_ptr->retrans_handle
-#define throughput_handle       		pr_state_ptr->throughput_handle
-#define long_retry_limit        		pr_state_ptr->long_retry_limit
-#define short_retry_limit       		pr_state_ptr->short_retry_limit
-#define retry_limit             		pr_state_ptr->retry_limit
-#define last_frametx_type       		pr_state_ptr->last_frametx_type
-#define deference_evh           		pr_state_ptr->deference_evh
-#define backoff_elapsed_evh     		pr_state_ptr->backoff_elapsed_evh
-#define frame_timeout_evh       		pr_state_ptr->frame_timeout_evh
-#define eifs_time               		pr_state_ptr->eifs_time
-#define i_strm                  		pr_state_ptr->i_strm
-#define wlan_trace_active       		pr_state_ptr->wlan_trace_active
-#define pkt_in_service          		pr_state_ptr->pkt_in_service
-#define bits_load_handle        		pr_state_ptr->bits_load_handle
-#define ap_flag                 		pr_state_ptr->ap_flag
-#define bss_flag                		pr_state_ptr->bss_flag
-#define ap_mac_address          		pr_state_ptr->ap_mac_address
-#define hld_max_size            		pr_state_ptr->hld_max_size
-#define max_receive_lifetime    		pr_state_ptr->max_receive_lifetime
-#define accept_large_packets    		pr_state_ptr->accept_large_packets
-#define phy_char_flag           		pr_state_ptr->phy_char_flag
-#define oms_aa_wlan_handle      		pr_state_ptr->oms_aa_wlan_handle
-#define total_hlpk_size         		pr_state_ptr->total_hlpk_size
-#define drop_packet_handle      		pr_state_ptr->drop_packet_handle
-#define drop_packet_handle_inbits		pr_state_ptr->drop_packet_handle_inbits
-#define drop_pkt_log_handle     		pr_state_ptr->drop_pkt_log_handle
-#define drop_pkt_entry_log_flag 		pr_state_ptr->drop_pkt_entry_log_flag
-#define packet_size             		pr_state_ptr->packet_size
-#define receive_time            		pr_state_ptr->receive_time
-#define llc_iciptr              		pr_state_ptr->llc_iciptr
-#define rcv_channel_status      		pr_state_ptr->rcv_channel_status
-#define rx_power_threshold      		pr_state_ptr->rx_power_threshold
-#define bss_stn_list            		pr_state_ptr->bss_stn_list
-#define bss_stn_count           		pr_state_ptr->bss_stn_count
-#define bss_id                  		pr_state_ptr->bss_id
-#define pcf_retry_count         		pr_state_ptr->pcf_retry_count
-#define poll_fail_count         		pr_state_ptr->poll_fail_count
-#define max_poll_fails          		pr_state_ptr->max_poll_fails
-#define cfpd_list_ptr           		pr_state_ptr->cfpd_list_ptr
-#define pcf_queue_offset        		pr_state_ptr->pcf_queue_offset
-#define beacon_int              		pr_state_ptr->beacon_int
-#define pcf_frag_buffer_ptr     		pr_state_ptr->pcf_frag_buffer_ptr
-#define wlan_pcf_transmit_frame_copy_ptr		pr_state_ptr->wlan_pcf_transmit_frame_copy_ptr
-#define pcf_num_fragments       		pr_state_ptr->pcf_num_fragments
-#define pcf_remainder_size      		pr_state_ptr->pcf_remainder_size
-#define polling_list            		pr_state_ptr->polling_list
-#define poll_list_size          		pr_state_ptr->poll_list_size
-#define poll_index              		pr_state_ptr->poll_index
-#define pifs_time               		pr_state_ptr->pifs_time
-#define beacon_evh              		pr_state_ptr->beacon_evh
-#define cfp_end_evh             		pr_state_ptr->cfp_end_evh
-#define pcf_pkt_in_service      		pr_state_ptr->pcf_pkt_in_service
-#define pcf_flag                		pr_state_ptr->pcf_flag
-#define active_pc               		pr_state_ptr->active_pc
-#define cfp_prd                 		pr_state_ptr->cfp_prd
-#define cfp_offset              		pr_state_ptr->cfp_offset
-#define cfp_length              		pr_state_ptr->cfp_length
-#define ap_relay                		pr_state_ptr->ap_relay
-#define total_cfpd_size         		pr_state_ptr->total_cfpd_size
-#define packet_size_dcf         		pr_state_ptr->packet_size_dcf
-#define packet_size_pcf         		pr_state_ptr->packet_size_pcf
-#define receive_time_dcf        		pr_state_ptr->receive_time_dcf
-#define receive_time_pcf        		pr_state_ptr->receive_time_pcf
-#define cfp_ap_medium_control   		pr_state_ptr->cfp_ap_medium_control
-#define pcf_network             		pr_state_ptr->pcf_network
-#define IS_EXPO_BACKOFF         		pr_state_ptr->IS_EXPO_BACKOFF
-#define ONE_MBPS_HEADER         		pr_state_ptr->ONE_MBPS_HEADER
+#define retry_count             		op_sv_ptr->retry_count
+#define intrpt_type             		op_sv_ptr->intrpt_type
+#define intrpt_code             		op_sv_ptr->intrpt_code
+#define my_address              		op_sv_ptr->my_address
+#define my_objid                		op_sv_ptr->my_objid
+#define my_node_objid           		op_sv_ptr->my_node_objid
+#define my_subnet_objid         		op_sv_ptr->my_subnet_objid
+#define tx_objid                		op_sv_ptr->tx_objid
+#define rx_objid                		op_sv_ptr->rx_objid
+#define own_process_record_handle		op_sv_ptr->own_process_record_handle
+#define hld_list_ptr            		op_sv_ptr->hld_list_ptr
+#define operational_speed       		op_sv_ptr->operational_speed
+#define frag_threshold          		op_sv_ptr->frag_threshold
+#define packet_seq_number       		op_sv_ptr->packet_seq_number
+#define packet_frag_number      		op_sv_ptr->packet_frag_number
+#define destination_addr        		op_sv_ptr->destination_addr
+#define fragmentation_buffer_ptr		op_sv_ptr->fragmentation_buffer_ptr
+#define fresp_to_send           		op_sv_ptr->fresp_to_send
+#define nav_duration            		op_sv_ptr->nav_duration
+#define rts_threshold           		op_sv_ptr->rts_threshold
+#define duplicate_entry         		op_sv_ptr->duplicate_entry
+#define expected_frame_type     		op_sv_ptr->expected_frame_type
+#define remote_sta_addr         		op_sv_ptr->remote_sta_addr
+#define backoff_slots           		op_sv_ptr->backoff_slots
+#define packet_load_handle      		op_sv_ptr->packet_load_handle
+#define intrpt_time             		op_sv_ptr->intrpt_time
+#define wlan_transmit_frame_copy_ptr		op_sv_ptr->wlan_transmit_frame_copy_ptr
+#define backoff_slots_handle    		op_sv_ptr->backoff_slots_handle
+#define instrm_from_mac_if      		op_sv_ptr->instrm_from_mac_if
+#define outstrm_to_mac_if       		op_sv_ptr->outstrm_to_mac_if
+#define num_fragments           		op_sv_ptr->num_fragments
+#define remainder_size          		op_sv_ptr->remainder_size
+#define defragmentation_list_ptr		op_sv_ptr->defragmentation_list_ptr
+#define wlan_flags              		op_sv_ptr->wlan_flags
+#define oms_aa_handle           		op_sv_ptr->oms_aa_handle
+#define current_time            		op_sv_ptr->current_time
+#define rcv_idle_time           		op_sv_ptr->rcv_idle_time
+#define duplicate_list_ptr      		op_sv_ptr->duplicate_list_ptr
+#define hld_pmh                 		op_sv_ptr->hld_pmh
+#define max_backoff             		op_sv_ptr->max_backoff
+#define current_state_name      		op_sv_ptr->current_state_name
+#define hl_packets_rcvd         		op_sv_ptr->hl_packets_rcvd
+#define media_access_delay      		op_sv_ptr->media_access_delay
+#define ete_delay_handle        		op_sv_ptr->ete_delay_handle
+#define global_ete_delay_handle 		op_sv_ptr->global_ete_delay_handle
+#define global_throughput_handle		op_sv_ptr->global_throughput_handle
+#define global_load_handle      		op_sv_ptr->global_load_handle
+#define global_dropped_data_handle		op_sv_ptr->global_dropped_data_handle
+#define global_mac_delay_handle 		op_sv_ptr->global_mac_delay_handle
+#define ctrl_traffic_rcvd_handle_inbits		op_sv_ptr->ctrl_traffic_rcvd_handle_inbits
+#define ctrl_traffic_sent_handle_inbits		op_sv_ptr->ctrl_traffic_sent_handle_inbits
+#define ctrl_traffic_rcvd_handle		op_sv_ptr->ctrl_traffic_rcvd_handle
+#define ctrl_traffic_sent_handle		op_sv_ptr->ctrl_traffic_sent_handle
+#define data_traffic_rcvd_handle_inbits		op_sv_ptr->data_traffic_rcvd_handle_inbits
+#define data_traffic_sent_handle_inbits		op_sv_ptr->data_traffic_sent_handle_inbits
+#define data_traffic_rcvd_handle		op_sv_ptr->data_traffic_rcvd_handle
+#define data_traffic_sent_handle		op_sv_ptr->data_traffic_sent_handle
+#define sifs_time               		op_sv_ptr->sifs_time
+#define slot_time               		op_sv_ptr->slot_time
+#define cw_min                  		op_sv_ptr->cw_min
+#define cw_max                  		op_sv_ptr->cw_max
+#define difs_time               		op_sv_ptr->difs_time
+#define plcp_overhead_control   		op_sv_ptr->plcp_overhead_control
+#define plcp_overhead_data      		op_sv_ptr->plcp_overhead_data
+#define channel_reserv_handle   		op_sv_ptr->channel_reserv_handle
+#define retrans_handle          		op_sv_ptr->retrans_handle
+#define throughput_handle       		op_sv_ptr->throughput_handle
+#define long_retry_limit        		op_sv_ptr->long_retry_limit
+#define short_retry_limit       		op_sv_ptr->short_retry_limit
+#define retry_limit             		op_sv_ptr->retry_limit
+#define last_frametx_type       		op_sv_ptr->last_frametx_type
+#define deference_evh           		op_sv_ptr->deference_evh
+#define backoff_elapsed_evh     		op_sv_ptr->backoff_elapsed_evh
+#define frame_timeout_evh       		op_sv_ptr->frame_timeout_evh
+#define eifs_time               		op_sv_ptr->eifs_time
+#define i_strm                  		op_sv_ptr->i_strm
+#define wlan_trace_active       		op_sv_ptr->wlan_trace_active
+#define pkt_in_service          		op_sv_ptr->pkt_in_service
+#define bits_load_handle        		op_sv_ptr->bits_load_handle
+#define ap_flag                 		op_sv_ptr->ap_flag
+#define bss_flag                		op_sv_ptr->bss_flag
+#define ap_mac_address          		op_sv_ptr->ap_mac_address
+#define hld_max_size            		op_sv_ptr->hld_max_size
+#define max_receive_lifetime    		op_sv_ptr->max_receive_lifetime
+#define accept_large_packets    		op_sv_ptr->accept_large_packets
+#define phy_char_flag           		op_sv_ptr->phy_char_flag
+#define oms_aa_wlan_handle      		op_sv_ptr->oms_aa_wlan_handle
+#define total_hlpk_size         		op_sv_ptr->total_hlpk_size
+#define drop_packet_handle      		op_sv_ptr->drop_packet_handle
+#define drop_packet_handle_inbits		op_sv_ptr->drop_packet_handle_inbits
+#define drop_pkt_log_handle     		op_sv_ptr->drop_pkt_log_handle
+#define drop_pkt_entry_log_flag 		op_sv_ptr->drop_pkt_entry_log_flag
+#define packet_size             		op_sv_ptr->packet_size
+#define receive_time            		op_sv_ptr->receive_time
+#define llc_iciptr              		op_sv_ptr->llc_iciptr
+#define rcv_channel_status      		op_sv_ptr->rcv_channel_status
+#define rx_power_threshold      		op_sv_ptr->rx_power_threshold
+#define bss_stn_list            		op_sv_ptr->bss_stn_list
+#define bss_stn_count           		op_sv_ptr->bss_stn_count
+#define bss_id                  		op_sv_ptr->bss_id
+#define pcf_retry_count         		op_sv_ptr->pcf_retry_count
+#define poll_fail_count         		op_sv_ptr->poll_fail_count
+#define max_poll_fails          		op_sv_ptr->max_poll_fails
+#define cfpd_list_ptr           		op_sv_ptr->cfpd_list_ptr
+#define pcf_queue_offset        		op_sv_ptr->pcf_queue_offset
+#define beacon_int              		op_sv_ptr->beacon_int
+#define pcf_frag_buffer_ptr     		op_sv_ptr->pcf_frag_buffer_ptr
+#define wlan_pcf_transmit_frame_copy_ptr		op_sv_ptr->wlan_pcf_transmit_frame_copy_ptr
+#define pcf_num_fragments       		op_sv_ptr->pcf_num_fragments
+#define pcf_remainder_size      		op_sv_ptr->pcf_remainder_size
+#define polling_list            		op_sv_ptr->polling_list
+#define poll_list_size          		op_sv_ptr->poll_list_size
+#define poll_index              		op_sv_ptr->poll_index
+#define pifs_time               		op_sv_ptr->pifs_time
+#define beacon_evh              		op_sv_ptr->beacon_evh
+#define cfp_end_evh             		op_sv_ptr->cfp_end_evh
+#define pcf_pkt_in_service      		op_sv_ptr->pcf_pkt_in_service
+#define pcf_flag                		op_sv_ptr->pcf_flag
+#define active_pc               		op_sv_ptr->active_pc
+#define cfp_prd                 		op_sv_ptr->cfp_prd
+#define cfp_offset              		op_sv_ptr->cfp_offset
+#define cfp_length              		op_sv_ptr->cfp_length
+#define ap_relay                		op_sv_ptr->ap_relay
+#define total_cfpd_size         		op_sv_ptr->total_cfpd_size
+#define packet_size_dcf         		op_sv_ptr->packet_size_dcf
+#define packet_size_pcf         		op_sv_ptr->packet_size_pcf
+#define receive_time_dcf        		op_sv_ptr->receive_time_dcf
+#define receive_time_pcf        		op_sv_ptr->receive_time_pcf
+#define cfp_ap_medium_control   		op_sv_ptr->cfp_ap_medium_control
+#define pcf_network             		op_sv_ptr->pcf_network
+#define IS_EXPO_BACKOFF         		op_sv_ptr->IS_EXPO_BACKOFF
+#define ONE_MBPS_HEADER         		op_sv_ptr->ONE_MBPS_HEADER
 
-/* This macro definition will define a local variable called	*/
+/* These macro definitions will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
 /* This variable points to the state variable data structure,	*/
 /* and can be used from a C debugger to display their values.	*/
-#undef FIN_PREAMBLE
-#define FIN_PREAMBLE	wlan_mac_modif_state *op_sv_ptr = pr_state_ptr;
+#undef FIN_PREAMBLE_DEC
+#undef FIN_PREAMBLE_CODE
+#define FIN_PREAMBLE_DEC	wlan_mac_modif_state *op_sv_ptr;
+#define FIN_PREAMBLE_CODE	\
+		op_sv_ptr = ((wlan_mac_modif_state *)(OP_SIM_CONTEXT_PTR->_op_mod_state_ptr));
 
 
 /* Function Block */
 
-enum { _block_origin = __LINE__ };
+#if !defined (VOSD_NO_FIN)
+enum { _op_block_origin = __LINE__ + 2};
+#endif
+
 static void
 wlan_mac_sv_init ()
 	{
@@ -5136,11 +5203,17 @@ wlan_frame_type_conv(int frame_type,char *frame_type_name)
 #if defined (__cplusplus)
 extern "C" {
 #endif
-	void wlan_mac_modif (void);
-	Compcode wlan_mac_modif_init (void **);
-	void wlan_mac_modif_diag (void);
-	void wlan_mac_modif_terminate (void);
-	void wlan_mac_modif_svar (void *, const char *, char **);
+	void wlan_mac_modif (OP_SIM_CONTEXT_ARG_OPT);
+	VosT_Obtype _op_wlan_mac_modif_init (int * init_block_ptr);
+	void _op_wlan_mac_modif_diag (OP_SIM_CONTEXT_ARG_OPT);
+	void _op_wlan_mac_modif_terminate (OP_SIM_CONTEXT_ARG_OPT);
+	VosT_Address _op_wlan_mac_modif_alloc (VosT_Obtype, int);
+	void _op_wlan_mac_modif_svar (void *, const char *, void **);
+
+
+	VosT_Obtype Vos_Define_Object_Prstate (const char * _op_name, size_t _op_size);
+	VosT_Address Vos_Alloc_Object (VosT_Obtype _op_ob_hndl);
+	VosT_Fun_Status Vos_Poolmem_Dealloc (VosT_Address _op_ob_ptr);
 #if defined (__cplusplus)
 } /* end of 'extern "C"' */
 #endif
@@ -5152,12 +5225,15 @@ extern "C" {
 
 
 void
-wlan_mac_modif (void)
+wlan_mac_modif (OP_SIM_CONTEXT_ARG_OPT)
 	{
-	int _block_origin = 0;
-	FIN (wlan_mac_modif ());
-	if (1)
+#if !defined (VOSD_NO_FIN)
+	int _op_block_origin = 0;
+#endif
+	FIN_MT (wlan_mac_modif ());
+
 		{
+		/* Temporary Variables */
 		/* variables used for registering and discovering process models */
 		OmsT_Pr_Handle			process_record_handle;
 		List*					proc_record_handle_list_ptr;
@@ -5191,15 +5267,17 @@ wlan_mac_modif (void)
 		int						address;
 		int						pcf_enabled_stations;
 		Boolean					pcf_enabled_on_AP;
+		/* End of Temporary Variables */
 
 
-		FSM_ENTER (wlan_mac_modif)
+		FSM_ENTER ("wlan_mac_modif")
 
 		FSM_BLOCK_SWITCH
 			{
 			/*---------------------------------------------------------*/
 			/** state (INIT) enter executives **/
-			FSM_STATE_ENTER_UNFORCED_NOLABEL (0, "INIT", "wlan_mac_modif () [INIT enter execs]")
+			FSM_STATE_ENTER_UNFORCED_NOLABEL (0, "INIT", "wlan_mac_modif [INIT enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [INIT enter execs]", state0_enter_exec)
 				{
 				/* Initialization of the process model.				*/  
 				/* All the attributes are loaded in this routine	*/
@@ -5213,14 +5291,15 @@ wlan_mac_modif (void)
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "IS_EXPO_BACKOFF" , 	&IS_EXPO_BACKOFF);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER , "ONE_MBPS_HEADER" , 	&ONE_MBPS_HEADER);
 				}
-
+				FSM_PROFILE_SECTION_OUT (state0_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (1,wlan_mac_modif)
+			FSM_EXIT (1,"wlan_mac_modif")
 
 
 			/** state (INIT) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (0, "INIT", "wlan_mac_modif () [INIT exit execs]")
+			FSM_STATE_EXIT_UNFORCED (0, "INIT", "wlan_mac_modif [INIT exit execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [INIT exit execs]", state0_exit_exec)
 				{
 				/* Obtain the process's process handle	*/
 				own_prohandle = op_pro_self ();
@@ -5374,16 +5453,18 @@ wlan_mac_modif (void)
 					strcpy (current_state_name, "init");  
 					}
 				}
+				FSM_PROFILE_SECTION_OUT (state0_exit_exec)
 
 
 			/** state (INIT) transition processing **/
-			FSM_TRANSIT_FORCE (8, state8_enter_exec, ;, "default", "", "INIT", "BSS_INIT")
+			FSM_TRANSIT_FORCE (8, state8_enter_exec, ;, "default", "", "INIT", "BSS_INIT", "wlan_mac_modif [INIT -> BSS_INIT : default / ]")
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (IDLE) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (1, state1_enter_exec, "IDLE", "wlan_mac_modif () [IDLE enter execs]")
+			FSM_STATE_ENTER_UNFORCED (1, "IDLE", state1_enter_exec, "wlan_mac_modif [IDLE enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [IDLE enter execs]", state1_enter_exec)
 				{
 				/** The purpose of this state is to wait until the packet has	**/
 				/** arrived from the higher or lower layer.					 	**/
@@ -5417,14 +5498,15 @@ wlan_mac_modif (void)
 					strcpy (current_state_name, "idle");
 					}
 				}
-
+				FSM_PROFILE_SECTION_OUT (state1_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (3,wlan_mac_modif)
+			FSM_EXIT (3,"wlan_mac_modif")
 
 
 			/** state (IDLE) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (1, "IDLE", "wlan_mac_modif () [IDLE exit execs]")
+			FSM_STATE_EXIT_UNFORCED (1, "IDLE", "wlan_mac_modif [IDLE exit execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [IDLE exit execs]", state1_exit_exec)
 				{
 				/* Interrupt processing routine.									*/
 				wlan_interrupts_process ();
@@ -5450,26 +5532,30 @@ wlan_mac_modif (void)
 						}
 					}
 				}
+				FSM_PROFILE_SECTION_OUT (state1_exit_exec)
 
 
 			/** state (IDLE) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wlan_mac_modif [IDLE trans conditions]", state1_trans_conds)
 			FSM_INIT_COND (READY_TO_TRANSMIT && !MEDIUM_IS_IDLE)
 			FSM_TEST_COND (READY_TO_TRANSMIT && MEDIUM_IS_IDLE && cfp_ap_medium_control == OPC_BOOLINT_DISABLED)
 			FSM_DFLT_COND
 			FSM_TEST_LOGIC ("IDLE")
+			FSM_PROFILE_SECTION_OUT (state1_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 2, state2_enter_exec, ;, "READY_TO_TRANSMIT && !MEDIUM_IS_IDLE", "", "IDLE", "DEFER")
-				FSM_CASE_TRANSIT (1, 4, state4_enter_exec, ;, "READY_TO_TRANSMIT && MEDIUM_IS_IDLE && cfp_ap_medium_control == OPC_BOOLINT_DISABLED", "", "IDLE", "TRANSMIT")
-				FSM_CASE_TRANSIT (2, 1, state1_enter_exec, ;, "default", "", "IDLE", "IDLE")
+				FSM_CASE_TRANSIT (0, 2, state2_enter_exec, ;, "READY_TO_TRANSMIT && !MEDIUM_IS_IDLE", "", "IDLE", "DEFER", "wlan_mac_modif [IDLE -> DEFER : READY_TO_TRANSMIT && !MEDIUM_IS_IDLE / ]")
+				FSM_CASE_TRANSIT (1, 4, state4_enter_exec, ;, "READY_TO_TRANSMIT && MEDIUM_IS_IDLE && cfp_ap_medium_control == OPC_BOOLINT_DISABLED", "", "IDLE", "TRANSMIT", "wlan_mac_modif [IDLE -> TRANSMIT : READY_TO_TRANSMIT && MEDIUM_IS_IDLE && cfp_ap_medium_control == OPC_BOOLINT_DISABLED / ]")
+				FSM_CASE_TRANSIT (2, 1, state1_enter_exec, ;, "default", "", "IDLE", "IDLE", "wlan_mac_modif [IDLE -> IDLE : default / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (DEFER) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (2, state2_enter_exec, "DEFER", "wlan_mac_modif () [DEFER enter execs]")
+			FSM_STATE_ENTER_UNFORCED (2, "DEFER", state2_enter_exec, "wlan_mac_modif [DEFER enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [DEFER enter execs]", state2_enter_exec)
 				{
 				/* This state defer until the medium is available for transmission		*/
 				/* interrupts that can occur in this state are:   						*/
@@ -5500,14 +5586,15 @@ wlan_mac_modif (void)
 					wlan_schedule_deference ();
 					}
 				}
-
+				FSM_PROFILE_SECTION_OUT (state2_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (5,wlan_mac_modif)
+			FSM_EXIT (5,"wlan_mac_modif")
 
 
 			/** state (DEFER) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (2, "DEFER", "wlan_mac_modif () [DEFER exit execs]")
+			FSM_STATE_EXIT_UNFORCED (2, "DEFER", "wlan_mac_modif [DEFER exit execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [DEFER exit execs]", state2_exit_exec)
 				{
 				/* Store the previous receiver status before processing the			*/
 				/* interrupt, which may change the status information.				*/
@@ -5567,26 +5654,30 @@ wlan_mac_modif (void)
 					}
 				
 				}
+				FSM_PROFILE_SECTION_OUT (state2_exit_exec)
 
 
 			/** state (DEFER) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wlan_mac_modif [DEFER trans conditions]", state2_trans_conds)
 			FSM_INIT_COND (DEFERENCE_OFF)
 			FSM_TEST_COND (IDLE_AFTER_CFP)
 			FSM_DFLT_COND
 			FSM_TEST_LOGIC ("DEFER")
+			FSM_PROFILE_SECTION_OUT (state2_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 3, state3_enter_exec, ;, "DEFERENCE_OFF", "", "DEFER", "BKOFF_NEEDED")
-				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, CANCEL_DEF_EVENT;;, "IDLE_AFTER_CFP", "CANCEL_DEF_EVENT;", "DEFER", "IDLE")
-				FSM_CASE_TRANSIT (2, 2, state2_enter_exec, ;, "default", "", "DEFER", "DEFER")
+				FSM_CASE_TRANSIT (0, 3, state3_enter_exec, ;, "DEFERENCE_OFF", "", "DEFER", "BKOFF_NEEDED", "wlan_mac_modif [DEFER -> BKOFF_NEEDED : DEFERENCE_OFF / ]")
+				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, CANCEL_DEF_EVENT;;, "IDLE_AFTER_CFP", "CANCEL_DEF_EVENT;", "DEFER", "IDLE", "wlan_mac_modif [DEFER -> IDLE : IDLE_AFTER_CFP / CANCEL_DEF_EVENT;]")
+				FSM_CASE_TRANSIT (2, 2, state2_enter_exec, ;, "default", "", "DEFER", "DEFER", "wlan_mac_modif [DEFER -> DEFER : default / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (BKOFF_NEEDED) enter executives **/
-			FSM_STATE_ENTER_FORCED (3, state3_enter_exec, "BKOFF_NEEDED", "wlan_mac_modif () [BKOFF_NEEDED enter execs]")
+			FSM_STATE_ENTER_FORCED (3, "BKOFF_NEEDED", state3_enter_exec, "wlan_mac_modif [BKOFF_NEEDED enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [BKOFF_NEEDED enter execs]", state3_enter_exec)
 				{
 				/** In this state we determine whether a back-off is necessary for the	**/
 				/** frame we are trying to transmit. It is needed when station			**/
@@ -5647,30 +5738,31 @@ wlan_mac_modif (void)
 					op_stat_write (backoff_slots_handle, backoff_slots);
 					} 
 				}
-
+				FSM_PROFILE_SECTION_OUT (state3_enter_exec)
 
 			/** state (BKOFF_NEEDED) exit executives **/
-			FSM_STATE_EXIT_FORCED (3, "BKOFF_NEEDED", "wlan_mac_modif () [BKOFF_NEEDED exit execs]")
-				{
-				}
+			FSM_STATE_EXIT_FORCED (3, "BKOFF_NEEDED", "wlan_mac_modif [BKOFF_NEEDED exit execs]")
 
 
 			/** state (BKOFF_NEEDED) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wlan_mac_modif [BKOFF_NEEDED trans conditions]", state3_trans_conds)
 			FSM_INIT_COND (TRANSMIT_FRAME)
 			FSM_TEST_COND (PERFORM_BACKOFF)
 			FSM_TEST_LOGIC ("BKOFF_NEEDED")
+			FSM_PROFILE_SECTION_OUT (state3_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 4, state4_enter_exec, ;, "TRANSMIT_FRAME", "", "BKOFF_NEEDED", "TRANSMIT")
-				FSM_CASE_TRANSIT (1, 5, state5_enter_exec, ;, "PERFORM_BACKOFF", "", "BKOFF_NEEDED", "BACKOFF")
+				FSM_CASE_TRANSIT (0, 4, state4_enter_exec, ;, "TRANSMIT_FRAME", "", "BKOFF_NEEDED", "TRANSMIT", "wlan_mac_modif [BKOFF_NEEDED -> TRANSMIT : TRANSMIT_FRAME / ]")
+				FSM_CASE_TRANSIT (1, 5, state5_enter_exec, ;, "PERFORM_BACKOFF", "", "BKOFF_NEEDED", "BACKOFF", "wlan_mac_modif [BKOFF_NEEDED -> BACKOFF : PERFORM_BACKOFF / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (TRANSMIT) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (4, state4_enter_exec, "TRANSMIT", "wlan_mac_modif () [TRANSMIT enter execs]")
+			FSM_STATE_ENTER_UNFORCED (4, "TRANSMIT", state4_enter_exec, "wlan_mac_modif [TRANSMIT enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [TRANSMIT enter execs]", state4_enter_exec)
 				{
 				/** In this state following intrpts can occur:     				**/
 				/** 1. Data arrival from application layer.			        	**/
@@ -5723,14 +5815,15 @@ wlan_mac_modif (void)
 					strcpy (current_state_name, "transmit");
 					}
 				}
-
+				FSM_PROFILE_SECTION_OUT (state4_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (9,wlan_mac_modif)
+			FSM_EXIT (9,"wlan_mac_modif")
 
 
 			/** state (TRANSMIT) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (4, "TRANSMIT", "wlan_mac_modif () [TRANSMIT exit execs]")
+			FSM_STATE_EXIT_UNFORCED (4, "TRANSMIT", "wlan_mac_modif [TRANSMIT exit execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [TRANSMIT exit execs]", state4_exit_exec)
 				{
 				/* If the packet is received while the the station is      */ 
 				/* transmitting then mark the received packet as bad.	   */
@@ -5769,24 +5862,28 @@ wlan_mac_modif (void)
 				/* Call the interrupt processing routine for each interrupt.*/
 				wlan_interrupts_process ();
 				}
+				FSM_PROFILE_SECTION_OUT (state4_exit_exec)
 
 
 			/** state (TRANSMIT) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wlan_mac_modif [TRANSMIT trans conditions]", state4_trans_conds)
 			FSM_INIT_COND (TRANSMISSION_COMPLETE)
 			FSM_DFLT_COND
 			FSM_TEST_LOGIC ("TRANSMIT")
+			FSM_PROFILE_SECTION_OUT (state4_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "TRANSMISSION_COMPLETE", "", "TRANSMIT", "FRM_END")
-				FSM_CASE_TRANSIT (1, 4, state4_enter_exec, ;, "default", "", "TRANSMIT", "TRANSMIT")
+				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "TRANSMISSION_COMPLETE", "", "TRANSMIT", "FRM_END", "wlan_mac_modif [TRANSMIT -> FRM_END : TRANSMISSION_COMPLETE / ]")
+				FSM_CASE_TRANSIT (1, 4, state4_enter_exec, ;, "default", "", "TRANSMIT", "TRANSMIT", "wlan_mac_modif [TRANSMIT -> TRANSMIT : default / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (BACKOFF) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (5, state5_enter_exec, "BACKOFF", "wlan_mac_modif () [BACKOFF enter execs]")
+			FSM_STATE_ENTER_UNFORCED (5, "BACKOFF", state5_enter_exec, "wlan_mac_modif [BACKOFF enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [BACKOFF enter execs]", state5_enter_exec)
 				{
 				/** Processing Random Backoff								**/
 				/** In this state following intrpts can occur: 				**/
@@ -5816,14 +5913,15 @@ wlan_mac_modif (void)
 					strcpy (current_state_name, "backoff");
 					}
 				}
-
+				FSM_PROFILE_SECTION_OUT (state5_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (11,wlan_mac_modif)
+			FSM_EXIT (11,"wlan_mac_modif")
 
 
 			/** state (BACKOFF) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (5, "BACKOFF", "wlan_mac_modif () [BACKOFF exit execs]")
+			FSM_STATE_EXIT_UNFORCED (5, "BACKOFF", "wlan_mac_modif [BACKOFF exit execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [BACKOFF exit execs]", state5_exit_exec)
 				{
 				/* Call the interrupt processing routine for each interrupt.		*/
 				wlan_interrupts_process ();
@@ -5881,28 +5979,32 @@ wlan_mac_modif (void)
 						wlan_flags->forced_xmt = OPC_BOOLINT_ENABLED;
 					}
 				}
+				FSM_PROFILE_SECTION_OUT (state5_exit_exec)
 
 
 			/** state (BACKOFF) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wlan_mac_modif [BACKOFF trans conditions]", state5_trans_conds)
 			FSM_INIT_COND (PERFORM_TRANSMIT)
 			FSM_TEST_COND (BACK_TO_DEFER)
 			FSM_TEST_COND (BACK_TO_IDLE)
 			FSM_DFLT_COND
 			FSM_TEST_LOGIC ("BACKOFF")
+			FSM_PROFILE_SECTION_OUT (state5_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 4, state4_enter_exec, ;, "PERFORM_TRANSMIT", "", "BACKOFF", "TRANSMIT")
-				FSM_CASE_TRANSIT (1, 2, state2_enter_exec, wlan_schedule_deference ();;, "BACK_TO_DEFER", "wlan_schedule_deference ();", "BACKOFF", "DEFER")
-				FSM_CASE_TRANSIT (2, 1, state1_enter_exec, ;, "BACK_TO_IDLE", "", "BACKOFF", "IDLE")
-				FSM_CASE_TRANSIT (3, 5, state5_enter_exec, ;, "default", "", "BACKOFF", "BACKOFF")
+				FSM_CASE_TRANSIT (0, 4, state4_enter_exec, ;, "PERFORM_TRANSMIT", "", "BACKOFF", "TRANSMIT", "wlan_mac_modif [BACKOFF -> TRANSMIT : PERFORM_TRANSMIT / ]")
+				FSM_CASE_TRANSIT (1, 2, state2_enter_exec, wlan_schedule_deference ();;, "BACK_TO_DEFER", "wlan_schedule_deference ();", "BACKOFF", "DEFER", "wlan_mac_modif [BACKOFF -> DEFER : BACK_TO_DEFER / wlan_schedule_deference ();]")
+				FSM_CASE_TRANSIT (2, 1, state1_enter_exec, ;, "BACK_TO_IDLE", "", "BACKOFF", "IDLE", "wlan_mac_modif [BACKOFF -> IDLE : BACK_TO_IDLE / ]")
+				FSM_CASE_TRANSIT (3, 5, state5_enter_exec, ;, "default", "", "BACKOFF", "BACKOFF", "wlan_mac_modif [BACKOFF -> BACKOFF : default / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (FRM_END) enter executives **/
-			FSM_STATE_ENTER_FORCED (6, state6_enter_exec, "FRM_END", "wlan_mac_modif () [FRM_END enter execs]")
+			FSM_STATE_ENTER_FORCED (6, "FRM_END", state6_enter_exec, "wlan_mac_modif [FRM_END enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [FRM_END enter execs]", state6_enter_exec)
 				{
 				/** The purpose of this state is to determine the next unforced	**/
 				/** state after completing transmission.					    **/
@@ -5950,33 +6052,38 @@ wlan_mac_modif (void)
 					frame_timeout_evh = op_intrpt_schedule_self (current_time + timer_duration, WlanC_Frame_Timeout);
 					}
 				}
-
+				FSM_PROFILE_SECTION_OUT (state6_enter_exec)
 
 			/** state (FRM_END) exit executives **/
-			FSM_STATE_EXIT_FORCED (6, "FRM_END", "wlan_mac_modif () [FRM_END exit execs]")
+			FSM_STATE_EXIT_FORCED (6, "FRM_END", "wlan_mac_modif [FRM_END exit execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [FRM_END exit execs]", state6_exit_exec)
 				{
 				
 				}
+				FSM_PROFILE_SECTION_OUT (state6_exit_exec)
 
 
 			/** state (FRM_END) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wlan_mac_modif [FRM_END trans conditions]", state6_trans_conds)
 			FSM_INIT_COND (FRM_END_TO_IDLE)
 			FSM_TEST_COND (WAIT_FOR_FRAME)
 			FSM_TEST_COND (FRM_END_TO_DEFER)
 			FSM_TEST_LOGIC ("FRM_END")
+			FSM_PROFILE_SECTION_OUT (state6_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 1, state1_enter_exec, ;, "FRM_END_TO_IDLE", "", "FRM_END", "IDLE")
-				FSM_CASE_TRANSIT (1, 7, state7_enter_exec, ;, "WAIT_FOR_FRAME", "", "FRM_END", "WAIT_FOR_RESPONSE")
-				FSM_CASE_TRANSIT (2, 2, state2_enter_exec, ;, "FRM_END_TO_DEFER", "", "FRM_END", "DEFER")
+				FSM_CASE_TRANSIT (0, 1, state1_enter_exec, ;, "FRM_END_TO_IDLE", "", "FRM_END", "IDLE", "wlan_mac_modif [FRM_END -> IDLE : FRM_END_TO_IDLE / ]")
+				FSM_CASE_TRANSIT (1, 7, state7_enter_exec, ;, "WAIT_FOR_FRAME", "", "FRM_END", "WAIT_FOR_RESPONSE", "wlan_mac_modif [FRM_END -> WAIT_FOR_RESPONSE : WAIT_FOR_FRAME / ]")
+				FSM_CASE_TRANSIT (2, 2, state2_enter_exec, ;, "FRM_END_TO_DEFER", "", "FRM_END", "DEFER", "wlan_mac_modif [FRM_END -> DEFER : FRM_END_TO_DEFER / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (WAIT_FOR_RESPONSE) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (7, state7_enter_exec, "WAIT_FOR_RESPONSE", "wlan_mac_modif () [WAIT_FOR_RESPONSE enter execs]")
+			FSM_STATE_ENTER_UNFORCED (7, "WAIT_FOR_RESPONSE", state7_enter_exec, "wlan_mac_modif [WAIT_FOR_RESPONSE enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [WAIT_FOR_RESPONSE enter execs]", state7_enter_exec)
 				{
 				/** The purpose of this state is to wait for the response after	**/
 				/** transmission. The only frames which require acknowlegements	**/
@@ -5999,14 +6106,15 @@ wlan_mac_modif (void)
 					strcpy (current_state_name, "wait_for_response");
 					}
 				}
-
+				FSM_PROFILE_SECTION_OUT (state7_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (15,wlan_mac_modif)
+			FSM_EXIT (15,"wlan_mac_modif")
 
 
 			/** state (WAIT_FOR_RESPONSE) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (7, "WAIT_FOR_RESPONSE", "wlan_mac_modif () [WAIT_FOR_RESPONSE exit execs]")
+			FSM_STATE_EXIT_UNFORCED (7, "WAIT_FOR_RESPONSE", "wlan_mac_modif [WAIT_FOR_RESPONSE exit execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [WAIT_FOR_RESPONSE exit execs]", state7_exit_exec)
 				{
 				/* First restore the value of the bad packet received flag		*/
 				/* since we will use it also in the state transition decision.	*/
@@ -6085,37 +6193,42 @@ wlan_mac_modif (void)
 					}
 				
 				}
+				FSM_PROFILE_SECTION_OUT (state7_exit_exec)
 
 
 			/** state (WAIT_FOR_RESPONSE) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wlan_mac_modif [WAIT_FOR_RESPONSE trans conditions]", state7_trans_conds)
 			FSM_INIT_COND (FRAME_TIMEOUT || FRAME_RCVD)
 			FSM_DFLT_COND
 			FSM_TEST_LOGIC ("WAIT_FOR_RESPONSE")
+			FSM_PROFILE_SECTION_OUT (state7_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "FRAME_TIMEOUT || FRAME_RCVD", "", "WAIT_FOR_RESPONSE", "FRM_END")
-				FSM_CASE_TRANSIT (1, 7, state7_enter_exec, ;, "default", "", "WAIT_FOR_RESPONSE", "WAIT_FOR_RESPONSE")
+				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "FRAME_TIMEOUT || FRAME_RCVD", "", "WAIT_FOR_RESPONSE", "FRM_END", "wlan_mac_modif [WAIT_FOR_RESPONSE -> FRM_END : FRAME_TIMEOUT || FRAME_RCVD / ]")
+				FSM_CASE_TRANSIT (1, 7, state7_enter_exec, ;, "default", "", "WAIT_FOR_RESPONSE", "WAIT_FOR_RESPONSE", "wlan_mac_modif [WAIT_FOR_RESPONSE -> WAIT_FOR_RESPONSE : default / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (BSS_INIT) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (8, state8_enter_exec, "BSS_INIT", "wlan_mac_modif () [BSS_INIT enter execs]")
+			FSM_STATE_ENTER_UNFORCED (8, "BSS_INIT", state8_enter_exec, "wlan_mac_modif [BSS_INIT enter execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [BSS_INIT enter execs]", state8_enter_exec)
 				{
 				/* Schedule a self interrupt to wait for mac interface 	*/
 				/* to move to next state after registering				*/
 				op_intrpt_schedule_self (op_sim_time (), 0);
 				}
-
+				FSM_PROFILE_SECTION_OUT (state8_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (17,wlan_mac_modif)
+			FSM_EXIT (17,"wlan_mac_modif")
 
 
 			/** state (BSS_INIT) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (8, "BSS_INIT", "wlan_mac_modif () [BSS_INIT exit execs]")
+			FSM_STATE_EXIT_UNFORCED (8, "BSS_INIT", "wlan_mac_modif [BSS_INIT exit execs]")
+				FSM_PROFILE_SECTION_IN ("wlan_mac_modif [BSS_INIT exit execs]", state8_exit_exec)
 				{
 				/* Obtain the values assigned to the various attributes				*/
 				op_ima_obj_attr_get (my_objid, "Wireless LAN Parameters", &wlan_params_comp_attr_objid);
@@ -6439,10 +6552,11 @@ wlan_mac_modif (void)
 					}
 				
 				}
+				FSM_PROFILE_SECTION_OUT (state8_exit_exec)
 
 
 			/** state (BSS_INIT) transition processing **/
-			FSM_TRANSIT_FORCE (1, state1_enter_exec, ;, "default", "", "BSS_INIT", "IDLE")
+			FSM_TRANSIT_FORCE (1, state1_enter_exec, ;, "default", "", "BSS_INIT", "IDLE", "wlan_mac_modif [BSS_INIT -> IDLE : default / ]")
 				/*---------------------------------------------------------*/
 
 
@@ -6450,64 +6564,26 @@ wlan_mac_modif (void)
 			}
 
 
-		FSM_EXIT (0,wlan_mac_modif)
+		FSM_EXIT (0,"wlan_mac_modif")
 		}
 	}
 
-#if defined (__cplusplus)
-	extern "C" { 
-#endif
-	extern VosT_Fun_Status Vos_Catmem_Register (const char * , int , VosT_Void_Null_Proc, VosT_Address *);
-	extern VosT_Address Vos_Catmem_Alloc (VosT_Address, size_t);
-	extern VosT_Fun_Status Vos_Catmem_Dealloc (VosT_Address);
-#if defined (__cplusplus)
-	}
-#endif
-
-
-Compcode
-wlan_mac_modif_init (void ** gen_state_pptr)
-	{
-	int _block_origin = 0;
-	static VosT_Address	obtype = OPC_NIL;
-
-	FIN (wlan_mac_modif_init (gen_state_pptr))
-
-	if (obtype == OPC_NIL)
-		{
-		/* Initialize memory management */
-		if (Vos_Catmem_Register ("proc state vars (wlan_mac_modif)",
-			sizeof (wlan_mac_modif_state), Vos_Vnop, &obtype) == VOSC_FAILURE)
-			{
-			FRET (OPC_COMPCODE_FAILURE)
-			}
-		}
-
-	*gen_state_pptr = Vos_Catmem_Alloc (obtype, 1);
-	if (*gen_state_pptr == OPC_NIL)
-		{
-		FRET (OPC_COMPCODE_FAILURE)
-		}
-	else
-		{
-		/* Initialize FSM handling */
-		((wlan_mac_modif_state *)(*gen_state_pptr))->current_block = 0;
-
-		FRET (OPC_COMPCODE_SUCCESS)
-		}
-	}
 
 
 
 void
-wlan_mac_modif_diag (void)
+_op_wlan_mac_modif_diag (OP_SIM_CONTEXT_ARG_OPT)
 	{
-	int _block_origin = __LINE__;
+#if defined (OPD_ALLOW_ODB)
+#if !defined (VOSD_NO_FIN)
+	int _op_block_origin = __LINE__+1;
+#endif
 
-	FIN (wlan_mac_modif_diag ())
+	FIN_MT (_op_wlan_mac_modif_diag ())
 
 	if (1)
 		{
+		/* Temporary Variables */
 		/* variables used for registering and discovering process models */
 		OmsT_Pr_Handle			process_record_handle;
 		List*					proc_record_handle_list_ptr;
@@ -6541,11 +6617,12 @@ wlan_mac_modif_diag (void)
 		int						address;
 		int						pcf_enabled_stations;
 		Boolean					pcf_enabled_on_AP;
+		/* End of Temporary Variables */
 
 		/* Diagnostic Block */
 
-
 		BINIT
+		{
 		/* Print information about this process.	*/
 		if (wlan_trace_active == OPC_TRUE)
 			{
@@ -6564,26 +6641,31 @@ wlan_mac_modif_diag (void)
 				printf ("\n");
 				}
 			}
+		}
 
 		/* End of Diagnostic Block */
 
 		}
 
-	FOUT;
+	FOUT
+#endif /* OPD_ALLOW_ODB */
 	}
 
 
 
 
 void
-wlan_mac_modif_terminate (void)
+_op_wlan_mac_modif_terminate (OP_SIM_CONTEXT_ARG_OPT)
 	{
-	int _block_origin = __LINE__;
+#if !defined (VOSD_NO_FIN)
+	int _op_block_origin = __LINE__;
+#endif
 
-	FIN (wlan_mac_modif_terminate (void))
+	FIN_MT (_op_wlan_mac_modif_terminate ())
 
 	if (1)
 		{
+		/* Temporary Variables */
 		/* variables used for registering and discovering process models */
 		OmsT_Pr_Handle			process_record_handle;
 		List*					proc_record_handle_list_ptr;
@@ -6617,9 +6699,9 @@ wlan_mac_modif_terminate (void)
 		int						address;
 		int						pcf_enabled_stations;
 		Boolean					pcf_enabled_on_AP;
+		/* End of Temporary Variables */
 
 		/* Termination Block */
-
 
 		BINIT
 		{
@@ -6629,15 +6711,15 @@ wlan_mac_modif_terminate (void)
 		/* End of Termination Block */
 
 		}
-	Vos_Catmem_Dealloc (pr_state_ptr);
+	Vos_Poolmem_Dealloc (op_sv_ptr);
 
-	FOUT;
+	FOUT
 	}
 
 
 /* Undefine shortcuts to state variables to avoid */
 /* syntax error in direct access to fields of */
-/* local variable prs_ptr in wlan_mac_modif_svar function. */
+/* local variable prs_ptr in _op_wlan_mac_modif_svar function. */
 #undef retry_count
 #undef intrpt_type
 #undef intrpt_code
@@ -6771,684 +6853,723 @@ wlan_mac_modif_terminate (void)
 #undef IS_EXPO_BACKOFF
 #undef ONE_MBPS_HEADER
 
+#undef FIN_PREAMBLE_DEC
+#undef FIN_PREAMBLE_CODE
+
+#define FIN_PREAMBLE_DEC
+#define FIN_PREAMBLE_CODE
+
+VosT_Obtype
+_op_wlan_mac_modif_init (int * init_block_ptr)
+	{
+	VosT_Obtype obtype = OPC_NIL;
+	FIN_MT (_op_wlan_mac_modif_init (init_block_ptr))
+
+	obtype = Vos_Define_Object_Prstate ("proc state vars (wlan_mac_modif)",
+		sizeof (wlan_mac_modif_state));
+	*init_block_ptr = 0;
+
+	FRET (obtype)
+	}
+
+VosT_Address
+_op_wlan_mac_modif_alloc (VosT_Obtype obtype, int init_block)
+	{
+#if !defined (VOSD_NO_FIN)
+	int _op_block_origin = 0;
+#endif
+	wlan_mac_modif_state * ptr;
+	FIN_MT (_op_wlan_mac_modif_alloc (obtype))
+
+	ptr = (wlan_mac_modif_state *)Vos_Alloc_Object (obtype);
+	if (ptr != OPC_NIL)
+		{
+		ptr->_op_current_block = init_block;
+#if defined (OPD_ALLOW_ODB)
+		ptr->_op_current_state = "wlan_mac_modif [INIT enter execs]";
+#endif
+		}
+	FRET ((VosT_Address)ptr)
+	}
+
 
 
 void
-wlan_mac_modif_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
+_op_wlan_mac_modif_svar (void * gen_ptr, const char * var_name, void ** var_p_ptr)
 	{
 	wlan_mac_modif_state		*prs_ptr;
 
-	FIN (wlan_mac_modif_svar (gen_ptr, var_name, var_p_ptr))
+	FIN_MT (_op_wlan_mac_modif_svar (gen_ptr, var_name, var_p_ptr))
 
 	if (var_name == OPC_NIL)
 		{
-		*var_p_ptr = (char *)OPC_NIL;
-		FOUT;
+		*var_p_ptr = (void *)OPC_NIL;
+		FOUT
 		}
 	prs_ptr = (wlan_mac_modif_state *)gen_ptr;
 
 	if (strcmp ("retry_count" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->retry_count);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->retry_count);
+		FOUT
 		}
 	if (strcmp ("intrpt_type" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->intrpt_type);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->intrpt_type);
+		FOUT
 		}
 	if (strcmp ("intrpt_code" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->intrpt_code);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->intrpt_code);
+		FOUT
 		}
 	if (strcmp ("my_address" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_address);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->my_address);
+		FOUT
 		}
 	if (strcmp ("my_objid" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_objid);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->my_objid);
+		FOUT
 		}
 	if (strcmp ("my_node_objid" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_node_objid);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->my_node_objid);
+		FOUT
 		}
 	if (strcmp ("my_subnet_objid" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_subnet_objid);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->my_subnet_objid);
+		FOUT
 		}
 	if (strcmp ("tx_objid" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->tx_objid);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->tx_objid);
+		FOUT
 		}
 	if (strcmp ("rx_objid" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->rx_objid);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->rx_objid);
+		FOUT
 		}
 	if (strcmp ("own_process_record_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->own_process_record_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->own_process_record_handle);
+		FOUT
 		}
 	if (strcmp ("hld_list_ptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->hld_list_ptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->hld_list_ptr);
+		FOUT
 		}
 	if (strcmp ("operational_speed" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->operational_speed);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->operational_speed);
+		FOUT
 		}
 	if (strcmp ("frag_threshold" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->frag_threshold);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->frag_threshold);
+		FOUT
 		}
 	if (strcmp ("packet_seq_number" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->packet_seq_number);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->packet_seq_number);
+		FOUT
 		}
 	if (strcmp ("packet_frag_number" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->packet_frag_number);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->packet_frag_number);
+		FOUT
 		}
 	if (strcmp ("destination_addr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->destination_addr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->destination_addr);
+		FOUT
 		}
 	if (strcmp ("fragmentation_buffer_ptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->fragmentation_buffer_ptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->fragmentation_buffer_ptr);
+		FOUT
 		}
 	if (strcmp ("fresp_to_send" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->fresp_to_send);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->fresp_to_send);
+		FOUT
 		}
 	if (strcmp ("nav_duration" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->nav_duration);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->nav_duration);
+		FOUT
 		}
 	if (strcmp ("rts_threshold" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->rts_threshold);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->rts_threshold);
+		FOUT
 		}
 	if (strcmp ("duplicate_entry" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->duplicate_entry);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->duplicate_entry);
+		FOUT
 		}
 	if (strcmp ("expected_frame_type" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->expected_frame_type);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->expected_frame_type);
+		FOUT
 		}
 	if (strcmp ("remote_sta_addr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->remote_sta_addr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->remote_sta_addr);
+		FOUT
 		}
 	if (strcmp ("backoff_slots" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->backoff_slots);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->backoff_slots);
+		FOUT
 		}
 	if (strcmp ("packet_load_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->packet_load_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->packet_load_handle);
+		FOUT
 		}
 	if (strcmp ("intrpt_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->intrpt_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->intrpt_time);
+		FOUT
 		}
 	if (strcmp ("wlan_transmit_frame_copy_ptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->wlan_transmit_frame_copy_ptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->wlan_transmit_frame_copy_ptr);
+		FOUT
 		}
 	if (strcmp ("backoff_slots_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->backoff_slots_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->backoff_slots_handle);
+		FOUT
 		}
 	if (strcmp ("instrm_from_mac_if" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->instrm_from_mac_if);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->instrm_from_mac_if);
+		FOUT
 		}
 	if (strcmp ("outstrm_to_mac_if" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->outstrm_to_mac_if);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->outstrm_to_mac_if);
+		FOUT
 		}
 	if (strcmp ("num_fragments" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->num_fragments);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->num_fragments);
+		FOUT
 		}
 	if (strcmp ("remainder_size" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->remainder_size);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->remainder_size);
+		FOUT
 		}
 	if (strcmp ("defragmentation_list_ptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->defragmentation_list_ptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->defragmentation_list_ptr);
+		FOUT
 		}
 	if (strcmp ("wlan_flags" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->wlan_flags);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->wlan_flags);
+		FOUT
 		}
 	if (strcmp ("oms_aa_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->oms_aa_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->oms_aa_handle);
+		FOUT
 		}
 	if (strcmp ("current_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->current_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->current_time);
+		FOUT
 		}
 	if (strcmp ("rcv_idle_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->rcv_idle_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->rcv_idle_time);
+		FOUT
 		}
 	if (strcmp ("duplicate_list_ptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->duplicate_list_ptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->duplicate_list_ptr);
+		FOUT
 		}
 	if (strcmp ("hld_pmh" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->hld_pmh);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->hld_pmh);
+		FOUT
 		}
 	if (strcmp ("max_backoff" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->max_backoff);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->max_backoff);
+		FOUT
 		}
 	if (strcmp ("current_state_name" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (prs_ptr->current_state_name);
-		FOUT;
+		*var_p_ptr = (void *) (prs_ptr->current_state_name);
+		FOUT
 		}
 	if (strcmp ("hl_packets_rcvd" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->hl_packets_rcvd);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->hl_packets_rcvd);
+		FOUT
 		}
 	if (strcmp ("media_access_delay" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->media_access_delay);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->media_access_delay);
+		FOUT
 		}
 	if (strcmp ("ete_delay_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ete_delay_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ete_delay_handle);
+		FOUT
 		}
 	if (strcmp ("global_ete_delay_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->global_ete_delay_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->global_ete_delay_handle);
+		FOUT
 		}
 	if (strcmp ("global_throughput_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->global_throughput_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->global_throughput_handle);
+		FOUT
 		}
 	if (strcmp ("global_load_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->global_load_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->global_load_handle);
+		FOUT
 		}
 	if (strcmp ("global_dropped_data_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->global_dropped_data_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->global_dropped_data_handle);
+		FOUT
 		}
 	if (strcmp ("global_mac_delay_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->global_mac_delay_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->global_mac_delay_handle);
+		FOUT
 		}
 	if (strcmp ("ctrl_traffic_rcvd_handle_inbits" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ctrl_traffic_rcvd_handle_inbits);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ctrl_traffic_rcvd_handle_inbits);
+		FOUT
 		}
 	if (strcmp ("ctrl_traffic_sent_handle_inbits" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ctrl_traffic_sent_handle_inbits);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ctrl_traffic_sent_handle_inbits);
+		FOUT
 		}
 	if (strcmp ("ctrl_traffic_rcvd_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ctrl_traffic_rcvd_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ctrl_traffic_rcvd_handle);
+		FOUT
 		}
 	if (strcmp ("ctrl_traffic_sent_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ctrl_traffic_sent_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ctrl_traffic_sent_handle);
+		FOUT
 		}
 	if (strcmp ("data_traffic_rcvd_handle_inbits" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->data_traffic_rcvd_handle_inbits);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->data_traffic_rcvd_handle_inbits);
+		FOUT
 		}
 	if (strcmp ("data_traffic_sent_handle_inbits" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->data_traffic_sent_handle_inbits);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->data_traffic_sent_handle_inbits);
+		FOUT
 		}
 	if (strcmp ("data_traffic_rcvd_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->data_traffic_rcvd_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->data_traffic_rcvd_handle);
+		FOUT
 		}
 	if (strcmp ("data_traffic_sent_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->data_traffic_sent_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->data_traffic_sent_handle);
+		FOUT
 		}
 	if (strcmp ("sifs_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->sifs_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->sifs_time);
+		FOUT
 		}
 	if (strcmp ("slot_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->slot_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->slot_time);
+		FOUT
 		}
 	if (strcmp ("cw_min" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->cw_min);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->cw_min);
+		FOUT
 		}
 	if (strcmp ("cw_max" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->cw_max);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->cw_max);
+		FOUT
 		}
 	if (strcmp ("difs_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->difs_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->difs_time);
+		FOUT
 		}
 	if (strcmp ("plcp_overhead_control" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->plcp_overhead_control);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->plcp_overhead_control);
+		FOUT
 		}
 	if (strcmp ("plcp_overhead_data" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->plcp_overhead_data);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->plcp_overhead_data);
+		FOUT
 		}
 	if (strcmp ("channel_reserv_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->channel_reserv_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->channel_reserv_handle);
+		FOUT
 		}
 	if (strcmp ("retrans_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->retrans_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->retrans_handle);
+		FOUT
 		}
 	if (strcmp ("throughput_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->throughput_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->throughput_handle);
+		FOUT
 		}
 	if (strcmp ("long_retry_limit" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->long_retry_limit);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->long_retry_limit);
+		FOUT
 		}
 	if (strcmp ("short_retry_limit" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->short_retry_limit);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->short_retry_limit);
+		FOUT
 		}
 	if (strcmp ("retry_limit" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->retry_limit);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->retry_limit);
+		FOUT
 		}
 	if (strcmp ("last_frametx_type" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->last_frametx_type);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->last_frametx_type);
+		FOUT
 		}
 	if (strcmp ("deference_evh" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->deference_evh);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->deference_evh);
+		FOUT
 		}
 	if (strcmp ("backoff_elapsed_evh" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->backoff_elapsed_evh);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->backoff_elapsed_evh);
+		FOUT
 		}
 	if (strcmp ("frame_timeout_evh" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->frame_timeout_evh);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->frame_timeout_evh);
+		FOUT
 		}
 	if (strcmp ("eifs_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->eifs_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->eifs_time);
+		FOUT
 		}
 	if (strcmp ("i_strm" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->i_strm);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->i_strm);
+		FOUT
 		}
 	if (strcmp ("wlan_trace_active" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->wlan_trace_active);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->wlan_trace_active);
+		FOUT
 		}
 	if (strcmp ("pkt_in_service" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pkt_in_service);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pkt_in_service);
+		FOUT
 		}
 	if (strcmp ("bits_load_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->bits_load_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->bits_load_handle);
+		FOUT
 		}
 	if (strcmp ("ap_flag" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ap_flag);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ap_flag);
+		FOUT
 		}
 	if (strcmp ("bss_flag" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->bss_flag);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->bss_flag);
+		FOUT
 		}
 	if (strcmp ("ap_mac_address" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ap_mac_address);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ap_mac_address);
+		FOUT
 		}
 	if (strcmp ("hld_max_size" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->hld_max_size);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->hld_max_size);
+		FOUT
 		}
 	if (strcmp ("max_receive_lifetime" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->max_receive_lifetime);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->max_receive_lifetime);
+		FOUT
 		}
 	if (strcmp ("accept_large_packets" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->accept_large_packets);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->accept_large_packets);
+		FOUT
 		}
 	if (strcmp ("phy_char_flag" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->phy_char_flag);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->phy_char_flag);
+		FOUT
 		}
 	if (strcmp ("oms_aa_wlan_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->oms_aa_wlan_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->oms_aa_wlan_handle);
+		FOUT
 		}
 	if (strcmp ("total_hlpk_size" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->total_hlpk_size);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->total_hlpk_size);
+		FOUT
 		}
 	if (strcmp ("drop_packet_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->drop_packet_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->drop_packet_handle);
+		FOUT
 		}
 	if (strcmp ("drop_packet_handle_inbits" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->drop_packet_handle_inbits);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->drop_packet_handle_inbits);
+		FOUT
 		}
 	if (strcmp ("drop_pkt_log_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->drop_pkt_log_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->drop_pkt_log_handle);
+		FOUT
 		}
 	if (strcmp ("drop_pkt_entry_log_flag" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->drop_pkt_entry_log_flag);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->drop_pkt_entry_log_flag);
+		FOUT
 		}
 	if (strcmp ("packet_size" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->packet_size);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->packet_size);
+		FOUT
 		}
 	if (strcmp ("receive_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->receive_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->receive_time);
+		FOUT
 		}
 	if (strcmp ("llc_iciptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->llc_iciptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->llc_iciptr);
+		FOUT
 		}
 	if (strcmp ("rcv_channel_status" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->rcv_channel_status);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->rcv_channel_status);
+		FOUT
 		}
 	if (strcmp ("rx_power_threshold" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->rx_power_threshold);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->rx_power_threshold);
+		FOUT
 		}
 	if (strcmp ("bss_stn_list" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->bss_stn_list);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->bss_stn_list);
+		FOUT
 		}
 	if (strcmp ("bss_stn_count" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->bss_stn_count);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->bss_stn_count);
+		FOUT
 		}
 	if (strcmp ("bss_id" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->bss_id);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->bss_id);
+		FOUT
 		}
 	if (strcmp ("pcf_retry_count" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pcf_retry_count);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pcf_retry_count);
+		FOUT
 		}
 	if (strcmp ("poll_fail_count" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->poll_fail_count);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->poll_fail_count);
+		FOUT
 		}
 	if (strcmp ("max_poll_fails" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->max_poll_fails);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->max_poll_fails);
+		FOUT
 		}
 	if (strcmp ("cfpd_list_ptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->cfpd_list_ptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->cfpd_list_ptr);
+		FOUT
 		}
 	if (strcmp ("pcf_queue_offset" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pcf_queue_offset);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pcf_queue_offset);
+		FOUT
 		}
 	if (strcmp ("beacon_int" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->beacon_int);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->beacon_int);
+		FOUT
 		}
 	if (strcmp ("pcf_frag_buffer_ptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pcf_frag_buffer_ptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pcf_frag_buffer_ptr);
+		FOUT
 		}
 	if (strcmp ("wlan_pcf_transmit_frame_copy_ptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->wlan_pcf_transmit_frame_copy_ptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->wlan_pcf_transmit_frame_copy_ptr);
+		FOUT
 		}
 	if (strcmp ("pcf_num_fragments" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pcf_num_fragments);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pcf_num_fragments);
+		FOUT
 		}
 	if (strcmp ("pcf_remainder_size" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pcf_remainder_size);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pcf_remainder_size);
+		FOUT
 		}
 	if (strcmp ("polling_list" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->polling_list);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->polling_list);
+		FOUT
 		}
 	if (strcmp ("poll_list_size" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->poll_list_size);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->poll_list_size);
+		FOUT
 		}
 	if (strcmp ("poll_index" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->poll_index);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->poll_index);
+		FOUT
 		}
 	if (strcmp ("pifs_time" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pifs_time);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pifs_time);
+		FOUT
 		}
 	if (strcmp ("beacon_evh" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->beacon_evh);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->beacon_evh);
+		FOUT
 		}
 	if (strcmp ("cfp_end_evh" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->cfp_end_evh);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->cfp_end_evh);
+		FOUT
 		}
 	if (strcmp ("pcf_pkt_in_service" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pcf_pkt_in_service);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pcf_pkt_in_service);
+		FOUT
 		}
 	if (strcmp ("pcf_flag" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pcf_flag);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pcf_flag);
+		FOUT
 		}
 	if (strcmp ("active_pc" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->active_pc);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->active_pc);
+		FOUT
 		}
 	if (strcmp ("cfp_prd" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->cfp_prd);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->cfp_prd);
+		FOUT
 		}
 	if (strcmp ("cfp_offset" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->cfp_offset);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->cfp_offset);
+		FOUT
 		}
 	if (strcmp ("cfp_length" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->cfp_length);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->cfp_length);
+		FOUT
 		}
 	if (strcmp ("ap_relay" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ap_relay);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ap_relay);
+		FOUT
 		}
 	if (strcmp ("total_cfpd_size" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->total_cfpd_size);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->total_cfpd_size);
+		FOUT
 		}
 	if (strcmp ("packet_size_dcf" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->packet_size_dcf);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->packet_size_dcf);
+		FOUT
 		}
 	if (strcmp ("packet_size_pcf" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->packet_size_pcf);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->packet_size_pcf);
+		FOUT
 		}
 	if (strcmp ("receive_time_dcf" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->receive_time_dcf);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->receive_time_dcf);
+		FOUT
 		}
 	if (strcmp ("receive_time_pcf" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->receive_time_pcf);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->receive_time_pcf);
+		FOUT
 		}
 	if (strcmp ("cfp_ap_medium_control" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->cfp_ap_medium_control);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->cfp_ap_medium_control);
+		FOUT
 		}
 	if (strcmp ("pcf_network" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pcf_network);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pcf_network);
+		FOUT
 		}
 	if (strcmp ("IS_EXPO_BACKOFF" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->IS_EXPO_BACKOFF);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->IS_EXPO_BACKOFF);
+		FOUT
 		}
 	if (strcmp ("ONE_MBPS_HEADER" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->ONE_MBPS_HEADER);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->ONE_MBPS_HEADER);
+		FOUT
 		}
-	*var_p_ptr = (char *)OPC_NIL;
+	*var_p_ptr = (void *)OPC_NIL;
 
-	FOUT;
+	FOUT
 	}
 

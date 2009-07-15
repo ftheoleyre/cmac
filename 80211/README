@@ -1,0 +1,2 @@
+This directory is no more maintained: it is uncompatible with recent opnet versions of IEEE 802.11 
+Just forget this directory and use only common_mac and cmac (translated in opnet 12.0 xml version)
