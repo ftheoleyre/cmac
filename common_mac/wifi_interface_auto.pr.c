@@ -1,10 +1,10 @@
 /* Process model C form file: wifi_interface_auto.pr.c */
-/* Portions of this file copyright 1992-2002 by OPNET Technologies, Inc. */
+/* Portions of this file copyright 1992-2007 by OPNET Technologies, Inc. */
 
 
 
 /* This variable carries the header into the object file */
-static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 44644A93 44644A93 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 120A 30A opnet 7 4A5DDDD8 4A5DDDD8 1 lefkada-laptop theoleyr 0 0 none none 0 0 none 0 0 0 0 0 0 0 0 11ab 5                                                                                                                                                                                                                                                                                                                                                                                                    ";
 #include <string.h>
 
 
@@ -12,13 +12,6 @@ static const char wifi_interface_auto_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modele
 /* OPNET system definitions */
 #include <opnet.h>
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-FSM_EXT_DECS
-#if defined (__cplusplus)
-} /* end of 'extern "C"' */
-#endif
 
 
 /* Header Block */
@@ -27,6 +20,7 @@ FSM_EXT_DECS
 #include <stdlib.h>
 
 #include <math.h>
+#include <errno.h>
 
 
 /* Address assignment definitions.	*/
@@ -37,6 +31,7 @@ FSM_EXT_DECS
 
 /* Process registry-related definitions. */
 #include "oms_pr.h"
+
 
 
 
@@ -259,13 +254,12 @@ int		max_y_int = 0;
 
 /* End of Header Block */
 
-
 #if !defined (VOSD_NO_FIN)
 #undef	BIN
 #undef	BOUT
-#define	BIN		FIN_LOCAL_FIELD(last_line_passed) = __LINE__ - _block_origin;
+#define	BIN		FIN_LOCAL_FIELD(_op_last_line_passed) = __LINE__ - _op_block_origin;
 #define	BOUT	BIN
-#define	BINIT	FIN_LOCAL_FIELD(last_line_passed) = 0; _block_origin = __LINE__;
+#define	BINIT	FIN_LOCAL_FIELD(_op_last_line_passed) = 0; _op_block_origin = __LINE__;
 #else
 #define	BINIT
 #endif /* #if !defined (VOSD_NO_FIN) */
@@ -278,63 +272,73 @@ typedef struct
 	/* Internal state tracking for FSM */
 	FSM_SYS_STATE
 	/* State Variables */
-	Objid	                  		my_objid;
-	Objid	                  		my_node_objid;
-	int	                    		instrm_from_mac_;
-	int	                    		outstrm_to_mac_;
-	OmsT_Aa_Address_Handle	 		oms_aa_handle;
-	int	                    		mac_address;
-	Ici*	                   		wlan_mac_req_iciptr;
-	int	                    		next_hop;
-	int	                    		pk_destination;
-	int	                    		routing_type;
-	int	                    		range;
-	int	                    		self_position;
-	int	                    		my_stat_id;
-	int	                    		rate_adaptation;
-	int	                    		beta;
-	List*	                  		my_route_to_sink;
-	Boolean	                		is_border_node;
-	int	                    		mac_backoff_type;
-	List*	                  		id_list;
-	int	                    		DEBUG;
-	int	                    		is_sink;
+	Objid	                  		my_objid                                        ;	/* Object identifier of the surrounding module.	 */
+	Objid	                  		my_node_objid                                   ;	/* Object identifier of the surrounding node.	 */
+	int	                    		instrm_from_mac_                                ;	/* Stream index of the packet stream coming from MAC. */
+	int	                    		outstrm_to_mac_                                 ;	/* Stream index of the packet stream going to MAC. */
+	OmsT_Aa_Address_Handle	 		oms_aa_handle                                   ;	/* Auto-address assignment handle. Used while      */
+	                        		                                                	/* auto-address and destination address selection. */
+	int	                    		mac_address                                     ;	/* Element address of the associated MAC. */
+	Ici*	                   		wlan_mac_req_iciptr                             ;	/* Interface control information needed to indicate */
+	                        		                                                	/* to the MAC of the destination to which packet    */
+	                        		                                                	/* needs to be sent.                                */
+	int	                    		next_hop                                        ;	/* The next hop (it depends on the routing_type) */
+	int	                    		pk_destination                                  ;	/* The destination for all generated packets */
+	int	                    		routing_type                                    ;	/* The type of routing (XY, OPT_CORNER, SIDES...) */
+	int	                    		range                                           ;	/* The radio range (in multiple of the sensing range, dimension of the grid) */
+	int	                    		self_position                                   ;	/* The nodes must be positionned by the process to form a regular grid */
+	int	                    		my_stat_id                                      ;	/* Control variable to write stats */
+	int	                    		rate_adaptation                                 ;	/* Must the rate be adapted to comput dynamically its limit ? */
+	int	                    		beta                                            ;	/* Depends on the parameters :                     */
+	                        		                                                	/* -Radio interference range if OPT / OPT2 routing */
+	                        		                                                	/* -Parameter of the Alpha-routing                 */
+	List*	                  		my_route_to_sink                                ;	/* The route to the sink (hops, source, .... , sink) */
+	Boolean	                		is_border_node                                  ;	/* Is this node a border node ? */
+	int	                    		mac_backoff_type                                ;	/* The type of backoff which is used by the mac layer */
+	List*	                  		id_list                                         ;	/* List of ids */
+	int	                    		DEBUG                                           ;	/* debug level */
+	int	                    		is_sink                                         ;	/* Is this node a sink ? */
 	} wifi_interface_auto_state;
 
-#define pr_state_ptr            		((wifi_interface_auto_state*) SimI_Mod_State_Ptr)
-#define my_objid                		pr_state_ptr->my_objid
-#define my_node_objid           		pr_state_ptr->my_node_objid
-#define instrm_from_mac_        		pr_state_ptr->instrm_from_mac_
-#define outstrm_to_mac_         		pr_state_ptr->outstrm_to_mac_
-#define oms_aa_handle           		pr_state_ptr->oms_aa_handle
-#define mac_address             		pr_state_ptr->mac_address
-#define wlan_mac_req_iciptr     		pr_state_ptr->wlan_mac_req_iciptr
-#define next_hop                		pr_state_ptr->next_hop
-#define pk_destination          		pr_state_ptr->pk_destination
-#define routing_type            		pr_state_ptr->routing_type
-#define range                   		pr_state_ptr->range
-#define self_position           		pr_state_ptr->self_position
-#define my_stat_id              		pr_state_ptr->my_stat_id
-#define rate_adaptation         		pr_state_ptr->rate_adaptation
-#define beta                    		pr_state_ptr->beta
-#define my_route_to_sink        		pr_state_ptr->my_route_to_sink
-#define is_border_node          		pr_state_ptr->is_border_node
-#define mac_backoff_type        		pr_state_ptr->mac_backoff_type
-#define id_list                 		pr_state_ptr->id_list
-#define DEBUG                   		pr_state_ptr->DEBUG
-#define is_sink                 		pr_state_ptr->is_sink
+#define my_objid                		op_sv_ptr->my_objid
+#define my_node_objid           		op_sv_ptr->my_node_objid
+#define instrm_from_mac_        		op_sv_ptr->instrm_from_mac_
+#define outstrm_to_mac_         		op_sv_ptr->outstrm_to_mac_
+#define oms_aa_handle           		op_sv_ptr->oms_aa_handle
+#define mac_address             		op_sv_ptr->mac_address
+#define wlan_mac_req_iciptr     		op_sv_ptr->wlan_mac_req_iciptr
+#define next_hop                		op_sv_ptr->next_hop
+#define pk_destination          		op_sv_ptr->pk_destination
+#define routing_type            		op_sv_ptr->routing_type
+#define range                   		op_sv_ptr->range
+#define self_position           		op_sv_ptr->self_position
+#define my_stat_id              		op_sv_ptr->my_stat_id
+#define rate_adaptation         		op_sv_ptr->rate_adaptation
+#define beta                    		op_sv_ptr->beta
+#define my_route_to_sink        		op_sv_ptr->my_route_to_sink
+#define is_border_node          		op_sv_ptr->is_border_node
+#define mac_backoff_type        		op_sv_ptr->mac_backoff_type
+#define id_list                 		op_sv_ptr->id_list
+#define DEBUG                   		op_sv_ptr->DEBUG
+#define is_sink                 		op_sv_ptr->is_sink
 
-/* This macro definition will define a local variable called	*/
+/* These macro definitions will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
 /* This variable points to the state variable data structure,	*/
 /* and can be used from a C debugger to display their values.	*/
-#undef FIN_PREAMBLE
-#define FIN_PREAMBLE	wifi_interface_auto_state *op_sv_ptr = pr_state_ptr;
+#undef FIN_PREAMBLE_DEC
+#undef FIN_PREAMBLE_CODE
+#define FIN_PREAMBLE_DEC	wifi_interface_auto_state *op_sv_ptr;
+#define FIN_PREAMBLE_CODE	\
+		op_sv_ptr = ((wifi_interface_auto_state *)(OP_SIM_CONTEXT_PTR->_op_mod_state_ptr));
 
 
 /* Function Block */
 
-enum { _block_origin = __LINE__ };
+#if !defined (VOSD_NO_FIN)
+enum { _op_block_origin = __LINE__ + 2};
+#endif
+
 static void
 wlan_mac_higher_layer_intf_sv_init ()
 	{
@@ -391,6 +395,20 @@ wlan_mac_higher_layer_register_as_arp ()
 	}
 
 
+//-----------------------------------------------------------
+//
+//					TOOLS
+//
+//-----------------------------------------------------------
+
+//return the minimum value
+double min(double a, double b){
+	FIN(min(double a, double b));
+	
+	if (a<b)
+		FRET(a);
+	FRET(b);
+}
 
 
 
@@ -402,7 +420,9 @@ wlan_mac_higher_layer_register_as_arp ()
 
 
 //Deletes the frame_id which became obsolete
-void del_timeouted_id(Vartype* tot , int code){
+void del_timeouted_id(void* tot , int code){
+	FIN(del_timeouted_id(void* tot , int code));
+	
 	//double		older_entry = 0;
 	int				i;
 	id_struct		*ptr;
@@ -422,11 +442,14 @@ void del_timeouted_id(Vartype* tot , int code){
 	//Next verification
 	if (op_prg_list_size(id_list) != 0)
 		op_intrpt_schedule_call(op_sim_time() + TIMEOUT_ID , 0 , del_timeouted_id , NULL);
+	FOUT;
 }
 
 
 //Is thie frame_id already in the list ?
 Boolean is_id_seen(int pk_id){
+	FIN(is_id_seen(int pk_id));
+
 	id_struct		*ptr;
 	int				i;
 	
@@ -434,16 +457,18 @@ Boolean is_id_seen(int pk_id){
 		ptr = op_prg_list_access(id_list , i);
 		
 		if (ptr->id == pk_id)
-			return(OPC_TRUE);
+			FRET(OPC_TRUE);
 	}
 	
-	return(OPC_FALSE);
+	FRET(OPC_FALSE);
 }
 
 
 
 //adds the frame_id as already seen
 void add_id_seen(int pk_id){
+	FIN(add_id_seen(int pk_id));
+		
 	id_struct	*ptr;
 	
 	//the frame id is already in the list
@@ -459,6 +484,8 @@ void add_id_seen(int pk_id){
 	ptr->id			= pk_id;
 	ptr->timeout	= op_sim_time() + TIMEOUT_ID;
 	op_prg_list_insert(id_list , ptr , OPC_LISTPOS_TAIL);
+		
+	FOUT;
 }
 
 
@@ -478,32 +505,35 @@ void add_id_seen(int pk_id){
 
 //is this int positive or negative ?
 short signe(int value){
+	FIN(signe(int value));
+	
 	if (value < 0)
-		return -1;
-	else if (value > 0)
-		return 1;
-	else
-		return 0;
+		FRET(-1);
+	if (value > 0)
+		FRET(1);
+	FRET(0);
 }
 
 
 //returns the euclidyan distance
 double get_distance(double x1 , double y1 ,double x2 , double y2){
-	return (sqrt (  pow(x1 - x2, 2) + pow(y1 - y2, 2)));
+	FIN(get_distance(double x1 , double y1 ,double x2 , double y2));
+	FRET(sqrt (  pow(x1 - x2, 2) + pow(y1 - y2, 2)));
 }	
 
 
 //Is the node in the circle of radius r and center x/y ?
 short is_in_circle(int address , double x , double y , double radius){
+	FIN(is_in_circle(int address , double x , double y , double radius));
+	
 	int		x_addr , y_addr;
 
 	y_addr = address /  100;
 	x_addr = address - y_addr * 100;
 
 	if (get_distance(x_addr , y_addr, x , y) < radius)
-		return(OPC_TRUE);
-	else
-		return(OPC_FALSE);
+		FRET(OPC_TRUE);
+	FRET(OPC_FALSE);
 }
 
 
@@ -521,6 +551,8 @@ short is_in_circle(int address , double x , double y , double radius){
 //-----------------------------------------------------------
 //returns the next hop via the shortest route tin hops (almost the same as XY routing, but without shortcuts)
 int get_next_hop_via_shortest_routing(int range_tmp , int destination_tmp){
+	FIN(get_next_hop_via_shortest_routing(int range_tmp , int destination_tmp));
+	
 	int 	next_hop_tmp;
 	int		x_dev , y_dev;
 	int		dev = range_tmp / sqrt(2);		// Max mobility via diagonale
@@ -567,7 +599,7 @@ int get_next_hop_via_shortest_routing(int range_tmp , int destination_tmp){
 	}
 		
 	
-	return(next_hop_tmp);
+	FRET(next_hop_tmp);
 }
 
 
@@ -579,10 +611,12 @@ int get_next_hop_via_shortest_routing(int range_tmp , int destination_tmp){
 //-----------------------------------------------------------
 //returns the next hop for the optimal routing scheme, via the axis (but avoiding the interferences circle)
 int get_next_hop_via_opt_corner_sides_routing(int range_tmp , int destination_tmp , double x_center , double y_center , double radius){
+	FIN(get_next_hop_via_opt_corner_sides_routing(int range_tmp , int destination_tmp , double x_center , double y_center , double radius));
+	
 	int 	next_hop_tmp;
 	int		x_dev , y_dev , next_hop_x_dev , next_hop_y_dev;
 	int		next_hop_tmp_sav;
-	int		dev = range_tmp / sqrt(2);		// Max mobility via diagonale
+//	int		dev = range_tmp / sqrt(2);		// Max mobility via diagonale
 
 	y_dev = (int) (mac_address / 100) - (int) (destination_tmp /100);
 	x_dev = mac_address - destination_tmp - y_dev*100;
@@ -670,10 +704,8 @@ int get_next_hop_via_opt_corner_sides_routing(int range_tmp , int destination_tm
 			next_hop_tmp = mac_address - min(range_tmp * 100 , y_dev * 100);
 		}
 	}
-	
-	
-	
-	return(next_hop_tmp);	
+		
+	FRET(next_hop_tmp);	
 }
 
 
@@ -684,10 +716,12 @@ int get_next_hop_via_opt_corner_sides_routing(int range_tmp , int destination_tm
 //-----------------------------------------------------------
 //returns the next hop via the XY routing toward the destination (Along Y and then along X)
 int get_next_hop_via_xy_routing(int range_tmp , int destination_tmp){
+	FIN(get_next_hop_via_xy_routing(int range_tmp , int destination_tmp));
+	
 	int 	next_hop_tmp;
 	int		x_dev , y_dev;
 	char	msg[200];
-	int		dev = range_tmp / sqrt(2);		// Max mobility via diagonale
+//	int		dev = range_tmp / sqrt(2);		// Max mobility via diagonale
 	
 	y_dev = (int) (mac_address / 100) - (int) (destination_tmp /100);
 	x_dev = mac_address - destination_tmp - y_dev*100;
@@ -723,7 +757,7 @@ int get_next_hop_via_xy_routing(int range_tmp , int destination_tmp){
 	}
 		
 	//Final result !
-	return(next_hop_tmp);
+	FRET(next_hop_tmp);
 }
 
 
@@ -734,9 +768,11 @@ int get_next_hop_via_xy_routing(int range_tmp , int destination_tmp){
 //-----------------------------------------------------------
 //returns the next hop via a routing via axis centered on the destination
 int get_next_hop_via_sides_routing(int range_tmp , int destination_tmp){
+	FIN(get_next_hop_via_sides_routing(int range_tmp , int destination_tmp));
+	
 	int 	next_hop_tmp;
 	int		x_dev , y_dev;
-	int		dev = range_tmp / sqrt(2);		// Max mobility via diagonale
+//	int		dev = range_tmp / sqrt(2);		// Max mobility via diagonale
 	
 	y_dev = (int) (mac_address / 100) - (int) (destination_tmp /100);
 	x_dev = mac_address - destination_tmp - y_dev*100;
@@ -757,7 +793,7 @@ int get_next_hop_via_sides_routing(int range_tmp , int destination_tmp){
 			next_hop_tmp = mac_address - signe(y_dev) * 100 * min(range_tmp , fabs(y_dev));
 	}
 
-	return(next_hop_tmp);
+	FRET(next_hop_tmp);
 }
 
 
@@ -767,6 +803,8 @@ int get_next_hop_via_sides_routing(int range_tmp , int destination_tmp){
 //-----------------------------------------------------------
 //returns the next hop via a routing via axis centered on the destination
 int get_next_hop_via_sides_short_bis_routing(int range_tmp , int destination_tmp , double x_center , double y_center , double radius){
+	FIN(get_next_hop_via_sides_short_bis_routing(int range_tmp , int destination_tmp , double x_center , double y_center , double radius));
+	
 	int 	next_hop_tmp;
 	int		x_dev , y_dev;
 	
@@ -808,7 +846,7 @@ int get_next_hop_via_sides_short_bis_routing(int range_tmp , int destination_tmp
 		}
 	}
 
-	return(next_hop_tmp);
+	FRET(next_hop_tmp);
 }
 
 
@@ -820,13 +858,15 @@ int get_next_hop_via_sides_short_bis_routing(int range_tmp , int destination_tmp
 
 //a quite particular route
 int get_next_hop_via_opt2_routing(int range_tmp , int destination_tmp){
+	FIN(get_next_hop_via_opt2_routing(int range_tmp , int destination_tmp));
+	
 	int 	next_hop_tmp = -1;
 	int		x_dev , y_dev;
 	int		i;
 	
 	//the Sink
 	if (destination_tmp == mac_address)
-		return(mac_address);
+		FRET(mac_address);
 	
 	
 	//move values
@@ -864,7 +904,7 @@ int get_next_hop_via_opt2_routing(int range_tmp , int destination_tmp){
 		next_hop_tmp = mac_address - signe(x_dev);
 	}
 	
-	return(next_hop_tmp);
+	FRET(next_hop_tmp);
 }
 
 
@@ -888,22 +928,26 @@ int get_next_hop_via_opt2_routing(int range_tmp , int destination_tmp){
 
 //returns the struct pk_info associated to pk_id 
 pk_info* get_pk_info_in_list(List* ll, int pk_id){
+	FIN(get_pk_info_in_list(List* ll, int pk_id));
+	
 	pk_info		*elem;
 	int			i;
 	
 	for(i=0; i<op_prg_list_size(ll); i++){
 		elem = op_prg_list_access(ll , i);
 		if (elem->pk_id == pk_id){
-			return(elem);
+			FRET(elem);
 		}
 	}
-	return(NULL);
+	FRET(NULL);
 }
 
 
 
 //returns the delivery ratio for the packets between id1 and id2
 double compute_delivery_ratio(List* ll, int id1, int id2){
+	FIN(compute_delivery_ratio(List* ll, int id1, int id2));
+	
 	pk_info		*elem;
 	int			i;
 	int			nb_pk_sent 		= 0;
@@ -912,7 +956,7 @@ double compute_delivery_ratio(List* ll, int id1, int id2){
 	
 	//Error
 	if (id2 > op_prg_list_size(ll))
-		return(0);
+		FRET(0);
 	
 	for(i=0 ; i < op_prg_list_size(ll) ; i++){
 		elem = op_prg_list_access(ll , i);
@@ -925,12 +969,14 @@ double compute_delivery_ratio(List* ll, int id1, int id2){
 		if ((elem->pk_id <= id2) && (elem->pk_id >= id1) && (elem->received))
 			nb_pk_received++;
 	}
-	return((double)nb_pk_received / nb_pk_sent);
+	FRET((double)nb_pk_received / nb_pk_sent);
 }
 
 
 //returns the average delay for the packets between id1 and id2
 double compute_delay(List* ll, int id1, int id2){
+	FIN(compute_delay(List* ll, int id1, int id2));
+	
 	pk_info		*elem;
 	int			i;
 	double		delay 			= 0;
@@ -940,7 +986,7 @@ double compute_delay(List* ll, int id1, int id2){
 	
 	//Error
 	if (id2 > op_prg_list_size(ll))
-		return(0);
+		FRET(0);
 	
 	for(i=0 ; i < op_prg_list_size(ll) ; i++){
 		elem = op_prg_list_access(ll , i);
@@ -955,13 +1001,15 @@ double compute_delay(List* ll, int id1, int id2){
 			delay += elem->time_received - elem->time_sent;
 		}
 	}
-	return(delay / nb_pk_received);
+	FRET(delay / nb_pk_received);
 }
 
 
 
 //returns the max delay for the packets between id1 and id2
 double compute_max_delay(List* ll, int id1, int id2){
+	FIN(compute_max_delay(List* ll, int id1, int id2));
+	
 	pk_info		*elem;
 	int			i;
 	double		max_delay 		= 0;
@@ -971,7 +1019,7 @@ double compute_max_delay(List* ll, int id1, int id2){
 	
 	//Error
 	if (id2 > op_prg_list_size(ll))
-		return(0);
+		FRET(0);
 	
 	for(i=0 ; i < op_prg_list_size(ll) ; i++){
 		elem = op_prg_list_access(ll , i);
@@ -987,7 +1035,7 @@ double compute_max_delay(List* ll, int id1, int id2){
 				max_delay = elem->time_received - elem->time_sent;
 		}
 	}
-	return(max_delay);
+	FRET(max_delay);
 }
 
 
@@ -1003,6 +1051,7 @@ double compute_max_delay(List* ll, int id1, int id2){
 
 //Writes a file containing info about the received/generated packets
 void debug_write_pk_info(){
+	FIN(debug_write_pk_info());
 
 	int			i;
 	FILE* 		pfile;
@@ -1010,8 +1059,6 @@ void debug_write_pk_info(){
 	char		msg[500];
 	//Stats
 	pk_info		*elem;
-	int			nb_pk_received = 0;
-	int			nb_pk_sent = 0;
 
 	sprintf(filename , "results_80211/%d_debug_pk.txt", (int) timestamp + (int)op_dist_uniform(128));
 	pfile = fopen(filename , "w");
@@ -1030,6 +1077,7 @@ void debug_write_pk_info(){
 		
 	}
 	fclose(pfile);
+	FOUT;
 }
 
 
@@ -1045,6 +1093,8 @@ void debug_write_pk_info(){
 
 //Prints parameters, etc ...
 void print_headers_stat_file(FILE *pfile){
+	FIN(print_headers_stat_file(FILE *pfile));
+	
 	//Simulation parameters
 	int		RTS , BETA;
 	int		routing_mac = 0;
@@ -1091,12 +1141,16 @@ void print_headers_stat_file(FILE *pfile){
 	fprintf(pfile , "Maximal Difference valid / bad				:	%f\n", 			PRECISION_REQUIRED);
 	fprintf(pfile , "Valid Capacity if dlivery ratio >				:	%f\n", 		MIN_DELIVERY_RATIO);
 	fprintf(pfile , "Time between tests						:	%f\n", 				INTERVALL_RATES_TEST);
+	
+	FOUT;
 }
 
 
 
 //Write delivery ratio, delay, max_delay
 void write_intermediary_stats(int low_pk_id , int high_pk_id){
+	FIN(write_intermediary_stats(int low_pk_id , int high_pk_id));
+	
 	//results
 	double	delivery_ratio;
 	double	delay;
@@ -1147,6 +1201,7 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 	fprintf(pfile , "Max Delay (in s) 							:	%f\n", 				max_delay);
 	
 	fclose(pfile);
+	FOUT;
 }	
 
 //-----------------------------------------------------------
@@ -1158,6 +1213,8 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 
 //Updates the parameter value in the source process
 void update_packet_arrival_in_source_process(double inter_pk_time , double start_time){
+	FIN(update_packet_arrival_in_source_process(double inter_pk_time , double start_time));
+	
 	//topo
 	int		node_id;
 	//control
@@ -1173,10 +1230,13 @@ void update_packet_arrival_in_source_process(double inter_pk_time , double start
 		if (op_ima_obj_attr_exists(node_id , "source.Start Time Packet Generation"))
 			op_ima_obj_attr_set(node_id , "source.Start Time Packet Generation" , start_time);
 	}
+	FOUT;
 }
 
 //adapt the inter packet time
 void adapt_rate(void *arg , int code){
+	FIN(adapt_rate(void *arg , int code));
+	
 	//stats
 	int		pk_id;
 	double	delivery_ratio;
@@ -1194,7 +1254,7 @@ void adapt_rate(void *arg , int code){
 	delivery_ratio = compute_delivery_ratio(pk_list , lowest_pk_id_authorized + PK_ID_MODULO / 100 , pk_id);
 	printf(" %f - %d %d\n", delivery_ratio , lowest_pk_id_authorized + PK_ID_MODULO /100 , pk_id);
 	if (lowest_pk_id_authorized + PK_ID_MODULO /100  > pk_id)
-		return;
+		FOUT;
 	
 	//Other packets in transit must be dropped
 	lowest_pk_id_authorized 	= current_pk_id;
@@ -1227,13 +1287,14 @@ void adapt_rate(void *arg , int code){
 	//debug_write_pk_info();	
 	printf("NEW RATE : %f (delivery ratio %f)\n", current_inter_pk_time , delivery_ratio);
 	
-	
-
+	FOUT;
 }
 
 
 //We compute the required stats -> stop the simulation
 void stop_rate(void *arg , int code){
+	FIN(stop_rate(void *arg , int code));
+	
 	//max pk_id to compute our stats
 	int		pk_id;
 	
@@ -1246,7 +1307,7 @@ void stop_rate(void *arg , int code){
 
 	//not enough packets
 	if (lowest_pk_id_authorized + PK_ID_MODULO / 10 > pk_id)
-		return;
+		FOUT;
 	
 	//Write all stats in a file
 	write_intermediary_stats(lowest_pk_id_authorized , pk_id);
@@ -1257,6 +1318,8 @@ void stop_rate(void *arg , int code){
 	
 	//simulation end !
 	op_sim_end("The stats were computed" , "" , "" , "");
+	
+	FOUT;
 }
 
 
@@ -1271,6 +1334,7 @@ void stop_rate(void *arg , int code){
 
 //Prints the content of a route (route_length, source, ..., destination)
 void print_route(List* route_tmp){
+	FIN(print_route(List* route_tmp));
 	int		i;
 	int		*int_ptr;
 
@@ -1281,6 +1345,7 @@ void print_route(List* route_tmp){
 		printf(" %d" , *int_ptr);
 		}
 	printf("\n");
+	FOUT;
 }
 
 
@@ -1299,6 +1364,8 @@ void print_route(List* route_tmp){
 //-----------------------------------------------------------
 
 void pk_send_to_mac(Packet * pkptr , int next_hop_tmp){
+	FIN(pk_send_to_mac(Packet * pkptr , int next_hop_tmp));
+		
 	double	power_ratio;
 	int		x_dist , y_dist;
 	double	dist;
@@ -1321,6 +1388,7 @@ void pk_send_to_mac(Packet * pkptr , int next_hop_tmp){
 	op_ici_install (wlan_mac_req_iciptr);
 	op_pk_send (pkptr, STREAM_TO_MAC);
 
+	FOUT;
 }
 
 /* End of Function Block */
@@ -1337,11 +1405,17 @@ void pk_send_to_mac(Packet * pkptr , int next_hop_tmp){
 #if defined (__cplusplus)
 extern "C" {
 #endif
-	void wifi_interface_auto (void);
-	Compcode wifi_interface_auto_init (void **);
-	void wifi_interface_auto_diag (void);
-	void wifi_interface_auto_terminate (void);
-	void wifi_interface_auto_svar (void *, const char *, char **);
+	void wifi_interface_auto (OP_SIM_CONTEXT_ARG_OPT);
+	VosT_Obtype _op_wifi_interface_auto_init (int * init_block_ptr);
+	void _op_wifi_interface_auto_diag (OP_SIM_CONTEXT_ARG_OPT);
+	void _op_wifi_interface_auto_terminate (OP_SIM_CONTEXT_ARG_OPT);
+	VosT_Address _op_wifi_interface_auto_alloc (VosT_Obtype, int);
+	void _op_wifi_interface_auto_svar (void *, const char *, void **);
+
+
+	VosT_Obtype Vos_Define_Object_Prstate (const char * _op_name, size_t _op_size);
+	VosT_Address Vos_Alloc_Object (VosT_Obtype _op_ob_hndl);
+	VosT_Fun_Status Vos_Poolmem_Dealloc (VosT_Address _op_ob_ptr);
 #if defined (__cplusplus)
 } /* end of 'extern "C"' */
 #endif
@@ -1353,28 +1427,28 @@ extern "C" {
 
 
 void
-wifi_interface_auto (void)
+wifi_interface_auto (OP_SIM_CONTEXT_ARG_OPT)
 	{
-	int _block_origin = 0;
-	FIN (wifi_interface_auto ());
-	if (1)
+#if !defined (VOSD_NO_FIN)
+	int _op_block_origin = 0;
+#endif
+	FIN_MT (wifi_interface_auto ());
+
 		{
+		/* Temporary Variables */
 		List*				proc_record_handle_list_ptr;
 		int					record_handle_list_size;
-		OmsT_Pr_Handle		process_record_handle;
-		Objid				mac_module_objid;
-		Boolean				dest_addr_okay = OPC_FALSE;
-		double				ne_address = OPC_DBL_UNDEF;
-		OmsT_Aa_Address_Info * ith_address_info_ptr;
+		/* End of Temporary Variables */
 
 
-		FSM_ENTER (wifi_interface_auto)
+		FSM_ENTER ("wifi_interface_auto")
 
 		FSM_BLOCK_SWITCH
 			{
 			/*---------------------------------------------------------*/
 			/** state (init) enter executives **/
-			FSM_STATE_ENTER_UNFORCED_NOLABEL (0, "init", "wifi_interface_auto () [init enter execs]")
+			FSM_STATE_ENTER_UNFORCED_NOLABEL (0, "init", "wifi_interface_auto [init enter execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [init enter execs]", state0_enter_exec)
 				{
 				//Addresses
 				char		str[500];
@@ -1384,8 +1458,6 @@ wifi_interface_auto (void)
 				//Topology
 				int			node_id;
 				int			mac_id;
-				//MAC process name
-				char		mac_name[400];
 				
 				
 				
@@ -1498,14 +1570,15 @@ wifi_interface_auto (void)
 				nb_nodes++;
 				
 				}
-
+				FSM_PROFILE_SECTION_OUT (state0_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (1,wifi_interface_auto)
+			FSM_EXIT (1,"wifi_interface_auto")
 
 
 			/** state (init) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (0, "init", "wifi_interface_auto () [init exit execs]")
+			FSM_STATE_EXIT_UNFORCED (0, "init", "wifi_interface_auto [init exit execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [init exit execs]", state0_exit_exec)
 				{
 				/* Schedule a self interrupt to wait for lower layer	*/
 				/* wlan MAC process to initialize and register itself in*/
@@ -1513,27 +1586,30 @@ wifi_interface_auto (void)
 				op_intrpt_schedule_self (op_sim_time (), 0);
 				
 				}
+				FSM_PROFILE_SECTION_OUT (state0_exit_exec)
 
 
 			/** state (init) transition processing **/
-			FSM_TRANSIT_FORCE (5, state5_enter_exec, ;, "default", "", "init", "init2")
+			FSM_TRANSIT_FORCE (5, state5_enter_exec, ;, "default", "", "init", "init2", "wifi_interface_auto [init -> init2 : default / ]")
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (idle) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (1, state1_enter_exec, "idle", "wifi_interface_auto () [idle enter execs]")
+			FSM_STATE_ENTER_UNFORCED (1, "idle", state1_enter_exec, "wifi_interface_auto [idle enter execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [idle enter execs]", state1_enter_exec)
 				{
 				
 				}
-
+				FSM_PROFILE_SECTION_OUT (state1_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (3,wifi_interface_auto)
+			FSM_EXIT (3,"wifi_interface_auto")
 
 
 			/** state (idle) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (1, "idle", "wifi_interface_auto () [idle exit execs]")
+			FSM_STATE_EXIT_UNFORCED (1, "idle", "wifi_interface_auto [idle exit execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [idle exit execs]", state1_exit_exec)
 				{
 				/* The only interrupt expected in this state is a	*/
 				/* stream interrupt. It can be either from the MAC	*/
@@ -1556,26 +1632,30 @@ wifi_interface_auto (void)
 				
 				*/
 				}
+				FSM_PROFILE_SECTION_OUT (state1_exit_exec)
 
 
 			/** state (idle) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wifi_interface_auto [idle trans conditions]", state1_trans_conds)
 			FSM_INIT_COND (APPL_LAYER_PKT_ARVL && !ENDSIM)
 			FSM_TEST_COND (MAC_LAYER_PKT_ARVL && !ENDSIM)
 			FSM_TEST_COND (ENDSIM)
 			FSM_TEST_LOGIC ("idle")
+			FSM_PROFILE_SECTION_OUT (state1_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 2, state2_enter_exec, ;, "APPL_LAYER_PKT_ARVL && !ENDSIM", "", "idle", "appl layer arrival")
-				FSM_CASE_TRANSIT (1, 3, state3_enter_exec, ;, "MAC_LAYER_PKT_ARVL && !ENDSIM", "", "idle", "mac layer arrival")
-				FSM_CASE_TRANSIT (2, 6, state6_enter_exec, ;, "ENDSIM", "", "idle", "END_SIM")
+				FSM_CASE_TRANSIT (0, 2, state2_enter_exec, ;, "APPL_LAYER_PKT_ARVL && !ENDSIM", "", "idle", "appl layer arrival", "wifi_interface_auto [idle -> appl layer arrival : APPL_LAYER_PKT_ARVL && !ENDSIM / ]")
+				FSM_CASE_TRANSIT (1, 3, state3_enter_exec, ;, "MAC_LAYER_PKT_ARVL && !ENDSIM", "", "idle", "mac layer arrival", "wifi_interface_auto [idle -> mac layer arrival : MAC_LAYER_PKT_ARVL && !ENDSIM / ]")
+				FSM_CASE_TRANSIT (2, 6, state6_enter_exec, ;, "ENDSIM", "", "idle", "END_SIM", "wifi_interface_auto [idle -> END_SIM : ENDSIM / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (appl layer arrival) enter executives **/
-			FSM_STATE_ENTER_FORCED (2, state2_enter_exec, "appl layer arrival", "wifi_interface_auto () [appl layer arrival enter execs]")
+			FSM_STATE_ENTER_FORCED (2, "appl layer arrival", state2_enter_exec, "wifi_interface_auto [appl layer arrival enter execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [appl layer arrival enter execs]", state2_enter_exec)
 				{
 				
 				pk_info	*info_ptr;
@@ -1604,51 +1684,42 @@ wifi_interface_auto (void)
 				pk_send_to_mac(pkptr, next_hop);
 				
 				}
-
+				FSM_PROFILE_SECTION_OUT (state2_enter_exec)
 
 			/** state (appl layer arrival) exit executives **/
-			FSM_STATE_EXIT_FORCED (2, "appl layer arrival", "wifi_interface_auto () [appl layer arrival exit execs]")
-				{
-				}
+			FSM_STATE_EXIT_FORCED (2, "appl layer arrival", "wifi_interface_auto [appl layer arrival exit execs]")
 
 
 			/** state (appl layer arrival) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wifi_interface_auto [appl layer arrival trans conditions]", state2_trans_conds)
 			FSM_INIT_COND (ENDSIM)
 			FSM_TEST_COND (!ENDSIM)
 			FSM_TEST_LOGIC ("appl layer arrival")
+			FSM_PROFILE_SECTION_OUT (state2_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "ENDSIM", "", "appl layer arrival", "END_SIM")
-				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, ;, "!ENDSIM", "", "appl layer arrival", "idle")
+				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "ENDSIM", "", "appl layer arrival", "END_SIM", "wifi_interface_auto [appl layer arrival -> END_SIM : ENDSIM / ]")
+				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, ;, "!ENDSIM", "", "appl layer arrival", "idle", "wifi_interface_auto [appl layer arrival -> idle : !ENDSIM / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (mac layer arrival) enter executives **/
-			FSM_STATE_ENTER_FORCED (3, state3_enter_exec, "mac layer arrival", "wifi_interface_auto () [mac layer arrival enter execs]")
+			FSM_STATE_ENTER_FORCED (3, "mac layer arrival", state3_enter_exec, "wifi_interface_auto [mac layer arrival enter execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [mac layer arrival enter execs]", state3_enter_exec)
 				{
 				//Src and destination
 				int			source , dest;
-				int			i;
 				//Information about the packet to receive/forward
 				pk_info		*info_ptr;
 				int			pk_id_tmp;
-				//Sim end
-				double		next_start_time;
 				//Debug
 				char		msg[500];
-				//Inter_pk time
-				double		delivery_ratio;
-				int			node_id;
 				//tmp vaue
 				int			*int_ptr;
 				Packet		*pkptr;
-				//power
-				double		power_ratio;
-				int			x_dist , y_dist;
-				double		dist;
 				
 				
 				
@@ -1760,45 +1831,46 @@ wifi_interface_auto (void)
 				}
 				
 				}
-
+				FSM_PROFILE_SECTION_OUT (state3_enter_exec)
 
 			/** state (mac layer arrival) exit executives **/
-			FSM_STATE_EXIT_FORCED (3, "mac layer arrival", "wifi_interface_auto () [mac layer arrival exit execs]")
-				{
-				}
+			FSM_STATE_EXIT_FORCED (3, "mac layer arrival", "wifi_interface_auto [mac layer arrival exit execs]")
 
 
 			/** state (mac layer arrival) transition processing **/
+			FSM_PROFILE_SECTION_IN ("wifi_interface_auto [mac layer arrival trans conditions]", state3_trans_conds)
 			FSM_INIT_COND (ENDSIM)
 			FSM_TEST_COND (!ENDSIM)
 			FSM_TEST_LOGIC ("mac layer arrival")
+			FSM_PROFILE_SECTION_OUT (state3_trans_conds)
 
 			FSM_TRANSIT_SWITCH
 				{
-				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "ENDSIM", "", "mac layer arrival", "END_SIM")
-				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, ;, "!ENDSIM", "", "mac layer arrival", "idle")
+				FSM_CASE_TRANSIT (0, 6, state6_enter_exec, ;, "ENDSIM", "", "mac layer arrival", "END_SIM", "wifi_interface_auto [mac layer arrival -> END_SIM : ENDSIM / ]")
+				FSM_CASE_TRANSIT (1, 1, state1_enter_exec, ;, "!ENDSIM", "", "mac layer arrival", "idle", "wifi_interface_auto [mac layer arrival -> idle : !ENDSIM / ]")
 				}
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (wait) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (4, state4_enter_exec, "wait", "wifi_interface_auto () [wait enter execs]")
+			FSM_STATE_ENTER_UNFORCED (4, "wait", state4_enter_exec, "wifi_interface_auto [wait enter execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [wait enter execs]", state4_enter_exec)
 				{
 				
 				}
-
+				FSM_PROFILE_SECTION_OUT (state4_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (9,wifi_interface_auto)
+			FSM_EXIT (9,"wifi_interface_auto")
 
 
 			/** state (wait) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (4, "wait", "wifi_interface_auto () [wait exit execs]")
+			FSM_STATE_EXIT_UNFORCED (4, "wait", "wifi_interface_auto [wait exit execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [wait exit execs]", state4_exit_exec)
 				{
 				char	msg[500];
 				//Inter pk time
-				int		node_id;
 				int		mac_id;
 				//Real coordinates
 				double	x , y;
@@ -1807,14 +1879,11 @@ wifi_interface_auto (void)
 				int		x_sink , y_sink;
 				double	x_center , y_center;
 				int		x_dev , y_dev;
-				double	radius , radius2;
-				//Control
-				int		i;
-				//Routes
+				double	radius;
+				//Contro//Routes
 				List 	*my_route_tmp;
 				int		*int_ptr;
-				//Mac process name
-				char	mac_name[400];
+				
 				
 				
 				
@@ -2124,48 +2193,48 @@ wifi_interface_auto (void)
 				
 				
 				}
+				FSM_PROFILE_SECTION_OUT (state4_exit_exec)
 
 
 			/** state (wait) transition processing **/
-			FSM_TRANSIT_FORCE (7, state7_enter_exec, ;, "default", "", "wait", "stats_init")
+			FSM_TRANSIT_FORCE (7, state7_enter_exec, ;, "default", "", "wait", "stats_init", "wifi_interface_auto [wait -> stats_init : default / ]")
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (init2) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (5, state5_enter_exec, "init2", "wifi_interface_auto () [init2 enter execs]")
-				{
-				}
-
+			FSM_STATE_ENTER_UNFORCED (5, "init2", state5_enter_exec, "wifi_interface_auto [init2 enter execs]")
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (11,wifi_interface_auto)
+			FSM_EXIT (11,"wifi_interface_auto")
 
 
 			/** state (init2) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (5, "init2", "wifi_interface_auto () [init2 exit execs]")
+			FSM_STATE_EXIT_UNFORCED (5, "init2", "wifi_interface_auto [init2 exit execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [init2 exit execs]", state5_exit_exec)
 				{
 				/* Schedule a self interrupt to wait for lower layer	*/
 				/* Wlan MAC process to finalize the MAC address			*/
 				/* registration and resolution.							*/
 				op_intrpt_schedule_self (op_sim_time (), 0);
 				}
+				FSM_PROFILE_SECTION_OUT (state5_exit_exec)
 
 
 			/** state (init2) transition processing **/
-			FSM_TRANSIT_FORCE (4, state4_enter_exec, ;, "default", "", "init2", "wait")
+			FSM_TRANSIT_FORCE (4, state4_enter_exec, ;, "default", "", "init2", "wait", "wifi_interface_auto [init2 -> wait : default / ]")
 				/*---------------------------------------------------------*/
 
 
 
 			/** state (END_SIM) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (6, state6_enter_exec, "END_SIM", "wifi_interface_auto () [END_SIM enter execs]")
+			FSM_STATE_ENTER_UNFORCED (6, "END_SIM", state6_enter_exec, "wifi_interface_auto [END_SIM enter execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [END_SIM enter execs]", state6_enter_exec)
 				{
 				FILE* 		pfile;
-				char		backoff_type_str[20], routing_type_str[20] , filename[200];
+				char		filename[200];
 				char		msg[500];
 				int			i;
-				int			RTS;
 				//Stats
 				pk_info		*elem;
 				int			nb_pk_received = 0;
@@ -2256,16 +2325,14 @@ wifi_interface_auto (void)
 				
 				}
 				}
-
+				FSM_PROFILE_SECTION_OUT (state6_enter_exec)
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (13,wifi_interface_auto)
+			FSM_EXIT (13,"wifi_interface_auto")
 
 
 			/** state (END_SIM) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (6, "END_SIM", "wifi_interface_auto () [END_SIM exit execs]")
-				{
-				}
+			FSM_STATE_EXIT_UNFORCED (6, "END_SIM", "wifi_interface_auto [END_SIM exit execs]")
 
 
 			/** state (END_SIM) transition processing **/
@@ -2275,17 +2342,15 @@ wifi_interface_auto (void)
 
 
 			/** state (stats_init) enter executives **/
-			FSM_STATE_ENTER_UNFORCED (7, state7_enter_exec, "stats_init", "wifi_interface_auto () [stats_init enter execs]")
-				{
-				}
-
+			FSM_STATE_ENTER_UNFORCED (7, "stats_init", state7_enter_exec, "wifi_interface_auto [stats_init enter execs]")
 
 			/** blocking after enter executives of unforced state. **/
-			FSM_EXIT (15,wifi_interface_auto)
+			FSM_EXIT (15,"wifi_interface_auto")
 
 
 			/** state (stats_init) exit executives **/
-			FSM_STATE_EXIT_UNFORCED (7, "stats_init", "wifi_interface_auto () [stats_init exit execs]")
+			FSM_STATE_EXIT_UNFORCED (7, "stats_init", "wifi_interface_auto [stats_init exit execs]")
+				FSM_PROFILE_SECTION_IN ("wifi_interface_auto [stats_init exit execs]", state7_exit_exec)
 				{
 				//Routes
 				List 		*route_tmp = NULL;
@@ -2370,10 +2435,11 @@ wifi_interface_auto (void)
 				
 				
 				}
+				FSM_PROFILE_SECTION_OUT (state7_exit_exec)
 
 
 			/** state (stats_init) transition processing **/
-			FSM_TRANSIT_FORCE (1, state1_enter_exec, ;, "default", "", "stats_init", "idle")
+			FSM_TRANSIT_FORCE (1, state1_enter_exec, ;, "default", "", "stats_init", "idle", "wifi_interface_auto [stats_init -> idle : default / ]")
 				/*---------------------------------------------------------*/
 
 
@@ -2381,57 +2447,15 @@ wifi_interface_auto (void)
 			}
 
 
-		FSM_EXIT (0,wifi_interface_auto)
+		FSM_EXIT (0,"wifi_interface_auto")
 		}
 	}
 
-#if defined (__cplusplus)
-	extern "C" { 
-#endif
-	extern VosT_Fun_Status Vos_Catmem_Register (const char * , int , VosT_Void_Null_Proc, VosT_Address *);
-	extern VosT_Address Vos_Catmem_Alloc (VosT_Address, size_t);
-	extern VosT_Fun_Status Vos_Catmem_Dealloc (VosT_Address);
-#if defined (__cplusplus)
-	}
-#endif
-
-
-Compcode
-wifi_interface_auto_init (void ** gen_state_pptr)
-	{
-	int _block_origin = 0;
-	static VosT_Address	obtype = OPC_NIL;
-
-	FIN (wifi_interface_auto_init (gen_state_pptr))
-
-	if (obtype == OPC_NIL)
-		{
-		/* Initialize memory management */
-		if (Vos_Catmem_Register ("proc state vars (wifi_interface_auto)",
-			sizeof (wifi_interface_auto_state), Vos_Vnop, &obtype) == VOSC_FAILURE)
-			{
-			FRET (OPC_COMPCODE_FAILURE)
-			}
-		}
-
-	*gen_state_pptr = Vos_Catmem_Alloc (obtype, 1);
-	if (*gen_state_pptr == OPC_NIL)
-		{
-		FRET (OPC_COMPCODE_FAILURE)
-		}
-	else
-		{
-		/* Initialize FSM handling */
-		((wifi_interface_auto_state *)(*gen_state_pptr))->current_block = 0;
-
-		FRET (OPC_COMPCODE_SUCCESS)
-		}
-	}
 
 
 
 void
-wifi_interface_auto_diag (void)
+_op_wifi_interface_auto_diag (OP_SIM_CONTEXT_ARG_OPT)
 	{
 	/* No Diagnostic Block */
 	}
@@ -2440,21 +2464,23 @@ wifi_interface_auto_diag (void)
 
 
 void
-wifi_interface_auto_terminate (void)
+_op_wifi_interface_auto_terminate (OP_SIM_CONTEXT_ARG_OPT)
 	{
-	int _block_origin = __LINE__;
 
-	FIN (wifi_interface_auto_terminate (void))
+	FIN_MT (_op_wifi_interface_auto_terminate ())
 
-	Vos_Catmem_Dealloc (pr_state_ptr);
 
-	FOUT;
+	/* No Termination Block */
+
+	Vos_Poolmem_Dealloc (op_sv_ptr);
+
+	FOUT
 	}
 
 
 /* Undefine shortcuts to state variables to avoid */
 /* syntax error in direct access to fields of */
-/* local variable prs_ptr in wifi_interface_auto_svar function. */
+/* local variable prs_ptr in _op_wifi_interface_auto_svar function. */
 #undef my_objid
 #undef my_node_objid
 #undef instrm_from_mac_
@@ -2477,129 +2503,168 @@ wifi_interface_auto_terminate (void)
 #undef DEBUG
 #undef is_sink
 
+#undef FIN_PREAMBLE_DEC
+#undef FIN_PREAMBLE_CODE
+
+#define FIN_PREAMBLE_DEC
+#define FIN_PREAMBLE_CODE
+
+VosT_Obtype
+_op_wifi_interface_auto_init (int * init_block_ptr)
+	{
+	VosT_Obtype obtype = OPC_NIL;
+	FIN_MT (_op_wifi_interface_auto_init (init_block_ptr))
+
+	obtype = Vos_Define_Object_Prstate ("proc state vars (wifi_interface_auto)",
+		sizeof (wifi_interface_auto_state));
+	*init_block_ptr = 0;
+
+	FRET (obtype)
+	}
+
+VosT_Address
+_op_wifi_interface_auto_alloc (VosT_Obtype obtype, int init_block)
+	{
+#if !defined (VOSD_NO_FIN)
+	int _op_block_origin = 0;
+#endif
+	wifi_interface_auto_state * ptr;
+	FIN_MT (_op_wifi_interface_auto_alloc (obtype))
+
+	ptr = (wifi_interface_auto_state *)Vos_Alloc_Object (obtype);
+	if (ptr != OPC_NIL)
+		{
+		ptr->_op_current_block = init_block;
+#if defined (OPD_ALLOW_ODB)
+		ptr->_op_current_state = "wifi_interface_auto [init enter execs]";
+#endif
+		}
+	FRET ((VosT_Address)ptr)
+	}
+
 
 
 void
-wifi_interface_auto_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
+_op_wifi_interface_auto_svar (void * gen_ptr, const char * var_name, void ** var_p_ptr)
 	{
 	wifi_interface_auto_state		*prs_ptr;
 
-	FIN (wifi_interface_auto_svar (gen_ptr, var_name, var_p_ptr))
+	FIN_MT (_op_wifi_interface_auto_svar (gen_ptr, var_name, var_p_ptr))
 
 	if (var_name == OPC_NIL)
 		{
-		*var_p_ptr = (char *)OPC_NIL;
-		FOUT;
+		*var_p_ptr = (void *)OPC_NIL;
+		FOUT
 		}
 	prs_ptr = (wifi_interface_auto_state *)gen_ptr;
 
 	if (strcmp ("my_objid" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_objid);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->my_objid);
+		FOUT
 		}
 	if (strcmp ("my_node_objid" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_node_objid);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->my_node_objid);
+		FOUT
 		}
 	if (strcmp ("instrm_from_mac_" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->instrm_from_mac_);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->instrm_from_mac_);
+		FOUT
 		}
 	if (strcmp ("outstrm_to_mac_" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->outstrm_to_mac_);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->outstrm_to_mac_);
+		FOUT
 		}
 	if (strcmp ("oms_aa_handle" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->oms_aa_handle);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->oms_aa_handle);
+		FOUT
 		}
 	if (strcmp ("mac_address" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->mac_address);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->mac_address);
+		FOUT
 		}
 	if (strcmp ("wlan_mac_req_iciptr" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->wlan_mac_req_iciptr);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->wlan_mac_req_iciptr);
+		FOUT
 		}
 	if (strcmp ("next_hop" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->next_hop);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->next_hop);
+		FOUT
 		}
 	if (strcmp ("pk_destination" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->pk_destination);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->pk_destination);
+		FOUT
 		}
 	if (strcmp ("routing_type" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->routing_type);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->routing_type);
+		FOUT
 		}
 	if (strcmp ("range" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->range);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->range);
+		FOUT
 		}
 	if (strcmp ("self_position" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->self_position);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->self_position);
+		FOUT
 		}
 	if (strcmp ("my_stat_id" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_stat_id);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->my_stat_id);
+		FOUT
 		}
 	if (strcmp ("rate_adaptation" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->rate_adaptation);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->rate_adaptation);
+		FOUT
 		}
 	if (strcmp ("beta" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->beta);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->beta);
+		FOUT
 		}
 	if (strcmp ("my_route_to_sink" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->my_route_to_sink);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->my_route_to_sink);
+		FOUT
 		}
 	if (strcmp ("is_border_node" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->is_border_node);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->is_border_node);
+		FOUT
 		}
 	if (strcmp ("mac_backoff_type" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->mac_backoff_type);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->mac_backoff_type);
+		FOUT
 		}
 	if (strcmp ("id_list" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->id_list);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->id_list);
+		FOUT
 		}
 	if (strcmp ("DEBUG" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->DEBUG);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->DEBUG);
+		FOUT
 		}
 	if (strcmp ("is_sink" , var_name) == 0)
 		{
-		*var_p_ptr = (char *) (&prs_ptr->is_sink);
-		FOUT;
+		*var_p_ptr = (void *) (&prs_ptr->is_sink);
+		FOUT
 		}
-	*var_p_ptr = (char *)OPC_NIL;
+	*var_p_ptr = (void *)OPC_NIL;
 
-	FOUT;
+	FOUT
 	}
 
