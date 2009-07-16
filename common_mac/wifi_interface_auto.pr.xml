@@ -1,50 +1,50 @@
 <?xml version="1.0"?>
 <process-model model-name="wifi_interface_auto" code-language="C" tv-in-db="yes" tv-in-tb="yes">
-<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
-<model-attributes>
-<attribute name="Type of Service" type="integer">
-<properties type="integer" auto-assign="yes" symbolic-only="yes">
-<default-value value-symbol="Best Effort (0)"/>
-<symbol-map>
-<symbol name="Best Effort (0)" value="0"/>
-<symbol name="Background (1)" value="1"/>
-<symbol name="Standard (2)" value="2"/>
-<symbol name="Excellent Effort (3)" value="3"/>
-<symbol name="Streaming Multimedia (4)" value="4"/>
-<symbol name="Interactive Multimedia (5)" value="5"/>
-<symbol name="Interactive Voice (6)" value="6"/>
-<symbol name="Reserved (7)" value="7"/>
-</symbol-map>
-<comments>
+	<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
+	<model-attributes>
+		<attribute name="Type of Service" type="integer">
+			<properties type="integer" auto-assign="yes" symbolic-only="yes">
+				<default-value value-symbol="Best Effort (0)"/>
+				<symbol-map>
+					<symbol name="Best Effort (0)" value="0"/>
+					<symbol name="Background (1)" value="1"/>
+					<symbol name="Standard (2)" value="2"/>
+					<symbol name="Excellent Effort (3)" value="3"/>
+					<symbol name="Streaming Multimedia (4)" value="4"/>
+					<symbol name="Interactive Multimedia (5)" value="5"/>
+					<symbol name="Interactive Voice (6)" value="6"/>
+					<symbol name="Reserved (7)" value="7"/>
+				</symbol-map>
+				<comments>
 <![CDATA[
 Indicates packet's type of 
 service (TOS). SRP MAC uses 
 this to determine the 
 priority of the packet.
 ]]>
-</comments>
-</properties>
-</attribute>
-<attribute name="Destination" type="integer">
-<properties type="integer" auto-assign="no" symbolic-only="no">
-<default-value value="1"/>
-</properties>
-</attribute>
-</model-attributes>
-<simulation-attributes>
-<attribute name="ROUTING_UP" type="integer">
-<properties type="integer" auto-assign="no" symbolic-only="yes">
-<default-value value-symbol="XY"/>
-<symbol-map>
-<symbol name="XY" value="0"/>
-<symbol name="OPT_CORNER" value="1"/>
-<symbol name="SHORTEST_ROUTES" value="2"/>
-<symbol name="SIDES" value="3"/>
-<symbol name="ALPHA_FAMILY" value="4"/>
-<symbol name="OPT_CORNER_2" value="5"/>
-<symbol name="NO" value="-1"/>
-</symbol-map>
-<comments>
+				</comments>
+			</properties>
+		</attribute>
+		<attribute name="Destination" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="no">
+				<default-value value="1"/>
+			</properties>
+		</attribute>
+	</model-attributes>
+	<simulation-attributes>
+		<attribute name="ROUTING_UP" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="yes">
+				<default-value value-symbol="XY"/>
+				<symbol-map>
+					<symbol name="XY" value="0"/>
+					<symbol name="OPT_CORNER" value="1"/>
+					<symbol name="SHORTEST_ROUTES" value="2"/>
+					<symbol name="SIDES" value="3"/>
+					<symbol name="ALPHA_FAMILY" value="4"/>
+					<symbol name="OPT_CORNER_2" value="5"/>
+					<symbol name="NO" value="-1"/>
+				</symbol-map>
+				<comments>
 <![CDATA[
 
 
@@ -56,68 +56,68 @@ priority of the packet.
 
 
 ]]>
-</comments>
-</properties>
-</attribute>
-<attribute name="RADIO_RANGE" type="integer">
-<properties type="integer" auto-assign="no" symbolic-only="no">
-<default-value value="1"/>
-</properties>
-</attribute>
-<attribute name="SELF_POSITION" type="integer">
-<properties type="integer" auto-assign="no" symbolic-only="yes">
-<default-value value-symbol="YES"/>
-<symbol-map>
-<symbol name="YES" value="1"/>
-<symbol name="NO" value="0"/>
-</symbol-map>
-<comments>
+				</comments>
+			</properties>
+		</attribute>
+		<attribute name="RADIO_RANGE" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="no">
+				<default-value value="1"/>
+			</properties>
+		</attribute>
+		<attribute name="SELF_POSITION" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="yes">
+				<default-value value-symbol="YES"/>
+				<symbol-map>
+					<symbol name="YES" value="1"/>
+					<symbol name="NO" value="0"/>
+				</symbol-map>
+				<comments>
 <![CDATA[
 
 
 ]]>
-</comments>
-</properties>
-</attribute>
-<attribute name="INITIAL_INTER_PK_TIME" type="double">
-<properties type="double" auto-assign="no" symbolic-only="no">
-<default-value value="1.0"/>
-</properties>
-</attribute>
-<attribute name="RATE_ADAPTATION" type="integer">
-<properties type="integer" auto-assign="no" symbolic-only="yes">
-<default-value value-symbol="YES"/>
-<symbol-map>
-<symbol name="YES" value="1"/>
-<symbol name="NO" value="0"/>
-</symbol-map>
-<comments>
+				</comments>
+			</properties>
+		</attribute>
+		<attribute name="INITIAL_INTER_PK_TIME" type="double">
+			<properties type="double" auto-assign="no" symbolic-only="no">
+				<default-value value="1.0"/>
+			</properties>
+		</attribute>
+		<attribute name="RATE_ADAPTATION" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="yes">
+				<default-value value-symbol="YES"/>
+				<symbol-map>
+					<symbol name="YES" value="1"/>
+					<symbol name="NO" value="0"/>
+				</symbol-map>
+				<comments>
 <![CDATA[
 
 ]]>
-</comments>
-</properties>
-</attribute>
-<attribute name="DEBUG" type="integer">
-<properties type="integer" auto-assign="no" symbolic-only="no">
-<default-value value="0"/>
-<symbol-map>
-<symbol name="NO" value="0"/>
-<symbol name="LOW" value="1"/>
-<symbol name="MEDIUM" value="2"/>
-<symbol name="MAX" value="3"/>
-</symbol-map>
-<comments>
+				</comments>
+			</properties>
+		</attribute>
+		<attribute name="DEBUG" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="no">
+				<default-value value="0"/>
+				<symbol-map>
+					<symbol name="NO" value="0"/>
+					<symbol name="LOW" value="1"/>
+					<symbol name="MEDIUM" value="2"/>
+					<symbol name="MAX" value="3"/>
+				</symbol-map>
+				<comments>
 <![CDATA[
 
 ]]>
-</comments>
-</properties>
-</attribute>
-<attribute name="BETA" type="integer">
-<properties type="integer" auto-assign="no" symbolic-only="no">
-<default-value value="4"/>
-<comments>
+				</comments>
+			</properties>
+		</attribute>
+		<attribute name="BETA" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="no">
+				<default-value value="4"/>
+				<comments>
 <![CDATA[
 Its signification depends on other 
 parameters:
@@ -126,45 +126,45 @@ value
 -If OPT / OPT2 routing, the radio 
 interference range
 ]]>
-</comments>
-</properties>
-</attribute>
-</simulation-attributes>
-<attribute-assignments>
-<assignment attribute-name="Destination" type="integer" status="promoted"/>
-<assignment attribute-name="Type of Service" type="integer" status="promoted"/>
-<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
-<assignment attribute-name="doc file" type="string" status="hidden"/>
-<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="1"/>
-<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
-<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
-<assignment attribute-name="priority" type="integer" status="hidden"/>
-<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
-<assignment attribute-name="subqueue" type="compound">
-<sub-object>
-<attribute creation-mechanics="EMA" name="count" type="integer" value="1"/>
-<attribute creation-mechanics="EMA" name="list" type="object list">
-<object-list>
-<sub-object/>
-</object-list>
-</attribute>
-</sub-object>
-</assignment>
-<assignment attribute-name="super priority" type="toggle" status="hidden"/>
-</attribute-assignments>
-<interfaces>
-<interface promoted-name="begsim intrpt" type="toggle" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
-<attribute-names>
+				</comments>
+			</properties>
+		</attribute>
+	</simulation-attributes>
+	<attribute-assignments>
+		<assignment attribute-name="Destination" type="integer" status="promoted"/>
+		<assignment attribute-name="Type of Service" type="integer" status="promoted"/>
+		<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
+		<assignment attribute-name="doc file" type="string" status="hidden"/>
+		<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="1"/>
+		<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
+		<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
+		<assignment attribute-name="priority" type="integer" status="hidden"/>
+		<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
+		<assignment attribute-name="subqueue" type="compound">
+			<sub-object>
+				<attribute creation-mechanics="EMA" name="count" type="integer" value="1"/>
+				<attribute creation-mechanics="EMA" name="list" type="object list">
+					<object-list>
+						<sub-object/>
+					</object-list>
+				</attribute>
+			</sub-object>
+		</assignment>
+		<assignment attribute-name="super priority" type="toggle" status="hidden"/>
+	</attribute-assignments>
+	<interfaces>
+		<interface promoted-name="begsim intrpt" type="toggle" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
+			<attribute-names>
 <![CDATA[
 begsim intrpt
 ]]>
-</attribute-names>
-<properties type="toggle" auto-assign="no" symbolic-only="no">
-<default-value value="0"/>
-</properties>
-</interface>
-</interfaces>
-<state-variables>
+			</attribute-names>
+			<properties type="toggle" auto-assign="no" symbolic-only="no">
+				<default-value value="0"/>
+			</properties>
+		</interface>
+	</interfaces>
+	<state-variables>
 <![CDATA[
 /* Object identifier of the surrounding module.	 */
 Objid	\my_objid;
@@ -177,10 +177,6 @@ int	\instrm_from_mac_;
 
 /* Stream index of the packet stream going to MAC. */
 int	\outstrm_to_mac_;
-
-/* Auto-address assignment handle. Used while      */
-/* auto-address and destination address selection. */
-OmsT_Aa_Address_Handle	\oms_aa_handle;
 
 /* Element address of the associated MAC. */
 int	\mac_address;
@@ -222,9 +218,6 @@ List*	\my_route_to_sink;
 /* Is this node a border node ? */
 Boolean	\is_border_node;
 
-/* The type of backoff which is used by the mac layer */
-int	\mac_backoff_type;
-
 /* List of ids */
 List*	\id_list;
 
@@ -235,30 +228,14 @@ int	\DEBUG;
 int	\is_sink;
 
 ]]>
-</state-variables>
-<temporary-variables>
-<![CDATA[
-List*				proc_record_handle_list_ptr;
-int					record_handle_list_size;
-]]>
-</temporary-variables>
-<header-block>
+	</state-variables>
+	<header-block>
 <![CDATA[
 /***** Include Files. *****/
 #include <stdlib.h>
 
 #include <math.h>
 #include <errno.h>
-
-
-/* Address assignment definitions.	*/
-#include "oms_auto_addr_support.h"
-
-/* Topology analysis-related definitions. */
-#include "oms_tan.h"
-
-/* Process registry-related definitions. */
-#include "oms_pr.h"
 
 
 
@@ -276,9 +253,6 @@ int					record_handle_list_size;
 
 
 
-/***** Functional declaration ******/
-static void			wlan_mac_higher_layer_intf_sv_init ();
-static void			wlan_mac_higher_layer_register_as_arp ();
 
 
 
@@ -480,30 +454,29 @@ int		max_y_int = 0;
 
 
 ]]>
-</header-block>
-<function-block>
+	</header-block>
+	<function-block>
 <![CDATA[
 static void
 wlan_mac_higher_layer_intf_sv_init ()
 	{
 	int			type_of_service;
 
-	/** Initializes all state variables used in this	**/
-	/** process model.									**/
+	// Initializes all state variables used in this process model
 	FIN (wlan_mac_higher_layer_intf_sv_init ());
 
-	/* Object identifier for the surrounding module and node.	*/
+	// Object identifier for the surrounding module and node
 	my_objid = op_id_self ();
 	my_node_objid = op_topo_parent (my_objid);
 
-	/* Determine the destination to which packet should	*/
-	/* be sent,and the prioritization to be provided to	*/
-	/* the transmitted packet.							*/
+	// Determine the destination to which packet should	
+	// be sent,and the prioritization to be provided to	
+	// the transmitted packet.							
 	op_ima_obj_attr_get (my_objid, "Type of Service", 	  &type_of_service);
 
-	/* Some interface control information is needed to	*/
-	/* indicate to the MAC of the destination to which	*/
-	/* a given packet needs to be sent. Create it.		*/
+	// Some interface control information is needed to
+	// indicate to the MAC of the destination to which	
+	// a given packet needs to be sent. Create it.		
 	wlan_mac_req_iciptr = op_ici_create ("wlan_mac_request");
 	op_ici_attr_set (wlan_mac_req_iciptr, "type_of_service", type_of_service);
 	op_ici_attr_set (wlan_mac_req_iciptr, "protocol_type",   0x800);
@@ -515,25 +488,14 @@ static void
 wlan_mac_higher_layer_register_as_arp ()
 	{
 	char				proc_model_name [128];
-	OmsT_Pr_Handle		own_process_record_handle;
 	Prohandle			own_prohandle;
 
-	/** Register this process in the model-wide process registry.	**/
+	// Register this process in the model-wide process registry
 	FIN (wlan_mac_higher_layer_register_as_arp ());
 
-	/* Obtain the process model name and process handle.	*/
+	// Obtain the process model name and process handle
 	op_ima_obj_attr_get (my_objid, "process model", proc_model_name);
 	own_prohandle = op_pro_self ();
-
-	/* Register this process in the model-wide process registry	*/
-	own_process_record_handle = (OmsT_Pr_Handle) oms_pr_process_register (
-			my_node_objid, my_objid, own_prohandle, proc_model_name);
-
-	/* Register this protocol attribute and the element address	*/
-	/* of this process into the model-wide registry.			*/
-	oms_pr_attr_set (own_process_record_handle,
-		"protocol",		OMSC_PR_STRING,		"arp",
-		OPC_NIL);
 
 	FOUT;
 	}
@@ -617,7 +579,7 @@ void add_id_seen(int pk_id){
 	
 	//the frame id is already in the list
 	if (is_id_seen(pk_id))
-		return;
+		FOUT;
 	
 	//Empty list -> timeouted verificaiton
 	if (op_prg_list_size(id_list) == 0)
@@ -1204,13 +1166,13 @@ void debug_write_pk_info(){
 	//Stats
 	pk_info		*elem;
 
-	sprintf(filename , "results_80211/%d_debug_pk.txt", (int) timestamp + (int)op_dist_uniform(128));
+	sprintf(filename , "/tmp/debug/cmac_%d_debug_pk.txt", (int) timestamp + (int)op_dist_uniform(128));
 	pfile = fopen(filename , "w");
 
 
 	if (pfile == NULL){
 		sprintf(msg, "Filename %s creates an error: %s", filename, strerror(errno));
-		printf("ERROR: %d (%s)\n", errno, strerror(errno));
+		printf("ERROR: %s, %d (%s)\n", msg, errno, strerror(errno));
 		op_sim_end(msg, "" , "" , "");
 	}
 
@@ -1322,13 +1284,13 @@ void write_intermediary_stats(int low_pk_id , int high_pk_id){
 	//-------------------------------------------
 	//					WRITING
 	//-------------------------------------------
-	sprintf(filename , "results_80211/%d-nodes_%d-range_%d-stats.txt", timestamp , nb_nodes , range);
+	sprintf(filename , "/tmp/debug/cmac_%d-nodes_%d-range_%d-stats.txt", timestamp , nb_nodes , range);
 	pfile = fopen(filename , "w");
 
 
 	if (pfile == NULL){
 		sprintf(msg, "Filename %s creates an error: %s", filename, strerror(errno));
-		printf("ERROR: %d (%s)\n", errno, strerror(errno));
+		printf("ERROR: %s, %d (%s)\n", msg, errno, strerror(errno));
 		op_sim_end(msg, "" , "" , "");
 	}
 	
@@ -1535,12 +1497,12 @@ void pk_send_to_mac(Packet * pkptr , int next_hop_tmp){
 	FOUT;
 }
 ]]>
-</function-block>
-<states initial-state-id="10">
-<state id="10" x="90" y="330">
-<attribute name="name" type="string" value="init"/>
-<attribute name="Enter Execs" type="textlist">
-<value-text>
+	</function-block>
+	<states initial-state-id="10">
+		<state id="10" x="90" y="150">
+			<attribute name="name" type="string" value="init"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
 <![CDATA[
 //Addresses
 char		str[500];
@@ -1552,14 +1514,13 @@ int			node_id;
 int			mac_id;
 
 
+//to initialize my state variables
+wlan_mac_higher_layer_intf_sv_init();
 
 
-/* Initialize the state variables used by this model.	*/
-wlan_mac_higher_layer_intf_sv_init ();
+//arp functions (not used anymore)
+wlan_mac_higher_layer_register_as_arp();
 
-/* Register this process as "arp" so that lower layer	*/
-/* MAC process can connect to it.						*/
-wlan_mac_higher_layer_register_as_arp ();
 
 /* Schedule a self interrupt to wait for lower layer	*/
 /* wlan MAC process to initialize and register itself in	*/
@@ -1596,7 +1557,7 @@ op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"RADIO_RANGE" , 					&range);
 op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"BETA" , 							&beta);
 op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"SELF_POSITION",					&self_position);
 op_ima_obj_attr_get(op_id_self(), 		"Destination" , 					&pk_destination);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"BACKOFF_TYPE" , 					&mac_backoff_type);
+//op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"BACKOFF_TYPE" , 					&mac_backoff_type);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RATE_ADAPTATION" , 				&rate_adaptation);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"DEBUG" , 							&DEBUG);
 
@@ -1662,10 +1623,10 @@ my_stat_id = nb_nodes;
 nb_nodes++;
 
 ]]>
-</value-text>
-</attribute>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 /* Schedule a self interrupt to wait for lower layer	*/
 /* wlan MAC process to initialize and register itself in*/
@@ -1673,20 +1634,20 @@ nb_nodes++;
 op_intrpt_schedule_self (op_sim_time (), 0);
 
 ]]>
-</value-text>
-</attribute>
-</state>
-<state id="11" x="570" y="330">
-<attribute name="name" type="string" value="idle"/>
-<attribute name="Enter Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="11" x="570" y="150">
+			<attribute name="name" type="string" value="idle"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
 <![CDATA[
 
 ]]>
-</value-text>
-</attribute>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 /* The only interrupt expected in this state is a	*/
 /* stream interrupt. It can be either from the MAC	*/
@@ -1709,13 +1670,13 @@ if (intrpt_type == OPC_INTRPT_SELF){
 
 */
 ]]>
-</value-text>
-</attribute>
-</state>
-<state id="12" x="690" y="210">
-<attribute name="name" type="string" value="appl layer arrival"/>
-<attribute name="Enter Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="12" x="690" y="30">
+			<attribute name="name" type="string" value="appl layer arrival"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
 <![CDATA[
 
 pk_info	*info_ptr;
@@ -1744,14 +1705,14 @@ op_prg_list_insert(pk_list, info_ptr, OPC_LISTPOS_TAIL);
 pk_send_to_mac(pkptr, next_hop);
 
 ]]>
-</value-text>
-</attribute>
-<attribute name="status" type="toggle" value="1"/>
-</state>
-<state id="13" x="690" y="450">
-<attribute name="name" type="string" value="mac layer arrival"/>
-<attribute name="Enter Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+			<attribute name="status" type="toggle" value="1"/>
+		</state>
+		<state id="13" x="690" y="270">
+			<attribute name="name" type="string" value="mac layer arrival"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
 <![CDATA[
 //Src and destination
 int			source , dest;
@@ -1874,21 +1835,21 @@ else{
 }
 
 ]]>
-</value-text>
-</attribute>
-<attribute name="status" type="toggle" value="1"/>
-</state>
-<state id="14" x="330" y="330">
-<attribute name="name" type="string" value="wait"/>
-<attribute name="Enter Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+			<attribute name="status" type="toggle" value="1"/>
+		</state>
+		<state id="14" x="330" y="150">
+			<attribute name="name" type="string" value="wait"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
 <![CDATA[
 
 ]]>
-</value-text>
-</attribute>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 char	msg[500];
 //Inter pk time
@@ -1918,19 +1879,8 @@ int		*int_ptr;
 
 
 
-
-
-/* Obtain the MAC layer information for the local MAC	*/
-/* process from the model-wide registry.				*/
-proc_record_handle_list_ptr = op_prg_list_create ();
-oms_pr_process_discover (my_objid, proc_record_handle_list_ptr,
-	"node objid",	OMSC_PR_OBJID,		my_node_objid,
-	"protocol", 	OMSC_PR_STRING,		"mac",
-	OPC_NIL);
- 
-/* If the MAC process regostered itself, then there	*/
-/* must be a valid match							*/
-record_handle_list_size = op_prg_list_size (proc_record_handle_list_ptr);
+// If the MAC process registered itself, then there must be a valid match
+//record_handle_list_size = op_prg_list_size (proc_record_handle_list_ptr);
 	
 
 
@@ -2214,26 +2164,26 @@ op_intrpt_schedule_self(op_sim_time() , 0);
 
 
 ]]>
-</value-text>
-</attribute>
-</state>
-<state id="15" x="210" y="330">
-<attribute name="name" type="string" value="init2"/>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="15" x="210" y="150">
+			<attribute name="name" type="string" value="init2"/>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 /* Schedule a self interrupt to wait for lower layer	*/
 /* Wlan MAC process to finalize the MAC address			*/
 /* registration and resolution.							*/
 op_intrpt_schedule_self (op_sim_time (), 0);
 ]]>
-</value-text>
-</attribute>
-</state>
-<state id="18" x="870" y="330">
-<attribute name="name" type="string" value="END_SIM"/>
-<attribute name="Enter Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="18" x="870" y="150">
+			<attribute name="name" type="string" value="END_SIM"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
 <![CDATA[
 FILE* 		pfile;
 char		filename[200];
@@ -2281,13 +2231,13 @@ if (my_stat_id == 0){
 	//-------------------------------------------
 	//					WRITING
 	//-------------------------------------------
-	sprintf(filename , "results_80211/%d-nodes_%d-range_%d-results.txt", timestamp , nb_nodes , range);
+	sprintf(filename , "/tmp/debug/%d-nodes_%d-range_%d-results.txt", timestamp , nb_nodes , range);
 	pfile = fopen(filename , "w");
 
 
 	if (pfile == NULL){
 		sprintf(msg, "Filename %s creates an error: %s", filename, strerror(errno));
-		printf("ERROR: %d (%s)\n", errno, strerror(errno));
+		printf("ERROR: %s, %d (%s)\n", msg, errno, strerror(errno));
 		op_sim_end(msg, "" , "" , "");
 	}
 		
@@ -2329,13 +2279,13 @@ if (my_stat_id == 0){
 
 }
 ]]>
-</value-text>
-</attribute>
-</state>
-<state id="22" x="450" y="330">
-<attribute name="name" type="string" value="stats_init"/>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="22" x="450" y="150">
+			<attribute name="name" type="string" value="stats_init"/>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 //Routes
 List 		*route_tmp = NULL;
@@ -2420,82 +2370,82 @@ if (routing_type != NO_ROUTING){
 
 
 ]]>
-</value-text>
-</attribute>
-</state>
-</states>
-<transitions>
-<transition source-state-id="10" destination-state-id="15" label-x="150" label-y="331">
-<path-point x="118" y="331"/>
-<path-point x="182" y="331"/>
-<attribute name="name" type="string" value="tr_24"/>
-</transition>
-<transition source-state-id="15" destination-state-id="14" label-x="270" label-y="330">
-<path-point x="238" y="330"/>
-<path-point x="302" y="330"/>
-<attribute name="name" type="string" value="tr_28"/>
-</transition>
-<transition source-state-id="13" destination-state-id="18" label-x="777" label-y="383">
-<path-point x="703" y="441"/>
-<path-point x="856" y="333"/>
-<attribute name="name" type="string" value="tr_31"/>
-<attribute name="condition" type="string" value="ENDSIM"/>
-</transition>
-<transition source-state-id="11" destination-state-id="12" label-x="556" label-y="239">
-<path-point x="560" y="318"/>
-<path-point x="691" y="191"/>
-<attribute name="name" type="string" value="tr_14"/>
-<attribute name="condition" type="string" value="APPL_LAYER_PKT_ARVL &amp;&amp; !ENDSIM"/>
-<attribute name="drawing style" type="toggle" value="0"/>
-</transition>
-<transition source-state-id="11" destination-state-id="13" label-x="560" label-y="432">
-<path-point x="567" y="344"/>
-<path-point x="677" y="461"/>
-<attribute name="name" type="string" value="tr_17"/>
-<attribute name="condition" type="string" value="MAC_LAYER_PKT_ARVL &amp;&amp; !ENDSIM"/>
-<attribute name="drawing style" type="toggle" value="0"/>
-</transition>
-<transition source-state-id="14" destination-state-id="22" label-x="391" label-y="327">
-<path-point x="343" y="326"/>
-<path-point x="438" y="327"/>
-<attribute name="name" type="string" value="tr_22"/>
-</transition>
-<transition source-state-id="22" destination-state-id="11" label-x="506" label-y="329">
-<path-point x="458" y="328"/>
-<path-point x="554" y="329"/>
-<attribute name="name" type="string" value="tr_23"/>
-</transition>
-<transition source-state-id="12" destination-state-id="18" label-x="770" label-y="266">
-<path-point x="702" y="214"/>
-<path-point x="851" y="325"/>
-<attribute name="name" type="string" value="tr_32"/>
-<attribute name="condition" type="string" value="ENDSIM"/>
-</transition>
-<transition source-state-id="11" destination-state-id="18" label-x="718" label-y="348">
-<path-point x="583" y="331"/>
-<path-point x="853" y="327"/>
-<attribute name="name" type="string" value="tr_30"/>
-<attribute name="condition" type="string" value="ENDSIM"/>
-</transition>
-<transition source-state-id="12" destination-state-id="11" label-x="663" label-y="281">
-<path-point x="692" y="229"/>
-<path-point x="587" y="335"/>
-<attribute name="name" type="string" value="tr_16"/>
-<attribute name="condition" type="string" value="!ENDSIM"/>
-<attribute name="drawing style" type="toggle" value="0"/>
-</transition>
-<transition source-state-id="13" destination-state-id="11" label-x="660" label-y="388">
-<path-point x="687" y="438"/>
-<path-point x="583" y="327"/>
-<attribute name="name" type="string" value="tr_19"/>
-<attribute name="condition" type="string" value="!ENDSIM"/>
-<attribute name="drawing style" type="toggle" value="0"/>
-</transition>
-</transitions>
-<local-statistics>
-<statistic name="outstat" group="" dimension="100" capture-mode="normal" display-mode="linear" low-bound="0.0" high-bound="disabled"/>
-</local-statistics>
-<comments>
+				</value-text>
+			</attribute>
+		</state>
+	</states>
+	<transitions>
+		<transition source-state-id="10" destination-state-id="15" label-x="150" label-y="153">
+			<path-point x="118" y="151"/>
+			<path-point x="182" y="151"/>
+			<attribute name="name" type="string" value="tr_24"/>
+		</transition>
+		<transition source-state-id="15" destination-state-id="14" label-x="270" label-y="152">
+			<path-point x="238" y="150"/>
+			<path-point x="302" y="150"/>
+			<attribute name="name" type="string" value="tr_28"/>
+		</transition>
+		<transition source-state-id="13" destination-state-id="18" label-x="777" label-y="205">
+			<path-point x="703" y="261"/>
+			<path-point x="856" y="153"/>
+			<attribute name="name" type="string" value="tr_31"/>
+			<attribute name="condition" type="string" value="ENDSIM"/>
+		</transition>
+		<transition source-state-id="11" destination-state-id="12" label-x="556" label-y="61">
+			<path-point x="560" y="138"/>
+			<path-point x="691" y="11"/>
+			<attribute name="name" type="string" value="tr_14"/>
+			<attribute name="condition" type="string" value="APPL_LAYER_PKT_ARVL &amp;&amp; !ENDSIM"/>
+			<attribute name="drawing style" type="toggle" value="0"/>
+		</transition>
+		<transition source-state-id="11" destination-state-id="13" label-x="560" label-y="254">
+			<path-point x="567" y="164"/>
+			<path-point x="677" y="281"/>
+			<attribute name="name" type="string" value="tr_17"/>
+			<attribute name="condition" type="string" value="MAC_LAYER_PKT_ARVL &amp;&amp; !ENDSIM"/>
+			<attribute name="drawing style" type="toggle" value="0"/>
+		</transition>
+		<transition source-state-id="14" destination-state-id="22" label-x="391" label-y="149">
+			<path-point x="343" y="146"/>
+			<path-point x="438" y="147"/>
+			<attribute name="name" type="string" value="tr_22"/>
+		</transition>
+		<transition source-state-id="22" destination-state-id="11" label-x="506" label-y="151">
+			<path-point x="458" y="148"/>
+			<path-point x="554" y="149"/>
+			<attribute name="name" type="string" value="tr_23"/>
+		</transition>
+		<transition source-state-id="12" destination-state-id="18" label-x="770" label-y="88">
+			<path-point x="702" y="34"/>
+			<path-point x="851" y="145"/>
+			<attribute name="name" type="string" value="tr_32"/>
+			<attribute name="condition" type="string" value="ENDSIM"/>
+		</transition>
+		<transition source-state-id="11" destination-state-id="18" label-x="718" label-y="170">
+			<path-point x="583" y="151"/>
+			<path-point x="853" y="147"/>
+			<attribute name="name" type="string" value="tr_30"/>
+			<attribute name="condition" type="string" value="ENDSIM"/>
+		</transition>
+		<transition source-state-id="12" destination-state-id="11" label-x="663" label-y="103">
+			<path-point x="692" y="49"/>
+			<path-point x="587" y="155"/>
+			<attribute name="name" type="string" value="tr_16"/>
+			<attribute name="condition" type="string" value="!ENDSIM"/>
+			<attribute name="drawing style" type="toggle" value="0"/>
+		</transition>
+		<transition source-state-id="13" destination-state-id="11" label-x="660" label-y="210">
+			<path-point x="687" y="258"/>
+			<path-point x="583" y="147"/>
+			<attribute name="name" type="string" value="tr_19"/>
+			<attribute name="condition" type="string" value="!ENDSIM"/>
+			<attribute name="drawing style" type="toggle" value="0"/>
+		</transition>
+	</transitions>
+	<local-statistics>
+		<statistic name="outstat" group="" dimension="100" capture-mode="normal" display-mode="linear" low-bound="0.0" high-bound="disabled"/>
+	</local-statistics>
+	<comments>
 <![CDATA[
 General Process Description: 
 
@@ -2545,5 +2495,5 @@ Restrictions:
 None
 
 ]]>
-</comments>
+	</comments>
 </process-model>
