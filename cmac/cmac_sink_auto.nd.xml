@@ -159,9 +159,11 @@ phase
 						</attribute>
 					</sub-object>
 				</attribute>
-				<attribute name="power model" type="typed file" spectype="10" value="wlan_alpha_power"/>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
 				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
-				<attribute creation-mechanics="Extended" name="reception end time" type="double" value-symbol="0.0">
+				<attribute creation-mechanics="Extended" name="reception end time" type="double" spectype="0" value-symbol="0.0">
 					<properties type="double" units="sec" auto-assign="no" symbolic-only="no">
 						<default-value value="0.0"/>
 						<lower-limit value="0.0" exclusive="no"/>
@@ -209,8 +211,8 @@ become idle.
 					</sub-object>
 				</attribute>
 				<attribute name="rxgroup model" type="typed file" spectype="10" value="wlan_rxgroup"/>
-				<attribute name="closure model" type="typed file" spectype="10" value="dra_closure_all"/>
 				<attribute name="chanmatch model" type="typed file" spectype="10" value="wlan_chanmatch"/>
+				<attribute name="tagain model" type="typed file" spectype="10" value="NONE"/>
 				<attribute name="propdel model" type="typed file" spectype="10" value="wlan_propdel"/>
 			</module-attributes>
 		</module>
@@ -243,6 +245,7 @@ become idle.
 					</sub-object>
 				</attribute>
 				<attribute name="closure model" type="typed file" spectype="10" value="dra_closure_all"/>
+				<attribute name="tagain model" type="typed file" spectype="10" value="NONE"/>
 			</module-attributes>
 		</module>
 		<module type="rarx" id="245" x="62" y="292">
@@ -265,9 +268,10 @@ become idle.
 						</attribute>
 					</sub-object>
 				</attribute>
-				<attribute name="power model" type="typed file" spectype="10" value="dra_power_alpha"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
 				<attribute name="ecc model" type="typed file" spectype="10" value="dpt_ecc"/>
-				<attribute creation-mechanics="Extended" name="reception end time" type="double" value-symbol="0.0">
+				<attribute creation-mechanics="Extended" name="reception end time" type="double" spectype="0" value-symbol="0.0">
 					<properties type="double" units="sec" auto-assign="no" symbolic-only="no">
 						<default-value value="0.0"/>
 						<lower-limit value="0.0" exclusive="no"/>
