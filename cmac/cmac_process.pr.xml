@@ -1489,7 +1489,7 @@ void add_nav(int src, double duration , double frequency){
 			ptr->timeout = op_sim_time() + duration;
 	
 			debug_print(LOW , DEBUG_BACKOFF , "NAV updated, src %d, duration %fus\n", src , duration * 1E6);			
-			return;
+			FOUT;
 		}
 	}
 	
@@ -1513,7 +1513,7 @@ void update_nav_time(double transmission_time, int source , double frequency , i
 	//No real reservation
 	if (transmission_time <= 0){
 		debug_print(LOW , DEBUG_BACKOFF , "NAV ! UPDATED -> src %d, duration %fus, pk_size %d\n", source , transmission_time * 1E6 , pk_size);
-		return;
+		FOUT;
 	}
 
 	//Stores the NAV duration
@@ -1658,7 +1658,7 @@ Boolean is_frame_id_seen(int frame_id){
 	id_timeout_struct		*ptr;
 	int						i;
 	
-	return(OPC_FALSE);
+	FRET(OPC_FALSE);
 	
 	for(i=0 ; i < op_prg_list_size(my_frame_id_seen) ; i++){
 		ptr = op_prg_list_access(my_frame_id_seen , i);
@@ -2376,7 +2376,7 @@ Boolean	get_is_border_node(){
 	
 	//The sink is always a border node !
 	if (is_sink)
-		return(OPC_TRUE);
+		FRET(OPC_TRUE);
 	
 		
 	//Walks in the list
@@ -2478,7 +2478,7 @@ void update_dist(){
 	if (is_sink){
 		my_dist_sink 	= 0;
 		my_dist_border	= 0;
-		return;
+		FOUT;
 	}
 	
 	//Walks the neighborhood table and update distance (takes only into account the most stable nodes)
@@ -3792,7 +3792,7 @@ void receive_packet_from_up(){
 	
 	//Routing in MAC but a specified next hop
 	else if ((ici_ptr != OPC_NIL) && (next_hop != -1) && (next_hop != 0) && (MAC_ROUTING != ROUTING_NO))
-		op_sim_end("The mac layer is configured to route directly packets to the sink" , "but a next hop is specified explicitly from the upper layer" , "" , "");
+		op_sim_end("The mac layer is configured to implement routing by itself" , "but a next hop is specified explicitly from the upper layer" , "" , "");
 		
 	//routing in MAC -> computes the next hop		
 	else if (MAC_ROUTING != ROUTING_NO){
@@ -4819,7 +4819,7 @@ void open_debug_file(FILE **fout , const char* fmt, ...){
 	
 	//The file was already opened -> nothing to do
 	if (*fout != NULL)
-		return;
+		FOUT;
 	
 	//Args
 	va_start(argptr, fmt);
@@ -5124,18 +5124,18 @@ if (my_stat_id == 0)
 
 if (DEBUG > NO){
 	if (my_stat_id == 0){
-		open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"results_cmac/%d_cmac_debug.txt" , 			cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_STATE] ,		"results_cmac/%d_cmac_debug_state.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"results_cmac/%d_cmac_debug_backoff.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_SEND] ,		"results_cmac/%d_cmac_debug_send.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_RECEIVE] ,	"results_cmac/%d_cmac_debug_receive.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_RADIO] ,		"results_cmac/%d_cmac_debug_radio.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"results_cmac/%d_cmac_debug_control.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"results_cmac/%d_cmac_debug_timeout.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_HELLO] ,		"results_cmac/%d_cmac_debug_hello.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_UP] ,		"results_cmac/%d_cmac_debug_up.txt" , 		cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"/tmp/debug/%d_cmac_debug.txt" , 		cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_STATE] ,		"/tmp/debug/%d_cmac_debug_state.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"/tmp/debug/%d_cmac_debug_backoff.txt" ,cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_SEND] ,		"/tmp/debug/%d_cmac_debug_send.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_RECEIVE] ,	"/tmp/debug/%d_cmac_debug_receive.txt" ,cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_RADIO] ,		"/tmp/debug/%d_cmac_debug_radio.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"/tmp/debug/%d_cmac_debug_control.txt" ,cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"/tmp/debug/%d_cmac_debug_timeout.txt" ,cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_HELLO] ,		"/tmp/debug/%d_cmac_debug_hello.txt" , 	cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_UP] ,		"/tmp/debug/%d_cmac_debug_up.txt" , 	cmac_timestamp);
 	}
-	open_debug_file(&my_debug_file,					"results_cmac/nodes/%d.txt" , 				my_address);
+	open_debug_file(&my_debug_file,					"/tmp/debug/nodes/%d.txt" , 				my_address);
 		
 }
 
