@@ -1227,26 +1227,28 @@ void print_headers_stat_file(FILE *pfile){
 	
 
 
-	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
-	fprintf(pfile , "|                                           SIMULATION PARAMETERS                                            |\n");
-	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
+	fprintf(pfile , " --------------------------------------------------------------\n");
+	fprintf(pfile , "|                     SIMULATION PARAMETERS                    |\n");
+	fprintf(pfile , " --------------------------------------------------------------\n");
 
-	fprintf(pfile , "------------------------------------------------  GENERAL ---------------------------------------------------\n");
-	fprintf(pfile , "Number of nodes							:	%d\n", 			nb_nodes);
-	fprintf(pfile , "Radio Range								:	%d\n", 			range);
-	fprintf(pfile , "Duration								:	%f\n", 				op_sim_time());
-	fprintf(pfile , "RTS									:	%d\n", 				RTS);
-	fprintf(pfile , "Inter Packet Time							:	%f\n", 			current_inter_pk_time);
-	fprintf(pfile , "Routing MAC								:	%d\n", 			routing_mac);
-	fprintf(pfile , "Routing Up								:	%d\n", 				routing_up);
-	fprintf(pfile , "Beta									:	%d\n", 				BETA);
+	fprintf(pfile , "-------------------------  GENERAL ----------------------------\n");
+	fprintf(pfile , "Number of nodes                   : %d\n", nb_nodes);
+	fprintf(pfile , "Radio Range                       : %d\n", range);
+	fprintf(pfile , "Duration                          : %f\n", op_sim_time());
+	fprintf(pfile , "RTS                               : %d\n", RTS);
+	fprintf(pfile , "Inter Packet Time                 : %f\n", current_inter_pk_time);
+	fprintf(pfile , "Routing MAC                       : %d\n", routing_mac);
+	fprintf(pfile , "Routing Up                        : %d\n", routing_up);
+	fprintf(pfile , "Beta                              : %d\n", BETA);
 	fprintf(pfile , "\n");
-	fprintf(pfile , "------------------------------------------------  FLOWS ---------------------------------------------------\n");
-	fprintf(pfile , "Is rate dynamical ?						:	%d\n", 			rate_adaptation);
-	fprintf(pfile , "Rate adapted every 						:	%d\n", 			PK_ID_MODULO);
-	fprintf(pfile , "Maximal Difference valid / bad				:	%f\n", 			PRECISION_REQUIRED);
-	fprintf(pfile , "Valid Capacity if dlivery ratio >				:	%f\n", 		MIN_DELIVERY_RATIO);
-	fprintf(pfile , "Time between tests						:	%f\n", 				INTERVALL_RATES_TEST);
+	
+	fprintf(pfile , "-------------------------  FLOWS -------------------------------\n");
+	fprintf(pfile , "Is rate dynamical ?               : %d\n",	rate_adaptation);
+	fprintf(pfile , "Rate adapted every                : %d\n", PK_ID_MODULO);
+	fprintf(pfile , "Maximal Difference valid / bad    : %f\n", PRECISION_REQUIRED);
+	fprintf(pfile , "Valid Capacity if dlivery ratio > : %f\n", MIN_DELIVERY_RATIO);
+	fprintf(pfile , "Time between tests                : %f\n", INTERVALL_RATES_TEST);
+	fprintf(pfile , "\n\n");
 	
 	FOUT;
 }
@@ -2243,27 +2245,22 @@ if (my_stat_id == 0){
 		
 	print_headers_stat_file(pfile);
 
-	fprintf(pfile , "\n\n\n ------------------------------------------------------------------------------------------------------------\n");
-	fprintf(pfile , "|                                                  GENERAL                                                   |\n");
-	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
-
-	fprintf(pfile , "Nb packets sent							:	%d\n", 			nb_pk_sent);
-	fprintf(pfile , "Delivery Ratio							:	%f\n", 				(double)nb_pk_received / nb_pk_sent);
-
-
-	fprintf(pfile , "\n\n\n ------------------------------------------------------------------------------------------------------------\n");
-	fprintf(pfile , "|                                                 CAPACITY                                                   |\n");
-	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
-
-
-	fprintf(pfile , "\n\n------------------------------------------------  CAPACITY ---------------------------------------------------\n");
-	fprintf(pfile , "Valid inter packet time						:	%f\n", 		achievable_inter_pk_time);
-	fprintf(pfile , "Current inter packet time					:	%f\n", 			current_inter_pk_time);
-
-	fprintf(pfile , "\n\n------------------------------------------------  DELAY ---------------------------------------------------\n");
-	fprintf(pfile , "Average Delay							:	%f\n", 				cumulated_delay / nb_pk_received);
-	fprintf(pfile , "Max Delay 								:	%f\n", 				max_delay);
-
+	fprintf(pfile , "-----------------------------------------------------------------\n");
+	fprintf(pfile , "|                          TRAFFIC                               |\n");
+	fprintf(pfile , " ----------------------------------------------------------------\n");
+	fprintf(pfile , "Nb packets sent                   : %d\n", nb_pk_sent);
+	fprintf(pfile , "Delivery Ratio                    : %f\n", (double)nb_pk_received / nb_pk_sent);
+	fprintf(pfile , "\n");
+		
+	fprintf(pfile , "-------------------------  CAPACITY -----------------------------\n");
+	fprintf(pfile , "Valid inter packet time           : %f\n", achievable_inter_pk_time);
+	fprintf(pfile , "Current inter packet time         : %f\n", current_inter_pk_time);
+	fprintf(pfile , "\n");
+	
+	fprintf(pfile , "\n\n--------------------  DELAY ---------------------------------\n");
+	fprintf(pfile , "Average Delay                     : %f\n", cumulated_delay / nb_pk_received);
+	fprintf(pfile , "Max Delay                         : %f\n", max_delay);
+	fprintf(pfile , "\n");
 
 	
 	
