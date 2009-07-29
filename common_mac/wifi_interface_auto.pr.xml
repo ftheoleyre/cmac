@@ -32,9 +32,9 @@ priority of the packet.
 		</attribute>
 	</model-attributes>
 	<simulation-attributes>
-		<attribute name="ROUTING_UP" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="yes">
-				<default-value value-symbol="XY"/>
+		<attribute name="routing_appli" type="integer">
+			<properties type="integer" auto-assign="yes" symbolic-only="yes">
+				<default-value value-symbol="NO"/>
 				<symbol-map>
 					<symbol name="XY" value="0"/>
 					<symbol name="OPT_CORNER" value="1"/>
@@ -46,11 +46,7 @@ priority of the packet.
 				</symbol-map>
 				<comments>
 <![CDATA[
-
-
-
-
-
+the routing algorithm used in the mac_interface (i.e. above the MAC layer)
 
 
 
@@ -59,9 +55,14 @@ priority of the packet.
 				</comments>
 			</properties>
 		</attribute>
-		<attribute name="RADIO_RANGE" type="integer">
+		<attribute name="radio_range" type="integer">
 			<properties type="integer" auto-assign="no" symbolic-only="no">
 				<default-value value="1"/>
+				<comments>
+<![CDATA[
+th radio range (in units of the grid)
+]]>
+				</comments>
 			</properties>
 		</attribute>
 		<attribute name="SELF_POSITION" type="integer">
@@ -79,28 +80,19 @@ priority of the packet.
 				</comments>
 			</properties>
 		</attribute>
-		<attribute name="INITIAL_INTER_PK_TIME" type="double">
+		<attribute name="interpacket time" type="double">
 			<properties type="double" auto-assign="no" symbolic-only="no">
 				<default-value value="1.0"/>
-			</properties>
-		</attribute>
-		<attribute name="RATE_ADAPTATION" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="yes">
-				<default-value value-symbol="YES"/>
-				<symbol-map>
-					<symbol name="YES" value="1"/>
-					<symbol name="NO" value="0"/>
-				</symbol-map>
 				<comments>
 <![CDATA[
-
+time between two packets (with an exponential distribution)
 ]]>
 				</comments>
 			</properties>
 		</attribute>
-		<attribute name="DEBUG" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="no">
-				<default-value value="0"/>
+		<attribute name="debug_level" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="yes">
+				<default-value value-symbol="NO"/>
 				<symbol-map>
 					<symbol name="NO" value="0"/>
 					<symbol name="LOW" value="1"/>
@@ -109,12 +101,12 @@ priority of the packet.
 				</symbol-map>
 				<comments>
 <![CDATA[
-
+the log level
 ]]>
 				</comments>
 			</properties>
 		</attribute>
-		<attribute name="BETA" type="integer">
+		<attribute name="beta" type="integer">
 			<properties type="integer" auto-assign="no" symbolic-only="no">
 				<default-value value="4"/>
 				<comments>
@@ -193,7 +185,7 @@ int	\next_hop;
 int	\pk_destination;
 
 /* The type of routing (XY, OPT_CORNER, SIDES...) */
-int	\routing_type;
+int	\routing_appli;
 
 /* The radio range (in multiple of the sensing range, dimension of the grid) */
 int	\range;
@@ -237,19 +229,17 @@ int	\is_sink;
 #include <math.h>
 #include <errno.h>
 
+#include "../cmac/cmac_types.h"
 
 
 
 /***** Transition Macros ******/
 
-#define		RATE_ADAPT_CODE		100
-#define		RATE_STOP_CODE		101
 
 #define 	MAC_LAYER_PKT_ARVL		((op_intrpt_type() == OPC_INTRPT_STRM) && (op_intrpt_strm() == STREAM_FROM_MAC))
 #define 	APPL_LAYER_PKT_ARVL		((op_intrpt_type() == OPC_INTRPT_STRM) && (op_intrpt_strm() == STREAM_FROM_UP))
 #define 	MAC_BROADCAST			-1
 #define 	ENDSIM					(op_intrpt_type() == OPC_INTRPT_ENDSIM)
-#define 	RATE_ADAPTATION			((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() > RATE_ADAPT_CODE))
 
 
 
@@ -277,13 +267,13 @@ int	\is_sink;
 
 
 
-#define		NO_ROUTING					-1
-#define		XY_ROUTING					0
-#define		OPT_ROUTING					1
-#define		SHORT_ROUTING				2
-#define		SIDES_ROUTING				3
-#define		ALPHA_ROUTING				4
-#define		OPT2_ROUTING				5
+#define		ROUTING_APPLI_NO			-1
+#define		ROUTING_APPLI_XY			0
+#define		ROUTING_APPLI_OPT			1
+#define		ROUTING_APPLI_SHORT			2
+#define		ROUTING_APPLI_SIDES			3
+#define		ROUTING_APPLI_ALPHA			4
+#define		ROUTING_APPLI_OPT2			5
 
 
 
@@ -310,22 +300,9 @@ int	\is_sink;
 
 //--------------------------------------
 //
-//			RATE ADAPTATION
+//			TRAFFIC GENERATION
 //
 //--------------------------------------
-
-//STats and adaptation every PK_ID_MODULO packets
-#define		PK_ID_MODULO				1000
-
-//We consider a capacity achievable if its delivery ratio is superior to MIN_DELIVERY_RATIO
-#define		MIN_DELIVERY_RATIO			0.95
-
-//The required precision for the inter_pk_time
-#define		PRECISION_REQUIRED			0.95
-
-//Time between two tests 
-//(to flush all the packets in the MAC layers, else a buffer can be full when a new rate is tested)
-#define		INTERVALL_RATES_TEST		60.0
 
 //to start the packet generation
 #define		TIME_START_PK_GENERATION	60.0
@@ -333,8 +310,6 @@ int	\is_sink;
 //The maximum delay allowed to consider the reception of a packet valid
 #define		MAX_DELAY					5.0
 
-//The inter packet time decreases in x%
-#define		STEP_RATE_ADAPT		   		0.02
 
 
 
@@ -354,18 +329,6 @@ int	\is_sink;
 
 
 
-//-----------------------------------------------
-//				FRAME ID LIST
-//-----------------------------------------------
-
-
-typedef struct{
-	int		id;
-	double	timeout;
-}id_struct;
-
-
-
 //--------------------------------------
 //
 //			GENERAL STATS
@@ -377,15 +340,6 @@ typedef struct{
 int		nb_nodes = 0;
 int		timestamp = 0;
 
-//-----------------------------------------------
-//				FRAME ID LIST
-//-----------------------------------------------
-
-
-typedef struct{
-	int		id;
-	double	timeout;
-}id_timeout_struct;
 
 
 //--------------------------------------
@@ -396,16 +350,6 @@ typedef struct{
 
 List 	*pk_list = NULL;
 int		current_pk_id = 0;
-
-typedef struct {
-	int		source;
-	int		destination;
-	int		hops;
-	int		pk_id;
-	Boolean	received;
-	double	time_sent;
-	double	time_received;
-} pk_info;
 
 
 //--------------------------------------
@@ -485,8 +429,7 @@ wlan_mac_higher_layer_intf_sv_init ()
 	}
 
 static void
-wlan_mac_higher_layer_register_as_arp ()
-	{
+wlan_mac_higher_layer_register_as_arp (){
 	char				proc_model_name [128];
 	Prohandle			own_prohandle;
 
@@ -529,9 +472,9 @@ double min(double a, double b){
 void del_timeouted_id(void* tot , int code){
 	FIN(del_timeouted_id(void* tot , int code));
 	
-	//double		older_entry = 0;
-	int				i;
-	id_struct		*ptr;
+	//double			older_entry = 0;
+	int					i;
+	id_timeout_struct	*ptr;
 	
 	//Walks in the list
 	for(i= op_prg_list_size(id_list)-1 ; i>= 0 ; i--){
@@ -556,8 +499,8 @@ void del_timeouted_id(void* tot , int code){
 Boolean is_id_seen(int pk_id){
 	FIN(is_id_seen(int pk_id));
 
-	id_struct		*ptr;
-	int				i;
+	id_timeout_struct	*ptr;
+	int					i;
 	
 	for(i=0 ; i < op_prg_list_size(id_list) ; i++){
 		ptr = op_prg_list_access(id_list , i);
@@ -575,7 +518,7 @@ Boolean is_id_seen(int pk_id){
 void add_id_seen(int pk_id){
 	FIN(add_id_seen(int pk_id));
 		
-	id_struct	*ptr;
+	id_timeout_struct	*ptr;
 	
 	//the frame id is already in the list
 	if (is_id_seen(pk_id))
@@ -586,7 +529,7 @@ void add_id_seen(int pk_id){
 		op_intrpt_schedule_call(op_sim_time() + 1.0 , 0 , del_timeouted_id , NULL);
 	
 	//New entry
-	ptr = op_prg_mem_alloc(sizeof(id_struct));
+	ptr = op_prg_mem_alloc(sizeof(id_timeout_struct));
 	ptr->id			= pk_id;
 	ptr->timeout	= op_sim_time() + TIMEOUT_ID;
 	op_prg_list_insert(id_list , ptr , OPC_LISTPOS_TAIL);
@@ -1190,246 +1133,6 @@ void debug_write_pk_info(){
 
 
 
-//-----------------------------------------------------------
-//
-//			   INTERMEDIARY	STATS
-//
-//-----------------------------------------------------------
-
-
-//Prints parameters, etc ...
-void print_headers_stat_file(FILE *pfile){
-	FIN(print_headers_stat_file(FILE *pfile));
-	
-	//Simulation parameters
-	int		RTS , BETA;
-	int		routing_mac = 0;
-	int		routing_up = 0;
-
-	
-	
-	
-	//-------------------------------------------
-	//				PARAMETERS
-	//-------------------------------------------
-	
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 			&RTS);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"BETA" , 			&BETA);
-	
-	if (op_ima_sim_attr_exists("ROUTING_MAC"))
-		op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ROUTING_MAC" , &routing_mac);
-	else
-		routing_mac = -1;
-	if (op_ima_sim_attr_exists("ROUTING_UP"))
-		op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ROUTING_UP" ,	&routing_up);
-	else
-		routing_up = -1;
-	
-
-
-	fprintf(pfile , " --------------------------------------------------------------\n");
-	fprintf(pfile , "|                     SIMULATION PARAMETERS                    |\n");
-	fprintf(pfile , " --------------------------------------------------------------\n");
-
-	fprintf(pfile , "-------------------------  GENERAL ----------------------------\n");
-	fprintf(pfile , "Number of nodes                   : %d\n", nb_nodes);
-	fprintf(pfile , "Radio Range                       : %d\n", range);
-	fprintf(pfile , "Duration                          : %f\n", op_sim_time());
-	fprintf(pfile , "RTS                               : %d\n", RTS);
-	fprintf(pfile , "Inter Packet Time                 : %f\n", current_inter_pk_time);
-	fprintf(pfile , "Routing MAC                       : %d\n", routing_mac);
-	fprintf(pfile , "Routing Up                        : %d\n", routing_up);
-	fprintf(pfile , "Beta                              : %d\n", BETA);
-	fprintf(pfile , "\n");
-	
-	fprintf(pfile , "-------------------------  FLOWS -------------------------------\n");
-	fprintf(pfile , "Is rate dynamical ?               : %d\n",	rate_adaptation);
-	fprintf(pfile , "Rate adapted every                : %d\n", PK_ID_MODULO);
-	fprintf(pfile , "Maximal Difference valid / bad    : %f\n", PRECISION_REQUIRED);
-	fprintf(pfile , "Valid Capacity if dlivery ratio > : %f\n", MIN_DELIVERY_RATIO);
-	fprintf(pfile , "Time between tests                : %f\n", INTERVALL_RATES_TEST);
-	fprintf(pfile , "\n\n");
-	
-	FOUT;
-}
-
-
-
-//Write delivery ratio, delay, max_delay
-void write_intermediary_stats(int low_pk_id , int high_pk_id){
-	FIN(write_intermediary_stats(int low_pk_id , int high_pk_id));
-	
-	//results
-	double	delivery_ratio;
-	double	delay;
-	double	max_delay;
-	//control
-	FILE	*pfile;
-	char	msg[500];
-	char	filename[150];
-	
-
-	//-------------------------------------------
-	//				STATS
-	//-------------------------------------------
-
-	
-	delivery_ratio	= compute_delivery_ratio(pk_list , low_pk_id + PK_ID_MODULO / 10 , high_pk_id);
-	delay			= compute_delay			(pk_list , low_pk_id + PK_ID_MODULO / 10 , high_pk_id);
-	max_delay		= compute_max_delay		(pk_list , low_pk_id + PK_ID_MODULO / 10 , high_pk_id);
-
-	printf(" %f - %d %d\n", delivery_ratio , low_pk_id + PK_ID_MODULO / 10 , high_pk_id);	
-	
-	
-	
-	
-	//-------------------------------------------
-	//					WRITING
-	//-------------------------------------------
-	sprintf(filename , "/tmp/debug/cmac_%d-nodes_%d-range_%d-stats.txt", timestamp , nb_nodes , range);
-	pfile = fopen(filename , "w");
-
-
-	if (pfile == NULL){
-		sprintf(msg, "Filename %s creates an error: %s", filename, strerror(errno));
-		printf("ERROR: %s, %d (%s)\n", msg, errno, strerror(errno));
-		op_sim_end(msg, "" , "" , "");
-	}
-	
-	//Simulation parameters
-	print_headers_stat_file(pfile);
-	
-		
-	fprintf(pfile , "\n\n\n ------------------------------------------------------------------------------------------------------------\n");
-	fprintf(pfile , "|                                                  RESULTS                                                   |\n");
-	fprintf(pfile , " ------------------------------------------------------------------------------------------------------------\n");
-
-	fprintf(pfile , "Delivery Ratio							:	%f\n", 					delivery_ratio);
-	fprintf(pfile , "Average Delay (in s)						:	%f\n", 				delay);
-	fprintf(pfile , "Max Delay (in s) 							:	%f\n", 				max_delay);
-	
-	fclose(pfile);
-	FOUT;
-}	
-
-//-----------------------------------------------------------
-//
-//			   ADAPT THE RATE (inter packet time)
-//
-//-----------------------------------------------------------
-
-
-//Updates the parameter value in the source process
-void update_packet_arrival_in_source_process(double inter_pk_time , double start_time){
-	FIN(update_packet_arrival_in_source_process(double inter_pk_time , double start_time));
-	
-	//topo
-	int		node_id;
-	//control
-	int		i;
-	
-	//Sets the new inter pk time for all the nodes (execpt the sink :-)
-	for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
-   	
-		node_id = op_topo_object(OPC_OBJTYPE_NDMOB , i);
-		if (op_ima_obj_attr_exists(node_id , "source.Packet Interarrival Arg1"))
-			op_ima_obj_attr_set(node_id , "source.Packet Interarrival Arg1" , inter_pk_time);
-		
-		if (op_ima_obj_attr_exists(node_id , "source.Start Time Packet Generation"))
-			op_ima_obj_attr_set(node_id , "source.Start Time Packet Generation" , start_time);
-	}
-	FOUT;
-}
-
-//adapt the inter packet time
-void adapt_rate(void *arg , int code){
-	FIN(adapt_rate(void *arg , int code));
-	
-	//stats
-	int		pk_id;
-	double	delivery_ratio;
-	double	next_start_time;
-
-	//pk_id_tmp
-	pk_id = *(int*)arg;
-	op_prg_mem_free(arg);
-	
-	//Next scheduled
-	rate_adapt_scheduled 		= OPC_FALSE;
-
-	
-	//delivery ratio
-	delivery_ratio = compute_delivery_ratio(pk_list , lowest_pk_id_authorized + PK_ID_MODULO / 100 , pk_id);
-	printf(" %f - %d %d\n", delivery_ratio , lowest_pk_id_authorized + PK_ID_MODULO /100 , pk_id);
-	if (lowest_pk_id_authorized + PK_ID_MODULO /100  > pk_id)
-		FOUT;
-	
-	//Other packets in transit must be dropped
-	lowest_pk_id_authorized 	= current_pk_id;
-	last_pk_id_stats			= current_pk_id;
-	
-	//Inter packet time change -> Is the delivery ratio sufficient ?
-	if (delivery_ratio > MIN_DELIVERY_RATIO){
-		
-		//Update best value
-		if ((achievable_inter_pk_time > current_inter_pk_time) || (achievable_inter_pk_time == 0))
-			achievable_inter_pk_time = current_inter_pk_time;
-			
-		//Next value to test
-		current_inter_pk_time = achievable_inter_pk_time - achievable_inter_pk_time * STEP_RATE_ADAPT;
-		
-		//Stop the traffic for INTERVALL_RATES_TEST (flush the buffers)
-		next_start_time = op_sim_time() + INTERVALL_RATES_TEST;
-			
-	}
-	//The delivery ratio is lower than the treshhold -> The capacity is inferior
-	else
-		next_start_time = OPC_DBL_INFINITY;
-			
-	
-	//updates the values in the source process
-	update_packet_arrival_in_source_process(current_inter_pk_time , next_start_time);
-
-
-	//DEBUG
-	//debug_write_pk_info();	
-	printf("NEW RATE : %f (delivery ratio %f)\n", current_inter_pk_time , delivery_ratio);
-	
-	FOUT;
-}
-
-
-//We compute the required stats -> stop the simulation
-void stop_rate(void *arg , int code){
-	FIN(stop_rate(void *arg , int code));
-	
-	//max pk_id to compute our stats
-	int		pk_id;
-	
-	//pk_id_tmp
-	pk_id = *(int*)arg;
-	op_prg_mem_free(arg);
-	
-	//Next scheduled
-	rate_adapt_scheduled 		= OPC_FALSE;
-
-	//not enough packets
-	if (lowest_pk_id_authorized + PK_ID_MODULO / 10 > pk_id)
-		FOUT;
-	
-	//Write all stats in a file
-	write_intermediary_stats(lowest_pk_id_authorized , pk_id);
-
-	//Other packets in transit must be dropped
-	lowest_pk_id_authorized 	= current_pk_id;
-
-	
-	//simulation end !
-	op_sim_end("The stats were computed" , "" , "" , "");
-	
-	FOUT;
-}
-
 
 
 
@@ -1484,7 +1187,7 @@ void pk_send_to_mac(Packet * pkptr , int next_hop_tmp){
 	dist = sqrt( pow(x_dist , 2) + pow(y_dist , 2));
 
 	//radio propagation model in alpha = 4
-	if (routing_type == OPT2_ROUTING)
+	if (routing_appli == ROUTING_APPLI_OPT2)
 		power_ratio = pow(dist / range , 4);
 	else
 		power_ratio = 1;
@@ -1492,7 +1195,6 @@ void pk_send_to_mac(Packet * pkptr , int next_hop_tmp){
 
 	//Packet transmission
 	op_ici_attr_set (wlan_mac_req_iciptr, "dest_addr", 		next_hop_tmp);
-//	op_ici_attr_set (wlan_mac_req_iciptr, "power_ratio", 	power_ratio);
 	op_ici_install (wlan_mac_req_iciptr);
 	op_pk_send (pkptr, STREAM_TO_MAC);
 
@@ -1511,9 +1213,11 @@ char		str[500];
 int			my_address;
 //Control
 int			i;
+int			routing_mac;
 //Topology
 int			node_id;
 int			mac_id;
+
 
 
 //to initialize my state variables
@@ -1554,20 +1258,18 @@ op_ima_obj_attr_set(mac_id , "Address" , 	my_address);
 //--------------------------------------------
 
 
-op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"ROUTING_UP" , 						&routing_type);
-op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"RADIO_RANGE" , 					&range);
-op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"BETA" , 							&beta);
-op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"SELF_POSITION",					&self_position);
-op_ima_obj_attr_get(op_id_self(), 		"Destination" , 					&pk_destination);
-//op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"BACKOFF_TYPE" , 					&mac_backoff_type);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RATE_ADAPTATION" , 				&rate_adaptation);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"DEBUG" , 							&DEBUG);
+op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"radio_range" , 		&range);
+op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"beta" , 				&beta);
+op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"SELF_POSITION",		&self_position);
+op_ima_obj_attr_get(op_id_self(), 		"Destination" , 		&pk_destination);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"debug_level",			&DEBUG);
+op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"interpacket time", 	&current_inter_pk_time);
+op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"routing_appli" , 		&routing_appli);
+op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"routing_mac" , 		&routing_mac);
 
-
-if (current_inter_pk_time == 0)
-	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"INITIAL_INTER_PK_TIME" , 		&current_inter_pk_time);
-
-
+//If a routing algo is specified
+if ((routing_mac != ROUTING_MAC_NO) && (routing_appli != ROUTING_APPLI_NO))
+	op_sim_end("You have to choose between routing in the MAC or APPLICATION layer", "both cannot be set up simultaneously since they can be not compatoible", "", "");
 
 
 //----------------------------------------------------
@@ -1591,14 +1293,14 @@ my_route_to_sink = op_prg_list_create();
 
 //----------------------------------------------------
 //
-//			   INTER PACKET TIME
+//			   SELF POSITIONING
 //
 //-----------------------------------------------------
 
 
 
 
-//Sets this value for all the nodes (if self_position)
+//Sets the inter-packet time value for all the nodes (if self_position)
 if (self_position){
 	for(i=0 ; i < op_topo_object_count(OPC_OBJTYPE_NDMOB) ; i++){
   	
@@ -1610,6 +1312,8 @@ if (self_position){
 			op_ima_obj_attr_set(node_id , "source.Start Time Packet Generation" , TIME_START_PK_GENERATION);
 	}
 }
+
+
 
 
 //----------------------------------------------------
@@ -1724,7 +1428,6 @@ int			pk_id_tmp;
 //Debug
 char		msg[500];
 //tmp vaue
-int			*int_ptr;
 Packet		*pkptr;
 
 
@@ -1770,50 +1473,6 @@ else{
 			info_ptr->time_received = op_sim_time();
 		}
 	}
-
-
-	//-----------------------------------
-	//		  THROUGHPUT ADAPTATION
-	//-----------------------------------
-	//NB: 4th condition to avoid several modifications (two packets are received by the sink, and current_pk_id did not change)
-
-	//if (pk_id_tmp > 500)
-	//printf("%d %d %d\n", rate_adaptation , my_stat_id == 0 , (last_pk_id_stats + PK_ID_MODULO < pk_id_tmp));
-	
-	
-	if ((pk_destination == mac_address) && (last_pk_id_stats + PK_ID_MODULO < pk_id_tmp)){
-		
-		//NB: new packets keeps on be transmitted: the load must remain constant in order to have valid measures
-
-		if (rate_adaptation){
-			//Control (Memory)
-			last_pk_id_stats = pk_id_tmp;
-		
-			//Schedules the rate adaptation procedure (MAX_DELAY accepted)
-			if (!rate_adapt_scheduled){
-				int_ptr = op_prg_mem_alloc(sizeof(int));
-				*int_ptr = pk_id_tmp;
-				op_intrpt_schedule_call(op_sim_time() + MAX_DELAY , RATE_ADAPT_CODE , adapt_rate , int_ptr); 
-				rate_adapt_scheduled = OPC_TRUE;
-				//op_intrpt_schedule_self(op_sim_time() + MAX_DELAY , RATE_ADAPT_CODE + pk_id_tmp);
-			}
-	
-		}
-		else{
-			//Control (Memory)
-			last_pk_id_stats = pk_id_tmp;
-		
-			//Schedules the rate stop procedure (MAX_DELAY accepted)
-			if (!rate_adapt_scheduled){
-				int_ptr = op_prg_mem_alloc(sizeof(int));
-				*int_ptr = pk_id_tmp;
-				op_intrpt_schedule_call(op_sim_time() + MAX_DELAY , RATE_ADAPT_CODE , stop_rate , int_ptr); 
-				rate_adapt_scheduled = OPC_TRUE;
-			}
-		}
-	}
-
-
 
 	//The stream 0 is directed to the sink (and stream 1 to the MAC layer)
 	//In other words if the stream 0 exists, I am a sink !
@@ -1962,12 +1621,12 @@ if (y_int > max_y_int)
 y_dev = (int) (mac_address / 100) - (int) (pk_destination /100);
 x_dev = mac_address - pk_destination - y_dev*100;
 
-switch(routing_type){
+switch(routing_appli){
 
 	//----------------------------------------
 	//				NO ROUTING
 	//----------------------------------------
-	case NO_ROUTING :
+	case ROUTING_APPLI_NO :
 		next_hop = 0;
 	break;
 	
@@ -1976,7 +1635,7 @@ switch(routing_type){
 	//----------------------------------------
 	//				XY ROUTING
 	//----------------------------------------
-	case XY_ROUTING :
+	case ROUTING_APPLI_XY :
 		next_hop = get_next_hop_via_xy_routing(range , pk_destination);
 	break;
 	
@@ -1986,7 +1645,7 @@ switch(routing_type){
 	//----------------------------------------
 	//		   	OPTIMAL CORNER ROUTING
 	//----------------------------------------
-	case OPT_ROUTING :
+	case ROUTING_APPLI_OPT :
 		radius = (double)beta * range / 2;
 		x_center = x_sink + beta * range / (2 * sqrt(2));
 		y_center = y_sink + beta * range / (2 * sqrt(2));
@@ -2017,7 +1676,7 @@ switch(routing_type){
    	//------------------------------------------------
 	//				OPT_CORNER 2
 	//------------------------------------------------
-	case OPT2_ROUTING :
+	case ROUTING_APPLI_OPT2 :
 		radius = (double)beta * (double)range;
 		x_center = x_sink;
 		y_center = y_sink;		
@@ -2040,7 +1699,7 @@ switch(routing_type){
    	//----------------------------------------
 	//		   	SHORTEST ROUTES
 	//----------------------------------------
-	case SHORT_ROUTING :
+	case ROUTING_APPLI_SHORT :
 		
 		next_hop = get_next_hop_via_shortest_routing(range , pk_destination); 
 	
@@ -2052,7 +1711,7 @@ switch(routing_type){
    	//------------------------------------------------
 	//	SHORTEST ROUTES VIA THE SIDES OF THE SQUARE
 	//------------------------------------------------
-	case SIDES_ROUTING :
+	case ROUTING_APPLI_SIDES :
 		
 		next_hop = get_next_hop_via_sides_routing(range , pk_destination); 
 	
@@ -2064,7 +1723,7 @@ switch(routing_type){
    	//------------------------------------------------
 	//				'F_alpha' ROUTES
 	//------------------------------------------------
-	case ALPHA_ROUTING :
+	case ROUTING_APPLI_ALPHA :
 		radius = (double)beta * (double)range;
 		x_center = x_sink;
 		y_center = y_sink;		
@@ -2093,7 +1752,7 @@ switch(routing_type){
 	//		   			ERROR
 	//----------------------------------------
 	default:
-		sprintf(msg , "The routing type %d", routing_type);
+		sprintf(msg , "The routing type %d", routing_appli);
 		op_sim_end(msg , "is unknown", "Please change it" , "");
 	break;
 		
@@ -2120,7 +1779,7 @@ else
 //----------------------------------------
 
 
-if ((next_hop == mac_address) && (!is_sink) && (routing_type != NO_ROUTING))
+if ((next_hop == mac_address) && (!is_sink) && (routing_appli != ROUTING_APPLI_NO))
 	op_sim_end("Bug in the routing algorithm in the mac-interface process" , "" , "" , "");
 
 
@@ -2199,6 +1858,9 @@ int			nb_pk_sent = 0;
 double		delay_tmp;
 double		cumulated_delay = 0;
 double		max_delay = 0;
+//Simulation parameters
+int		RTS , BETA;
+int		routing_mac = 0;
 
 
 if (my_stat_id == 0){
@@ -2229,11 +1891,10 @@ if (my_stat_id == 0){
 	if (DEBUG)
 		debug_write_pk_info();
 
-	
 	//-------------------------------------------
 	//					WRITING
 	//-------------------------------------------
-	sprintf(filename , "/tmp/debug/%d-nodes_%d-range_%d-results.txt", timestamp , nb_nodes , range);
+	sprintf(filename , "/tmp/debug/%d-stats-nodes=%d-range=%d-algo_mac=%d.txt", timestamp , nb_nodes , range, routing_mac);
 	pfile = fopen(filename , "w");
 
 
@@ -2242,9 +1903,39 @@ if (my_stat_id == 0){
 		printf("ERROR: %s, %d (%s)\n", msg, errno, strerror(errno));
 		op_sim_end(msg, "" , "" , "");
 	}
-		
-	print_headers_stat_file(pfile);
 
+	
+	//-------------------------------------------
+	//				PARAMETERS
+	//-------------------------------------------
+	
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 		&RTS);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"BETA" , 		&BETA);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ROUTING_MAC",	&routing_mac);
+
+
+	fprintf(pfile , " --------------------------------------------------------------\n");
+	fprintf(pfile , "|                     SIMULATION PARAMETERS                    |\n");
+	fprintf(pfile , " --------------------------------------------------------------\n");
+
+	fprintf(pfile , "-------------------------  GENERAL ----------------------------\n");
+	fprintf(pfile , "Number of nodes                   : %d\n", nb_nodes);
+	fprintf(pfile , "Radio Range                       : %d\n", range);
+	fprintf(pfile , "Duration                          : %f\n", op_sim_time());
+	fprintf(pfile , "RTS                               : %d\n", RTS);
+	fprintf(pfile , "Inter Packet Time                 : %f\n", current_inter_pk_time);
+	fprintf(pfile , "Routing MAC                       : %d\n", routing_mac);
+	fprintf(pfile , "Routing APPLI                     : %d\n", routing_appli);
+	fprintf(pfile , "Beta                              : %d\n", BETA);
+	fprintf(pfile , "\n");
+		
+	
+	//-------------------------------------------
+	//				STATS
+	//-------------------------------------------
+	
+	
+		
 	fprintf(pfile , "-----------------------------------------------------------------\n");
 	fprintf(pfile , "|                          TRAFFIC                               |\n");
 	fprintf(pfile , " ----------------------------------------------------------------\n");
@@ -2303,7 +1994,7 @@ int			MAX_ROUTE_LENGTH = 50;
 //-----------------------------------------------------
 
 
-if (routing_type != NO_ROUTING){
+if (routing_appli != ROUTING_APPLI_NO){
 	//get my route nb
 	for(i = 0 ; (my_route_nb == 0) && (i< op_prg_list_size(all_routes)) ; i++){
 		//For each route

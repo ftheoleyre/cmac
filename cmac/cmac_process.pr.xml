@@ -12,7 +12,7 @@
 							<attribute creation-mechanics="Model" name="list" type="object list">
 								<object-list>
 									<sub-object>
-										<attribute creation-mechanics="Model" name="Channel Settings" type="compound" spectype="0">
+										<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
 											<sub-object>
 												<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
 												<attribute creation-mechanics="Model" name="list" type="object list">
@@ -258,7 +258,7 @@ network.
 		</attribute>
 	</model-attributes>
 	<simulation-attributes>
-		<attribute name="DEBUG" type="integer">
+		<attribute name="debug_level" type="integer">
 			<properties type="integer" auto-assign="no" symbolic-only="yes">
 				<default-value value-symbol="NO"/>
 				<symbol-map>
@@ -269,7 +269,6 @@ network.
 				</symbol-map>
 				<comments>
 <![CDATA[
-
 
 ]]>
 				</comments>
@@ -299,7 +298,7 @@ convergecast networks)
 				</comments>
 			</properties>
 		</attribute>
-		<attribute name="PRIVILEGED_MAX_TIME" type="double">
+		<attribute name="max_time_priv_mode" type="double">
 			<properties type="double" auto-assign="no" symbolic-only="no">
 				<default-value value="0.01"/>
 				<comments>
@@ -315,7 +314,7 @@ remains privileged
 				<default-value value="4"/>
 			</properties>
 		</attribute>
-		<attribute name="ROUTING_MAC" type="integer">
+		<attribute name="routing_mac" type="integer">
 			<properties type="integer" auto-assign="no" symbolic-only="yes">
 				<default-value value-symbol="BORDER"/>
 				<symbol-map>
@@ -325,15 +324,22 @@ remains privileged
 				</symbol-map>
 				<comments>
 <![CDATA[
-
-
+the routing algorihtm used in the MAC layer:
+-border: traffic is first forwarded to the closest border nodes, and then forwarded uniquely by broder nodes
+-short: shortest routes
+-no: no mac routing is implemented (it has to be specified in the application layer)
 ]]>
 				</comments>
 			</properties>
 		</attribute>
-		<attribute name="CHANNELS" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="no">
+		<attribute name="nb_channels" type="integer">
+			<properties type="integer" auto-assign="yes" symbolic-only="no">
 				<default-value value="1"/>
+				<comments>
+<![CDATA[
+number of channels
+]]>
+				</comments>
 			</properties>
 		</attribute>
 	</simulation-attributes>
@@ -466,9 +472,6 @@ int	\my_backoff;
 /* The interruption for the backoff (can be stopped by a medium activity) */
 Evhandle	\backoff_intrpt;
 
-/* The backoff disribution */
-Distribution *	\backoff_dist;
-
 /* When did I become privileged ? */
 double	\time_start_privileged;
 
@@ -578,6 +581,9 @@ int	\MAC_ROUTING;
 /* transmission power */
 double	\POWER_TX;
 
+/* The distribution lav for backoff values */
+Distribution *	\backoff_dist;
+
 ]]>
 	</state-variables>
 	<header-block>
@@ -592,147 +598,7 @@ double	\POWER_TX;
 #include	<opnet.h>
 
 #include 	<wlan_support.h>
-
-
-//-----------------------------------------------
-//				INTER-FRAME TIME
-//-----------------------------------------------
-
-#define		SIFS							10E-6
-#define		PIFS							30E-6
-#define		DIFS							50E-6
-#define		EIFS							(2*SIFS + 1500 / operational_speed)
-
-#define		SLOT_BACKOFF					15E-6
-
-
-
-
-
-//-----------------------------------------------
-//				COMMON
-//-----------------------------------------------
-
-//reserved addresses
-#define		BROADCAST						-1
-
-//backoff
-#define		MAX_BACKOFF						32
-#define		MAX_EXPO_BACKOFF				1024
-
-//Power
-#define		MAX_BORDER_DIST					10
-
-#define		PI								3.141592653589793238462 
-
-
-
-
-
-//-----------------------------------------------
-//				TIMEOUTS
-//-----------------------------------------------
-
-//Propagation delay = distance / light speed
-#define		PROPAGATION_DELAY				(2E-6)
-
-#define		MAX_NB_RETRY					7
-#define		MEDIUM_NB_RETRY					3
-
-
-//To avoid farmes duplication
-#define		TIMEOUT_FRAME_ID				5.0
-
-
-//A data frame is deleted if not sent after TIMEOUT seconds
-#define		TIMEOUT_DATA_FRAME				0.5
-
-
-
-
-
-
-//-----------------------------------------------
-//				HELLOS
-//-----------------------------------------------
-
-#define		INTERVALL_HELLO					30.0
-
-//The maximum number of stabilities to store
-#define		MAX_STAB						10
-
-//Two stabilities with STAB_STEP difference are considered equal
-#define		STAB_STEP						2
-
-
-
-
-//-----------------------------------------------
-//				CTR / PRIVILEGE
-//-----------------------------------------------
-
-
-// PRIVILEGED MODE
-#define		PRIV_MIN_RATIO					0.9
-
-
-
-//Maximum number of branches for the AP
-#define		MAX_NB_BRANCHES					4
-
-
-//A CTR could be delayed
-#define		MAX_CTR_DELAY_FROM_SINK			100E-6
-
-
-
-
-//-----------------------------------------------
-//				SYNC
-//-----------------------------------------------
-
-#define		SYNC_DIRECT_ANTENNA				OPC_TRUE
-
-
-
-
-
-
-//-----------------------------------------------
-//				BUSY TONE
-//-----------------------------------------------
-
-//The frequency for the busy tone is 
-//SHIFT_FREQ_SEPARATION MHz less than for the transmission radio
-#define		SHIFT_FREQ_SEPARATION			0.2					
-
-
-
-
-
-
-//-----------------------------------------------
-//				MULTI CHANNEL
-//-----------------------------------------------
-
-//#define		MULTI_CHANNEL					1
-#define		RATIO_PRIV_BANDWIDTH 			1
-
-
-
-
-
-
-//-----------------------------------------------
-//				ROUTING
-//-----------------------------------------------
-
-#define		ROUTING_BORDER					2
-#define		ROUTING_SHORT					1
-#define		ROUTING_NO						0
-
-
-
+#include	"cmac_types.h"
 
 
 
@@ -764,35 +630,6 @@ double	\POWER_TX;
 
 
 
-//-----------------------------------------------
-//				DEBUG
-//-----------------------------------------------
-
-
-#define		NO								0
-#define		LOW								1
-#define		MEDIUM							2
-#define		MAX								3
-
-
-#define		DEBUG_GLOBAL					0
-#define		DEBUG_STATE						1
-
-#define		DEBUG_BACKOFF					2
-
-#define		DEBUG_SEND						3
-#define		DEBUG_RECEIVE					4
-#define		DEBUG_RADIO						5
-
-#define		DEBUG_CONTROL					6
-
-#define		DEBUG_TIMEOUT					7
-
-#define		DEBUG_HELLO						8
-
-#define		DEBUG_UP						9
-
-#define		DEBUG_NODE						10
 
 
 //-----------------------------------------------
@@ -988,38 +825,6 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 
 
 
-//-----------------------------------------------
-//		   	PACKET TYPES
-//-----------------------------------------------
-
-#define		NO_PK_TYPE						0
-
-
-#define		RTS_PK_TYPE						1
-#define		CTS_PK_TYPE						2
-#define		CTR_PK_TYPE						3
-#define		CTR_END_PK_TYPE					4
-#define		DATA_UNICAST_PK_TYPE			5
-#define		DATA_MULTICAST_PK_TYPE			6
-#define		ACK_PK_TYPE						7
-#define		HELLO_PK_TYPE					8
-#define		SYNC_PK_TYPE					9
-#define		CTR_ACK_PK_TYPE					10
-
-
-//Preamble + 2*addresses + Type + FCS
-#define		HEADERS_PK_SIZE					(57 + 48*2 + 4 + 32)
-#define		NB_TIER_SIZE					4
-#define		DURATION_SIZE					16
-#define		DIST_SINK_SIZE					4
-#define		DIST_BORDER_SIZE				4
-
-
-//MTU in bits
-#define		MTU_MAX							2400.0
-
-	
-
 
 
 //-----------------------------------------------
@@ -1037,117 +842,12 @@ int		nb_mac_nodes = 0;
 
 
 //-----------------------------------------------
-//					FRAME
+//					SHARED VARIABLES
 //-----------------------------------------------
 
-int	global_frame_id = 0;
-
-
-typedef struct{
-	int			source;
-	int			destination;
-	short		type;
-	int			frame_id;
-	Boolean		nb_retry;
-	double		time_added;
-	double		time_sent;
-	double		time_transmission_min;
-	double		pk_size;
-	int			duration;			//for RTS / CTS (pk_size of the data_frame)
-	double		ifs;				//inter frame spacing for this packet type
-	Boolean		released;			//The memory was released (packet destroyed)
-	Packet		*payload;
-	double		next_hello;
-	double		power_ratio;
-}frame_struct;
-
-
-//-----------------------------------------------
-//					HELLOS
-//-----------------------------------------------
-
-
-typedef struct{
-	int		address;
-	int		dist_sink;
-	int		dist_border;
-	double	sync_rx_power;
-	int		branch;
-	List	*border_nodes_list;	
-	Boolean	stability[MAX_STAB];
-	double	timeout;
-} neigh_struct;
-
-
-
-
-
-//-----------------------------------------------
-//				FRAME ID LIST
-//-----------------------------------------------
-
-
-typedef struct{
-	int		id;
-	double	timeout;
-}id_timeout_struct;
-
-
-
-
-
-//-----------------------------------------------
-//					NAV
-//-----------------------------------------------
-
-
-typedef struct{
-	int		address;
-	double	timeout;
-	double	frequency;
-}nav_struct;
-
-
-
-
-
-//-----------------------------------------------
-//			COMPARISON FOR NEXT HOP
-//-----------------------------------------------
-
-
-typedef struct{
-	int		addr;
-	short	prio;
-	short	stab;
-} compar_struct;
-
-
-
-
-
-
-//-----------------------------------------------
-//			ELECTION OF BORDER NODES
-//-----------------------------------------------
-
-
-typedef struct{
-	int		addr;
-	double	pow;
-	short	stab;
-	short	branch;
-}election_struct;
-
-
-int	MAX_BRANCH_LENGTH = 0;
-
-
-//-----------------------------------------------
-//					PRIVILEGE
-//-----------------------------------------------
-
-double TIME_MAX_PRIVILEGED;
+int		global_frame_id = 0;
+int		MAX_BRANCH_LENGTH = 0;
+double 	TIME_MAX_PRIVILEGED;
 
 
 
@@ -1238,8 +938,7 @@ void add_frame_timeout(double data_pk_size){
 	FIN(add_frame_timeout(double data_pk_size));
 
 	//error, the timeout interruption was not canceled !
-	if (op_ev_valid(timeout_intrpt))
-		op_ev_cancel(timeout_intrpt);
+	op_ev_cancel_if_pending(timeout_intrpt);
 	if (op_ev_valid(timeout_intrpt))
 		op_sim_end("A timeout interruption must be canceled when the reply is received" , "Please correct this bug", "" , "");
 
@@ -1421,9 +1120,9 @@ void print_nav_list(int debug_type){
 	nav_struct	*ptr;
 
 	
-	debug_print(LOW , debug_type , "------------------------------------------------------------------------------------------------------------\n");
-	debug_print(LOW , debug_type , "									NAV LIST (%f)\n", op_sim_time());
-	debug_print(LOW , debug_type , "------------------------------------------------------------------------------------------------------------\n");
+	debug_print(LOW , debug_type , "-----------------------------------------\n");
+	debug_print(LOW , debug_type , "		NAV LIST (%f)\n", op_sim_time());
+	debug_print(LOW , debug_type , "-----------------------------------------\n");
 	debug_print(LOW , debug_type , "\n");
 	
 	debug_print(LOW , debug_type , "    ADDR	|	FREQ		|	TIMEOUT\n");
@@ -1443,7 +1142,6 @@ void delete_timeouted_nav(void * arg, int code){
 	int				i;
 	nav_struct		*ptr;
 	double			older_entry = 0;
-	
 	
 	//Walks in the list
 	for(i= op_prg_list_size(my_nav_list)-1 ; i>= 0 ; i--){
@@ -1686,7 +1384,7 @@ void add_frame_id_seen(int frame_id){
 	
 	//Empty list -> timeouted verificaiton
 	if (op_prg_list_size(my_frame_id_seen) == 0)
-		op_intrpt_schedule_call(op_sim_time() + 1.0 , FRAME_ID_TIMEOUT_CODE , del_timeouted_frame_id , NULL);
+		op_intrpt_schedule_call(op_sim_time() + TIMEOUT_FRAME_ID , FRAME_ID_TIMEOUT_CODE , del_timeouted_frame_id , NULL);
 	
 	//New entry
 	ptr = op_prg_mem_alloc(sizeof(id_timeout_struct));
@@ -1766,7 +1464,6 @@ void del_timeouted_unicast(void *arg, int code){
 		if (ptr->time_added <= op_sim_time() - TIMEOUT_DATA_FRAME){
 			
 			debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was DELETED after its timeout (nb_retry %d, type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
-			debug_print(LOW, DEBUG_NODE , "the unicast frame to %d was DELETED after its timeout (nb_retry %d, type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
 		
 			ptr = op_prg_list_remove(unicast_frame_buffer , i);
 			if (ptr->payload != NULL)
@@ -2290,7 +1987,7 @@ int get_next_hop(){
 	next.addr = BROADCAST;
 	next.stab = 0;
 	switch (MAC_ROUTING){
-		case ROUTING_BORDER:
+		case ROUTING_MAC_BORDER:
 		
 			//Walks in the list
 			for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
@@ -2326,7 +2023,7 @@ int get_next_hop(){
 				debug_print(LOW , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
 			}
 		break;
-		case ROUTING_SHORT:
+		case ROUTING_MAC_SHORT:
 			//Walks in the list
 			for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 				neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
@@ -2341,7 +2038,7 @@ int get_next_hop(){
 				debug_print(MAX , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
 			}
 		break;
-		case ROUTING_NO:
+		case ROUTING_MAC_NO:
 			op_sim_end("I am not allowed to route packets" , "But I try to find one next hop" , "Please correct the corresponding bug" , "");
 		break;
 		default:
@@ -3195,9 +2892,9 @@ void print_neighborhood_table(int debug_type){
 	char			msg[500];
 
 	
-	debug_print(LOW , debug_type , "------------------------------------------------------------------------------------------------------------\n");
-	debug_print(LOW , debug_type , "								NEIGHBORHOOD TABLE (%f)\n", op_sim_time());
-	debug_print(LOW , debug_type , "------------------------------------------------------------------------------------------------------------\n");
+	debug_print(LOW , debug_type , "---------------------------------------\n");
+	debug_print(LOW , debug_type , "	NEIGHBORHOOD TABLE (%f)\n", op_sim_time());
+	debug_print(LOW , debug_type , "---------------------------------------\n");
 	debug_print(LOW , debug_type , "\n");
 	
 	debug_print(LOW , debug_type , "    ADDR	|	DIST_SINK	|	DIST_BORDER	|  BRANCH	|	TIMEOUT		| STABILITY	|BN_LIST	|	SYNC_POWER\n");
@@ -3787,15 +3484,15 @@ void receive_packet_from_up(){
 	}	
 	
 	//NO routing in MAC but no specified next hop
-	if ((ici_ptr == OPC_NIL) && (MAC_ROUTING == ROUTING_NO))
+	if ((ici_ptr == OPC_NIL) && (MAC_ROUTING == ROUTING_MAC_NO))
 		op_sim_end("The mac layer is not allowed to route packets" , "and it received a packet from the upper layer" , "without any next hop specified in the ICI" , "");
 	
 	//Routing in MAC but a specified next hop
-	else if ((ici_ptr != OPC_NIL) && (next_hop != -1) && (next_hop != 0) && (MAC_ROUTING != ROUTING_NO))
+	else if ((ici_ptr != OPC_NIL) && (next_hop != -1) && (next_hop != 0) && (MAC_ROUTING != ROUTING_MAC_NO))
 		op_sim_end("The mac layer is configured to implement routing by itself" , "but a next hop is specified explicitly from the upper layer" , "" , "");
 		
 	//routing in MAC -> computes the next hop		
-	else if (MAC_ROUTING != ROUTING_NO){
+	else if (MAC_ROUTING != ROUTING_MAC_NO){
 		next_hop	= get_next_hop();		
 		power_ratio	= 1;
 	}
@@ -4082,7 +3779,7 @@ void receive_packet_from_radio(){
 
 					
 					//Transmission to the upper layer
-					if ((!is_frame_id_seen(frame_id)) && ((is_sink) || (MAC_ROUTING == ROUTING_NO)))
+					if ((!is_frame_id_seen(frame_id)) && ((is_sink) || (MAC_ROUTING == ROUTING_MAC_NO)))
 						op_pk_send(op_pk_copy(payload), STREAM_TO_UP);
 					
 					//Forwarding (max power, since we have no info)
@@ -4272,9 +3969,9 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , "BRANCH" , 	&branch);
 				op_pk_nfd_get(frame , "NEXT" , 		&next_hello);
 			
-				if (destination != BROADCAST)
+				if (destination != BROADCAST){
 					op_sim_end("An hello is sent in broadcast" , "not in unicast", "please correct the bug", "");
-					
+				}
 				op_pk_nfd_get(frame , "DIST_SINK" , 	&dist_sink);
 				op_pk_nfd_get(frame , "DIST_BORDER" , 	&dist_border);
 				op_pk_nfd_get(frame , "SYNC_POWER" , 	&sync_power);
@@ -4367,8 +4064,8 @@ void interrupt_process(){
 	//next hello to generate
 	double		next_hello;
 	
-	debug_print(LOW , DEBUG_STATE , "type %d (self %d, stat %d , pk %d\n", op_intrpt_type() , OPC_INTRPT_SELF , OPC_INTRPT_STAT , OPC_INTRPT_STRM);
-	
+	debug_print(LOW , DEBUG_STATE, "type %d (self %d, stat %d , pk %d)\n", op_intrpt_type() , OPC_INTRPT_SELF , OPC_INTRPT_STAT , OPC_INTRPT_STRM);
+
 	switch (op_intrpt_type()){
 	
 		//A PACKET WAS RECEIVED !
@@ -4751,6 +4448,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 	
 	FILE		*pfile;
 	va_list 	argptr;
+	double		time = op_sim_time();
 	
 	//Prepares the args
 	va_start(argptr, fmt);	
@@ -4765,9 +4463,9 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 	if (level <= DEBUG)	{			
 		//Normal debug
 		if (type != DEBUG_STATE){
-			fprintf(pfile , "[%4ds , "	, (int) floor(op_sim_time()));
-			fprintf(pfile , "%4dms , "	, (int) (floor(op_sim_time() * 1E3) - 1E3 * floor(op_sim_time())));
-			fprintf(pfile , "%4dus , "	, (int) (floor(op_sim_time() * 1E6) - 1E3 * floor(op_sim_time() * 1E3)));
+			fprintf(pfile , "[%4ds , "	, (int) floor(time));
+			fprintf(pfile , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
+			fprintf(pfile , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
 			fprintf(pfile , "%4.1i] "	, my_address);	
 			vfprintf(pfile , fmt, argptr);     
 		}
@@ -4775,26 +4473,26 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 		
 		//print on the console some particular debug messages 
 		if (OPC_FALSE){
-			printf("[%4ds , "	, (int) floor(op_sim_time()));
-			printf("%4dms , "	, (int) (floor(op_sim_time() * 1E3) - 1E3 * floor(op_sim_time())));
-			printf("%4dus , "	, (int) (floor(op_sim_time() * 1E6) - 1E3 * floor(op_sim_time() * 1E3)));
+			printf("[%4ds , "	, (int) floor(time));
+			printf("%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
+			printf("%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
 			printf("%4.1i] "	, my_address);	
 			vprintf(fmt, argptr);   
 		}
 		
 		if (OPC_FALSE){ //((type == DEBUG_SEND) || (type == DEBUG_RECEIVE)){
-			fprintf(my_debug_file , "[%4ds , "	, (int) floor(op_sim_time()));
-			fprintf(my_debug_file , "%4dms , "	, (int) (floor(op_sim_time() * 1E3) - 1E3 * floor(op_sim_time())));
-			fprintf(my_debug_file , "%4dus , "	, (int) (floor(op_sim_time() * 1E6) - 1E3 * floor(op_sim_time() * 1E3)));
+			fprintf(my_debug_file , "[%4ds , "	, (int) floor(time));
+			fprintf(my_debug_file , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
+			fprintf(my_debug_file , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
 			fprintf(my_debug_file , "%4.1i] "	, my_address);	
 			vfprintf(my_debug_file , fmt, argptr);     
 		}
 		
 		//put all debugs in a gobal file (useful sometimes to see all the events)
-		if (OPC_FALSE){
-			fprintf(debug_files[DEBUG_GLOBAL] , "[%4ds , "	, (int) floor(op_sim_time()));
-			fprintf(debug_files[DEBUG_GLOBAL] , "%4dms , "	, (int) (floor(op_sim_time() * 1E3) - 1E3 * floor(op_sim_time())));
-			fprintf(debug_files[DEBUG_GLOBAL] , "%4dus , "	, (int) (floor(op_sim_time() * 1E6) - 1E3 * floor(op_sim_time() * 1E3)));
+		if (OPC_TRUE){
+			fprintf(debug_files[DEBUG_GLOBAL] , "[%4ds , "	, (int) floor(time));
+			fprintf(debug_files[DEBUG_GLOBAL] , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
+			fprintf(debug_files[DEBUG_GLOBAL] , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
 			fprintf(debug_files[DEBUG_GLOBAL] , "%4.1i] "	, my_address);	
 			vfprintf(debug_files[DEBUG_GLOBAL] , fmt, argptr);     
 		}
@@ -5025,12 +4723,12 @@ else
 //-----------------------------------------------
 
 //Parameters
-op_ima_sim_attr_get(OPC_IMA_INTEGER , "DEBUG",					&DEBUG);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "debug_level",			&DEBUG);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "BETA",					&BETA);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , "CHANNELS",				&nb_channels);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , "ROUTING_MAC",			&MAC_ROUTING);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "routing_mac",			&MAC_ROUTING);
 
 //No RTS / CTS -> pk_size set to the infinity value
 if (RTS_PK_SIZE == -1)
@@ -5038,7 +4736,7 @@ if (RTS_PK_SIZE == -1)
 
 
 if (is_sink){
-	op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "PRIVILEGED_MAX_TIME",	&slot_privileged_duration);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "max_time_priv_mode",	&slot_privileged_duration);
 	TIME_MAX_PRIVILEGED = slot_privileged_duration * 2;
 }
 else
@@ -5079,7 +4777,9 @@ my_nav_list					= op_prg_list_create();
 //Backoff distribution initialization
 cw 							= MAX_BACKOFF;
 backoff_dist 				= op_dist_load("uniform_int" , 0 , cw);
+backoff_intrpt				= op_ev_current();
 
+	
 //no reservation
 is_reply_required 			= OPC_FALSE;
 
@@ -5855,17 +5555,12 @@ int			i;
 
 
 
-
-
 debug_print(LOW , DEBUG_STATE , "ENTER - DEFER2 - %d\n", my_address);
+
 
 
 //Handles the possible interruptions (STREAM || STAT)
 interrupt_process();
-
-
-
-
 
 
 //------------------------------------------
@@ -5885,23 +5580,25 @@ my_backoff = -1;
 // -> The medium was not previously reserved (verify the value of my NAV)
 //
 if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
-	
+
+
 	if (!IS_MEDIUM_BUSY){
 		if ((!is_node_privileged) &&     (     (next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.destination == BROADCAST) || ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE))   )      ){
+
 
 			//Takes a new backoff
 			my_backoff = op_dist_outcome (backoff_dist);
 		
 			//Schedules the backoff interrupt (deletes an eventual old interruption)
-			if (op_ev_valid(backoff_intrpt))
-				op_ev_cancel(backoff_intrpt);			
+			op_ev_cancel_if_pending(backoff_intrpt);			
 			backoff_intrpt = op_intrpt_schedule_self(op_sim_time() + SLOT_BACKOFF * my_backoff , BACKOFF_CODE);
 	
 			//debug
 			debug_print(LOW , DEBUG_BACKOFF , "new backoff %d\n", my_backoff);
 		}
 		else{
-			my_backoff = 0;
+
+		my_backoff = 0;
 			debug_print(MEDIUM , DEBUG_BACKOFF , "no backoff required (priviledged %d, next=rts %d, broadcast %d)\n", my_backoff , is_node_privileged , next_frame_to_send.type == RTS_PK_TYPE , next_frame_to_send.destination == BROADCAST);
 		}
 		
@@ -5920,7 +5617,6 @@ if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 		
 	}
 }
-
 
 
 //------------------------------------------
@@ -5942,8 +5638,6 @@ if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send
 	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
 	set_next_frame_null();
 }
-
-	
 
 
 //------------------------------------------
@@ -5975,7 +5669,8 @@ if (last_next_start_time_verif < op_sim_time() - 30.0){
 debug_print(LOW , DEBUG_STATE , "EXIT - DEFER2 - %d (%d, %d)\n", my_address, IS_MEDIUM_BUSY , my_backoff);
 
 
-debug_print(MAX , DEBUG_SEND , "busy -> rx_busy %d tx_busy %d nav %f -> %d medium busy %d\n", is_rx_busy , is_tx_busy , get_nav_main_freq() , get_nav_main_freq() > op_sim_time() , IS_MEDIUM_BUSY   );
+debug_print(MAX , DEBUG_SEND , "busy -> rx_busy %d tx_busy %d nav %f -> %d medium busy %d\n", is_rx_busy , is_tx_busy , get_nav_main_freq() , get_nav_main_freq() > op_sim_time() , IS_MEDIUM_BUSY);
+
 ]]>
 				</value-text>
 			</attribute>
@@ -6031,6 +5726,7 @@ if ((op_ev_valid(backoff_intrpt)) && (IS_MEDIUM_BUSY)){
 
 	//debug
 	debug_print(MEDIUM , DEBUG_BACKOFF , "stoping backoff %d (busy %d, nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
+	printf("stoping backoff %d (busy %d, nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
 }
 
 
@@ -6049,6 +5745,7 @@ if ((!op_ev_valid(backoff_intrpt)) && (!IS_MEDIUM_BUSY) && ((op_intrpt_type() ==
 
 	//debug
 	debug_print(MEDIUM , DEBUG_BACKOFF , "resuming backoff %d (busy %d nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
+	printf("resuming backoff %d (busy %d nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
 }
 
 
@@ -6294,7 +5991,7 @@ debug_print(LOW , DEBUG_STATE , "EXIT - WAIT_NEXT2 - %d\n", my_address);
 			<attribute name="name" type="string" value="tr_310"/>
 			<attribute name="condition" type="string" value="!IS_BACK_TO_DEFER &amp;&amp; !TRANSMISSION_CANCELED  &amp;&amp; (my_backoff == 0)"/>
 		</transition>
-		<transition source-state-id="58" destination-state-id="56" label-x="297" label-y="322">
+		<transition source-state-id="58" destination-state-id="56" label-x="291" label-y="324">
 			<path-point x="267" y="503"/>
 			<path-point x="300" y="334"/>
 			<path-point x="480" y="277"/>
@@ -6370,10 +6067,10 @@ debug_print(LOW , DEBUG_STATE , "EXIT - WAIT_NEXT2 - %d\n", my_address);
 			<attribute name="name" type="string" value="tr_332"/>
 			<attribute name="condition" type="string" value="TRANSMISSION_CANCELED &amp;&amp; !END_SIMULATION"/>
 		</transition>
-		<transition source-state-id="58" destination-state-id="41" label-x="80" label-y="275">
+		<transition source-state-id="58" destination-state-id="41" label-x="103" label-y="275">
 			<path-point x="261" y="501"/>
-			<path-point x="51" y="288"/>
-			<path-point x="151" y="181"/>
+			<path-point x="105" y="262"/>
+			<path-point x="205" y="155"/>
 			<path-point x="440" y="97"/>
 			<attribute name="name" type="string" value="tr_337"/>
 			<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
