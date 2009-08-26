@@ -588,6 +588,10 @@ Distribution *	\backoff_dist;
 #include 	<stdlib.h>
 #include	<errno.h>
 #include	<opnet.h>
+#include 	<errno.h>
+#include 	<dirent.h>
+#include 	<sys/types.h>
+#include 	<sys/stat.h>
 
 #include 	<wlan_support.h>
 #include	"cmac_types.h"
@@ -854,7 +858,7 @@ double 	TIME_MAX_PRIVILEGED;
 
 //debug
 void	debug_print(const int level, const int type , const char* fmt, ...);
-char* 	pk_type_to_str(short pk_type , char *msg);
+char* 	pk_type_to_str(short pk_type , char *msg, int length);
 double 	convert_double(double value);
 int	 	convert_int(int value);
 
@@ -876,7 +880,7 @@ frame_struct *get_multicast_frame_buffer(int pos);
 void 	print_neighborhood_table(int debug_type);
 void  	generate_hello(double next_hello);
 void 	update_neighborhood_table(int source , int dist_sink , int dist_border, double sync_rx_power, int branch , List *bn_list_tmp , double next_hello);
-char* 	print_border_nodes(char *msg);
+char* 	print_border_nodes(char *msg, int length);
 
 
 //Stability
@@ -1411,7 +1415,7 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 	//Frame buffer
 	frame_struct	*ptr;
 	//info
-	char			msg[500];
+	char			msg[100];
 	int				i;
 	
 	for(i=op_prg_list_size(unicast_frame_buffer)-1 ; i>=0 ; i--){
@@ -1427,8 +1431,8 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 			
 			//Verify that we dont have too many retransmissions
 			if (ptr->nb_retry >= MAX_NB_RETRY){
-				debug_print(LOW, DEBUG_SEND , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
-				debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
+				debug_print(LOW, DEBUG_SEND , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
+				debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 				
 				
 				ptr = op_prg_list_remove(unicast_frame_buffer , i);
@@ -1437,7 +1441,7 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 				op_prg_mem_free(ptr);
 			}
 			else
-				debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was not acknowledged -> RETRANSMISSION (nb retry %d type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
+				debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was not acknowledged -> RETRANSMISSION (nb retry %d type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 		}
 	}
 	FOUT;
@@ -1450,7 +1454,7 @@ void del_timeouted_unicast(void *arg, int code){
 	
 	frame_struct	*ptr;
 	int				i;
-	char			msg[500];
+	char			msg[100];
 	double			older_entry = -1;
 	
 	for(i=op_prg_list_size(unicast_frame_buffer) - 1 ; i >=0 ; i--){
@@ -1459,7 +1463,7 @@ void del_timeouted_unicast(void *arg, int code){
 		//timeouted entry
 		if (ptr->time_added <= op_sim_time() - TIMEOUT_DATA_FRAME){
 			
-			debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was DELETED after its timeout (nb_retry %d, type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
+			debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was DELETED after its timeout (nb_retry %d, type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 		
 			ptr = op_prg_list_remove(unicast_frame_buffer , i);
 			if (ptr->payload != NULL)
@@ -1561,7 +1565,7 @@ void print_unicast_frame_buffer(int debug_type){
 	//Frame buffer
 	frame_struct	*ptr;
 	//info
-	char			msg[500];
+	char			msg[100];
 	int				i;
 
 	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
@@ -1574,7 +1578,7 @@ void print_unicast_frame_buffer(int debug_type){
 	for(i=op_prg_list_size(unicast_frame_buffer)-1 ; i>=0 ; i--){
 		ptr = op_prg_list_access(unicast_frame_buffer , i);
 
-		debug_print(LOW , debug_type , "%5d	|	%s	|	%d		|	%d		|	%f\n", ptr->destination ,  pk_type_to_str(ptr->type , msg) , ptr->frame_id , ptr->nb_retry , ptr->time_transmission_min);
+		debug_print(LOW , debug_type , "%5d	|	%s	|	%d		|	%d		|	%f\n", ptr->destination ,  pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id , ptr->nb_retry , ptr->time_transmission_min);
 	}
 	FOUT;
 }
@@ -1595,7 +1599,7 @@ void del_timeouted_multicast(void *arg, int code){
 	
 	frame_struct	*ptr;
 	int				i;
-	char			msg[500];
+	char			msg[100];
 	double			older_entry = -1;
 	
 	for(i=op_prg_list_size(multicast_frame_buffer) - 1 ; i >=0 ; i--){
@@ -1604,8 +1608,8 @@ void del_timeouted_multicast(void *arg, int code){
 		//timeouted entry
 		if (ptr->time_added <= op_sim_time() - TIMEOUT_DATA_FRAME){
 			
-			debug_print(LOW, DEBUG_TIMEOUT , "the multicast frame to %d was DELETED after its timeout (nb_retry %d, type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
-			debug_print(LOW, DEBUG_NODE , "the multicast frame to %d was DELETED after its timeout (nb_retry %d, type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
+			debug_print(LOW, DEBUG_TIMEOUT , "the multicast frame to %d was DELETED after its timeout (nb_retry %d, type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
+			debug_print(LOW, DEBUG_NODE , "the multicast frame to %d was DELETED after its timeout (nb_retry %d, type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 		
 			ptr = op_prg_list_remove(multicast_frame_buffer , i);
 			if (ptr->payload != NULL)
@@ -1709,7 +1713,7 @@ void print_multicast_frame_buffer(int debug_type){
 	//Frame buffer
 	frame_struct	*ptr;
 	//info
-	char			msg[500];
+	char			msg[100];
 	int				i;
 
 	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
@@ -1722,7 +1726,7 @@ void print_multicast_frame_buffer(int debug_type){
 	for(i=op_prg_list_size(multicast_frame_buffer)-1 ; i>=0 ; i--){
 		ptr = op_prg_list_access(multicast_frame_buffer , i);
 
-		debug_print(LOW , debug_type , "%5d	|	%s	|	%d		|	%d		|	%f\n", ptr->destination ,  pk_type_to_str(ptr->type , msg) , ptr->frame_id , ptr->nb_retry , ptr->time_transmission_min);
+		debug_print(LOW , debug_type , "%5d	|	%s	|	%d		|	%d		|	%f\n", ptr->destination ,  pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id , ptr->nb_retry , ptr->time_transmission_min);
 	}
 	FOUT;
 }
@@ -1865,14 +1869,14 @@ void del_frame_buffer_with_id(int id , Boolean acknowledged){
 	FIN(del_frame_buffer_with_id(int id , Boolean acknowledged));
 	
 	frame_struct	*ptr;
-	char			msg[500];
+	char			msg[100];
 	int				i;
 
 	for(i=op_prg_list_size(unicast_frame_buffer)-1 ; i>=0 ; i--){
 		ptr = op_prg_list_access(unicast_frame_buffer , i);
 
 		if (ptr->frame_id == id){
-			debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was received (ack required %d, nb_retry %d, type %s, id %d)\n",  ptr->destination , acknowledged , ptr->nb_retry , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
+			debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was received (ack required %d, nb_retry %d, type %s, id %d)\n",  ptr->destination , acknowledged , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 		
 			ptr = op_prg_list_remove(unicast_frame_buffer , i);
 			if (ptr->payload != NULL)
@@ -1884,7 +1888,7 @@ void del_frame_buffer_with_id(int id , Boolean acknowledged){
 		ptr = op_prg_list_access(multicast_frame_buffer , i);
 
 		if (ptr->frame_id == id){
-			debug_print(LOW, DEBUG_TIMEOUT , "the multicast frame to %d was received (ack required %d, nb_retry %d, type %s, id %d)\n",  ptr->destination , acknowledged , ptr->nb_retry , pk_type_to_str(ptr->type , msg) , ptr->frame_id);
+			debug_print(LOW, DEBUG_TIMEOUT , "the multicast frame to %d was received (ack required %d, nb_retry %d, type %s, id %d)\n",  ptr->destination , acknowledged , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 		
 			ptr = op_prg_list_remove(multicast_frame_buffer , i);
 			if (ptr->payload != NULL)
@@ -1980,7 +1984,7 @@ int get_next_hop(){
 	
 	//Initialization
 	next.prio = 0;
-	next.addr = BROADCAST;
+	next.addr = ADDR_BROADCAST;
 	next.stab = 0;
 	switch (MAC_ROUTING){
 		case ROUTING_MAC_BORDER:
@@ -2264,7 +2268,7 @@ List *create_bn_list_from_packet(Packet *pk){
 	//insert each border node in the list
 	for(i=0 ; i<nb_borders; i++){
 		ptr = op_prg_mem_alloc(sizeof(int));		
-		sprintf(field_name ,"%s_%d", FIELD_PK_HELLO_BORDER, i);
+		snprintf(field_name, 50, "%s_%d", FIELD_PK_HELLO_BORDER, i);
 		op_pk_nfd_get(pk , field_name , ptr);
 		op_prg_list_insert(ll , ptr , OPC_LISTPOS_HEAD);
 	}
@@ -2515,7 +2519,7 @@ void fill_border_nodes_fields(Packet *pk){
 	
 	//Fills border fields
 	for(i=0 ; i < MAX_NB_BRANCHES ; i++){
-		sprintf(field_name , "%s_%d", FIELD_PK_HELLO_BORDER, i);
+		snprintf(field_name , 50, "%s_%d", FIELD_PK_HELLO_BORDER, i);
 		
 		//Border fields
 		if (i < op_prg_list_size(bn_list)){
@@ -2550,7 +2554,7 @@ int get_child_border_node(){
 	int		*int_ptr;
 	
 	if ((!is_border_node) || (op_prg_list_size(bn_list) == 0))
-		FRET(BROADCAST);
+		FRET(ADDR_BROADCAST);
 	
 	int_ptr = op_prg_list_access(bn_list , 0);
 	FRET(*int_ptr);
@@ -2564,7 +2568,7 @@ int get_child_from_sink(int current_branch){
 	int		*int_ptr;
 	
 	if ((!is_border_node) || (op_prg_list_size(bn_list) == 0))
-		FRET(BROADCAST);
+		FRET(ADDR_BROADCAST);
 	
 	
 	int_ptr = op_prg_list_access(bn_list , current_branch);
@@ -2573,16 +2577,16 @@ int get_child_from_sink(int current_branch){
 
 
 //Prints the list of the current border nodes
-char* print_border_nodes(char *msg){
-	FIN(print_border_nodes(char *msg));
+char* print_border_nodes(char *msg, int length){
+	FIN(print_border_nodes(char *msg, int length));
 	
 	int		*int_ptr;
 	int		i;
 
-	strcpy(msg , "");
+	strncpy(msg, "", length);
 	for(i=0; i < op_prg_list_size(bn_list) ; i++){
 		int_ptr = op_prg_list_access(bn_list , i);
-		sprintf(msg , "%s %d" , msg , *int_ptr);
+		snprintf(msg , length, "%s %d" , msg , *int_ptr);
 	}
 	FRET(msg);
 }
@@ -2691,7 +2695,7 @@ void  generate_hello(double next_hello){
 	frame_id = get_new_frame_id();
 	
 	frame.source				= my_address;
-	frame.destination			= BROADCAST;
+	frame.destination			= ADDR_BROADCAST;
 	frame.type					= HELLO_PK_TYPE;
 	frame.frame_id				= frame_id;
 	frame.nb_retry				= 0;
@@ -2884,7 +2888,7 @@ void print_neighborhood_table(int debug_type){
 	int				i , j;
 	neigh_struct	*ptr;
 	int				*addr_ptr;
-	char			msg[500];
+	char			msg[50];
 
 	
 	debug_print(LOW , debug_type , "---------------------------------------\n");
@@ -2892,26 +2896,23 @@ void print_neighborhood_table(int debug_type){
 	debug_print(LOW , debug_type , "---------------------------------------\n");
 	debug_print(LOW , debug_type , "\n");
 	
-	debug_print(LOW , debug_type , "addr |distSink|distBorder|Branch|Timeout|Stability|BN_LIST|SyncPower\n");
+	debug_print(LOW , debug_type , "addr |Sink|Border|Branch|Timeout|Stability|BN_LIST\n");
 	
 	for (i=0 ; i< op_prg_list_size(my_neighborhood_table) ; i++){
 		ptr = op_prg_list_access(my_neighborhood_table , i);
 		
 		//list of border nodes
-		strcpy(msg , "");
+		strncpy(msg, "", 50);
 		for(j=0; j < op_prg_list_size(ptr->border_nodes_list) ; j++){
 			addr_ptr = op_prg_list_access(ptr->border_nodes_list , j);
-			sprintf(msg , "%s %d", msg , *addr_ptr);
+			snprintf(msg , 50, "%s %d", msg , *addr_ptr);
 		}
 			
 		//the whole info
-		debug_print(LOW , debug_type , "%5d|   %3d  |   %3d    | %2d  | %f |%d|%s|%8.0f\n", ptr->address , convert_int(ptr->dist_sink) , convert_int(ptr->dist_border) , ptr->branch , ptr->timeout , compute_stability(ptr->stability) , msg ,  convert_double(ptr->sync_rx_power));
+		debug_print(LOW , debug_type , "%5d| %3d| %3d  | %2d  | %f |%d|%s\n", ptr->address , convert_int(ptr->dist_sink) , convert_int(ptr->dist_border) , ptr->branch , ptr->timeout , compute_stability(ptr->stability) , msg);
 	}
-	debug_print(LOW , debug_type , "\n");
-	debug_print(LOW , debug_type , "ME: 	DIST_SINK 			= %d 		DIST_BORDER 	= %d\n", 	my_dist_sink , 	my_dist_border );
-	debug_print(LOW , debug_type , "	 	IS_BORDER_NODE 		= %d 		SYNC_RX_POWER 	= %f\n", 	is_border_node, convert_double(my_sync_rx_power));
-	debug_print(LOW , debug_type , "		BORDER NODES(last sent)	= %s\n" , print_border_nodes(msg));
-	debug_print(LOW , debug_type , "\n");
+	debug_print(LOW , debug_type , "sink = %d, border = %d, isBN = %d, syncPw = %f, bn list = %s\n", 	my_dist_sink , 	my_dist_border, is_border_node, convert_double(my_sync_rx_power), print_border_nodes(msg, 50));
+
 	
 	FOUT;
 }
@@ -2961,7 +2962,7 @@ void print_neighborhood_table(int debug_type){
 Packet* create_packet(frame_struct frame){
 	FIN(create_packet(frame_struct frame));
 	
-	char	msg[500];
+	char	msg[100];
 	Packet	*pk;
 
 	switch(frame.type){
@@ -3018,7 +3019,7 @@ Packet* create_packet(frame_struct frame){
 			op_pk_nfd_set(pk , FIELD_PK_SYNC_BRANCH, 	sync_last_branch);
 		break;
 		default:
-			strcpy(msg, "Packet type %d unknown");
+			strncpy(msg, "Packet type %d unknown", 100);
 			op_sim_end(msg , "Consequently, I cannot generate the corresponding packet" , "" , "");
 		break;
 	}
@@ -3040,9 +3041,9 @@ Packet* create_packet(frame_struct frame){
 void set_next_frame_null(){
 	FIN(set_next_frame_null());
 	
-	char	msg1[50];
+	char	msg[100];
 
-	debug_print(MEDIUM , DEBUG_SEND , "old frame scheduled (destination %d, type %s) canceled / deleted\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1));
+	debug_print(MEDIUM , DEBUG_SEND , "old frame scheduled (destination %d, type %s) canceled / deleted\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg, 100));
 	
 	next_frame_to_send.type = NO_PK_TYPE;
 	
@@ -3054,10 +3055,10 @@ void set_next_frame_null(){
 void change_next_frame(frame_struct new_frame){
 	FIN(change_next_frame(frame_struct new_frame));
 	
-	char	msg1[50];
-	char	msg2[50];
+	char	msg1[100];
+	char	msg2[100];
 
-	debug_print(MEDIUM , DEBUG_SEND , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1) , new_frame.destination , pk_type_to_str(new_frame.type , msg2));
+	debug_print(MEDIUM , DEBUG_SEND , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
 	
 	next_frame_to_send = new_frame;
 	
@@ -3219,7 +3220,7 @@ void generate_sync(){
 	frame_id = get_new_frame_id();
 	//Next frame to send
 	frame.source 				= my_address;
-	frame.destination 			= BROADCAST;
+	frame.destination 			= ADDR_BROADCAST;
 	frame.type 					= SYNC_PK_TYPE;
 	frame.frame_id 				= frame_id;
 	frame.nb_retry				= 0;
@@ -3262,7 +3263,7 @@ void generate_ctr_end(){
 	frame_id = get_new_frame_id();
 	//Next frame to send
 	frame.source 				= my_address;
-	frame.destination 			= BROADCAST;
+	frame.destination 			= ADDR_BROADCAST;
 	frame.type 					= CTR_END_PK_TYPE;
 	frame.frame_id 				= frame_id;
 	frame.nb_retry				= 0;
@@ -3318,7 +3319,7 @@ void generate_ctr(){
 		destination = get_child_border_node();
 	
 	//No more border node
-	if (destination == BROADCAST){
+	if (destination == ADDR_BROADCAST){
 		is_node_privileged = OPC_FALSE;
 		FOUT;
 	}
@@ -3437,7 +3438,7 @@ void prepare_data_frame(Packet	*payload , int frame_id , int next_hop , double p
 	frame.power_ratio			= power_ratio;
 	frame.pk_size				= HEADERS_PK_SIZE + op_pk_total_size_get(payload);
 	
-	if (next_hop == BROADCAST){
+	if (next_hop == ADDR_BROADCAST){
 		frame.type	= DATA_MULTICAST_PK_TYPE;
 		add_in_multicast_frame_buffer(frame , OPC_LISTPOS_TAIL);
 	}
@@ -3458,7 +3459,6 @@ void receive_packet_from_up(){
 	int		frame_id;
 	//Info from the upper layer
 	int		next_hop;
-	Ici		*ici_ptr;
 	double	power_ratio;
 	
 	
@@ -3469,28 +3469,9 @@ void receive_packet_from_up(){
 	payload = op_pk_get(op_intrpt_strm());
 	
 	
-	//Destination
-	ici_ptr = op_intrpt_ici();
-	
-	//Usual case: the next hop is defined explicity by the upper layer
-	if (ici_ptr != OPC_NIL){
-		op_ici_attr_get (ici_ptr, "dest_addr", 		&next_hop);
-		//op_ici_attr_get (ici_ptr, "power_ratio", 	&power_ratio);
-	}	
-	
-	//NO routing in MAC but no specified next hop
-	if ((ici_ptr == OPC_NIL) && (MAC_ROUTING == ROUTING_MAC_NO))
-		op_sim_end("The mac layer is not allowed to route packets" , "and it received a packet from the upper layer" , "without any next hop specified in the ICI" , "");
-	
-	//Routing in MAC but a specified next hop
-	else if ((ici_ptr != OPC_NIL) && (next_hop != -1) && (next_hop != 0) && (MAC_ROUTING != ROUTING_MAC_NO))
-		op_sim_end("The mac layer is configured to implement routing by itself" , "but a next hop is specified explicitly from the upper layer" , "" , "");
-		
-	//routing in MAC -> computes the next hop		
-	else if (MAC_ROUTING != ROUTING_MAC_NO){
-		next_hop	= get_next_hop();		
-		power_ratio	= 1;
-	}
+	//routing
+	next_hop	= get_next_hop();		
+	power_ratio	= 1;
 
 	//ready to send !
 	if (next_hop != -1)
@@ -3661,13 +3642,12 @@ void receive_packet_from_radio(){
 	//next hello
 	double			next_hello;
 	//Control
-	char			msg[500];
+	char			msg[100];
 	
 
 	//Gets the packet
 	frame  = op_pk_get(op_intrpt_strm());
 
-	op_pk_print(frame);
 	
 	//Some pk fields
 	op_pk_nfd_get(frame, FIELD_PK_ACCEPT,		&accepted);
@@ -3677,10 +3657,10 @@ void receive_packet_from_radio(){
 	op_pk_nfd_get(frame, FIELD_PK_ID,			&frame_id);
 	
 	//DEBUG
-	debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main freq %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , get_nav_main_freq());
+	debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main freq %f)\n", source , destination , pk_type_to_str(frame_type , msg, 100) , frame_id , accepted , is_reply_required , get_nav_main_freq());
 	
 	//Valid frame ?
-	if ((!accepted) && ((my_address == destination) || (destination == BROADCAST)) ){
+	if ((!accepted) && ((my_address == destination) || (destination == ADDR_BROADCAST)) ){
 		//printf("Frame -> collision (%f)\n" , op_sim_time());
 	}
 	
@@ -3757,7 +3737,7 @@ void receive_packet_from_radio(){
 				
 					
 				//If NAV & data reception -> drop the packet (I won't be able to acknowledge it !)
-				if ((destination == my_address) || (destination == BROADCAST)){
+				if ((destination == my_address) || (destination == ADDR_BROADCAST)){
 				 	
 					//gets the payload
 				 	op_pk_nfd_get(frame , FIELD_PK_DATA_PAYLOAD,	&payload);
@@ -3770,7 +3750,7 @@ void receive_packet_from_radio(){
 					//Forwarding (max power, since we have no info)
 					else if (!is_frame_id_seen(frame_id)){
 						next_hop = get_next_hop();
-						if (next_hop != BROADCAST)
+						if (next_hop != ADDR_BROADCAST)
 							prepare_data_frame(payload , frame_id , next_hop , 1);					
 					}
 					
@@ -3783,7 +3763,7 @@ void receive_packet_from_radio(){
 					
 					
 					//sends an acknowledgement (unicast + no nav)
-					if ((destination != BROADCAST) && (is_reply_possible(destination , my_main_frequency)))
+					if ((destination != ADDR_BROADCAST) && (is_reply_possible(destination , my_main_frequency)))
 						generate_ack(source , frame_id , duration , power_ratio);
 				}
 				else if (destination != my_address)
@@ -3851,7 +3831,7 @@ void receive_packet_from_radio(){
 				
 			
 				//We received a CTS for us -> we have to send now the data packet
-				//NB: it is unicast because multicast frame are sent in BROADCAST, wihtout RTS / CTS
+				//NB: it is unicast because multicast frame are sent in ADDR_BROADCAST, wihtout RTS / CTS
 				if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency)) && (!is_frame_buffer_empty())){
 					frame_ptr = get_unicast_frame_buffer(0);
 					if (frame_ptr != NULL)
@@ -3919,7 +3899,7 @@ void receive_packet_from_radio(){
 					
 					//No data frame -> ack to send (max power)
 					//No ack if I have already finished my slot -> I will send a CTR which will act as a CTR-ACK
-					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_child_border_node()== BROADCAST))){
+					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_child_border_node()== ADDR_BROADCAST))){
 						generate_ack(source , frame_id , 0 , 1);
 					}
 					
@@ -3954,8 +3934,8 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_BRANCH,&branch);
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_NEXT, 	&next_hello);
 			
-				if (destination != BROADCAST){
-					op_sim_end("An hello is sent in unicast" , "not in broadcast", "please correct the bug", "");
+				if (destination != ADDR_BROADCAST){
+					op_sim_end("An hello is sent in unicast" , "not in ADDR_BROADCAST", "please correct the bug", "");
 				}
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_DIST_SINK, 	&dist_sink);
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_DIST_BORDER, 	&dist_border);
@@ -3976,7 +3956,7 @@ void receive_packet_from_radio(){
 			break;
 				
 			default:
-				sprintf(msg , "TYPE %d" , frame_type);
+				snprintf(msg , 100, "TYPE %d" , frame_type);
 				op_sim_end("Unknown received packet" , msg , "" , "");
 			break;
 		}
@@ -4041,7 +4021,7 @@ void interrupt_process(){
 	FIN(interrupt_process());
 	
 	//control
-	char		msg[500];
+	char		msg[100];
 	//debug
 	Boolean		old;
 	//reception power 
@@ -4125,7 +4105,7 @@ void interrupt_process(){
 				break;
 					
 				default :
-					sprintf(msg, "We are not configured to handle the stat from the line %d\n", op_intrpt_stat());
+					snprintf(msg, 100, "We are not configured to handle the stat from the line %d\n", op_intrpt_stat());
 					op_sim_end(msg, "" , "" , "");
 			}
 		break;
@@ -4384,42 +4364,42 @@ int convert_int(int value){
 //-----------------------------------------------------------
 
 //Converts a pk_type in string
-char* pk_type_to_str(short pk_type , char *msg){
-	FIN(pk_type_to_str(short pk_type , char *msg));
+char* pk_type_to_str(short pk_type , char *msg, int length){
+	FIN(pk_type_to_str(short pk_type , char *msg, int length));
 
 	switch(pk_type){
 		case RTS_PK_TYPE:
-			sprintf(msg, "RTS");
+			strncpy(msg, "RTS", length);
 		break;
 		case CTS_PK_TYPE:
-			sprintf(msg, "CTS");
+			strncpy(msg, "CTS", length);
 		break;
 		case CTR_PK_TYPE:
-			sprintf(msg, "CTR");
+			strncpy(msg, "CTR", length);
 		break;
 		case CTR_ACK_PK_TYPE:
-			sprintf(msg, "CTR-ACK");
+			strncpy(msg, "CTR-ACK", length);
 		break;
 		case CTR_END_PK_TYPE:
-			sprintf(msg, "CTR-END");
+			strncpy(msg, "CTR-END", length);
 		break;
 		case ACK_PK_TYPE:
-			sprintf(msg, "ACK");
+			strncpy(msg, "ACK", length);
 		break;
 		case DATA_UNICAST_PK_TYPE:
-			sprintf(msg, "DATA-UNI");
+			strncpy(msg, "DATA-UNI", length);
 		break;
 		case DATA_MULTICAST_PK_TYPE:
-			sprintf(msg, "DATA-MULTI");
+			strncpy(msg, "DATA-MULTI", length);
 		break;
 		case HELLO_PK_TYPE:
-			sprintf(msg, "HELLO");
+			strncpy(msg, "HELLO", length);
 		break;
 		case SYNC_PK_TYPE:
-			sprintf(msg, "SYNC");
+			strncpy(msg, "SYNC", length);
 		break;
 		default:
-			sprintf(msg, "%d unknown", pk_type);
+			snprintf(msg, length, "%d unknown", pk_type);
 		break;
 	}
 
@@ -4500,8 +4480,8 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 void open_debug_file(FILE **fout , const char* fmt, ...){	
 	FIN(open_debug_file(FILE **fout , const char* fmt, ...));
 	
-	char	filename[500];
-	char	msg[500];	
+	char	filename[100];
+	char	msg[100];	
 	va_list argptr;
 	
 	//The file was already opened -> nothing to do
@@ -4512,13 +4492,13 @@ void open_debug_file(FILE **fout , const char* fmt, ...){
 	va_start(argptr, fmt);
 	
 	//gets the filename
-	strcpy(filename, "");
-	vsprintf(filename , fmt, argptr);     
+	strncpy(filename, "", 100);
+	vsnprintf(filename , 100, fmt, argptr);     
 	
 	//And open it !
 	*fout = fopen(filename, "w");
 	if (*fout == NULL){
-		sprintf(msg, "%s -> %s", filename , strerror(errno));
+		snprintf(msg, 100, "%s -> %s", filename , strerror(errno));
 		op_sim_end("I cannot open the debug file", msg , "" , "");	
 	}	
 	
@@ -4617,8 +4597,9 @@ char	str[300];
 Objid	statwire_objid;
 int		num_statwires;
 double	threshold;
-//Filenames
-//char	filename[200];
+//for debug files
+char	dirname[200];
+DIR		*pdir;
 //Position, routes...
 int		x_int , y_int , x_sink, y_sink;
 int		sink_destination;
@@ -4800,18 +4781,29 @@ if (my_stat_id == 0)
 
 if (DEBUG > NO){
 	if (my_stat_id == 0){
-		open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"/tmp/debug/%d_cmac_debug.txt" , 		cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_STATE] ,		"/tmp/debug/%d_cmac_debug_state.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"/tmp/debug/%d_cmac_debug_backoff.txt" ,cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_SEND] ,		"/tmp/debug/%d_cmac_debug_send.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_RECEIVE] ,	"/tmp/debug/%d_cmac_debug_receive.txt" ,cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_RADIO] ,		"/tmp/debug/%d_cmac_debug_radio.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"/tmp/debug/%d_cmac_debug_control.txt" ,cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"/tmp/debug/%d_cmac_debug_timeout.txt" ,cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_HELLO] ,		"/tmp/debug/%d_cmac_debug_hello.txt" , 	cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_UP] ,		"/tmp/debug/%d_cmac_debug_up.txt" , 	cmac_timestamp);
+	
+		//create debug directories if they do not exist	
+		pdir = opendir(LOG_DIR);
+		if (!pdir)
+			mkdir(LOG_DIR , 0777);
+		snprintf(dirname , 200, "%s/%s", LOG_DIR , LOG_SUFFIX_NODES);
+		pdir = opendir(dirname);
+		if (!pdir)
+			mkdir(dirname , 0777);
+	
+		//open the associated debug files
+		open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"%s/%d_all.txt" , 		LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_STATE] ,		"%s/%d_state.txt" , 	LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"%s/%d_backoff.txt" ,LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_SEND] ,		"%s/%d_send.txt" , 	LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_RECEIVE] ,	"%s/%d_receive.txt" ,LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_RADIO] ,		"%s/%d_radio.txt" , 	LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"%s/%d_control.txt" ,LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"%s/%d_timeout.txt" ,LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_HELLO] ,		"%s/%d_hello.txt" , 	LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_UP] ,		"%s/%d_up.txt" , 	LOG_DIR, cmac_timestamp);
 	}
-	open_debug_file(&my_debug_file,						"/tmp/debug/nodes/%d.txt" , 			my_address);
+	open_debug_file(&my_debug_file,						"%s/%s/%d.txt" , 			LOG_DIR, LOG_SUFFIX_NODES, my_address);
 		
 }
 
@@ -5108,7 +5100,7 @@ op_intrpt_schedule_self(op_sim_time() + 5.0 + op_dist_uniform(3.0) , HELLO_PK_CO
 //-----------------------------------------------------------------
 
 //Control
-char		msg[500];
+char		msg[100];
 //Packet
 Packet*		frame_pk;
 
@@ -5126,7 +5118,7 @@ if (DEBUG_STATE_MACHINE)
 if (!is_tx_busy){
 
 	//debug
-	debug_print(LOW , DEBUG_SEND , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
+	debug_print(LOW , DEBUG_SEND , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
 
 
 	//Prepares the packet
@@ -5140,7 +5132,7 @@ if (!is_tx_busy){
 	// -----  SPECIAL ACTIONS  -----
 
 	
-	if (next_frame_to_send.destination == BROADCAST)
+	if (next_frame_to_send.destination == ADDR_BROADCAST)
 		print_nav_list(DEBUG_HELLO);
 	
 	switch (next_frame_to_send.type){
@@ -5290,7 +5282,7 @@ if (!is_tx_busy){
 	//-----------------------------------------------------
 
 	//BROADCAST Frame 
-	if (last_frame_sent.destination == BROADCAST)
+	if (last_frame_sent.destination == ADDR_BROADCAST)
 		is_reply_required = OPC_FALSE;
 	
 	//Ack Frame
@@ -5366,7 +5358,7 @@ frame_struct	next_data_frame;
 double			time_for_first_data;
 double			time_for_second_data;
 //Control
-char			msg[200];
+char			msg[100];
 
 
 if (DEBUG_STATE_MACHINE)
@@ -5378,7 +5370,7 @@ if (DEBUG_STATE_MACHINE)
 //------------------------------------------
 
 
-debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, border %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg) ,  IS_PK_TO_SEND , is_border_node , is_node_privileged);
+debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, border %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg, 100) ,  IS_PK_TO_SEND , is_border_node , is_node_privileged);
 if (is_node_privileged)
 	debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d (medium %d, high %d)\n", time_start_privileged , slot_privileged_duration * PRIV_MIN_RATIO , time_start_privileged + slot_privileged_duration * PRIV_MIN_RATIO <= op_sim_time() , PRIVILEGED_END , PRIVILEGED_MEDIUM_LIMIT , PRIVILEGED_HIGH_LIMIT);
 		
@@ -5446,7 +5438,7 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 			data_frame = *frame_ptr;
 	
 		//broadcast frames do not need any RTS
-		if ((data_frame.destination == BROADCAST) || (data_frame.pk_size  < RTS_PK_SIZE))
+		if ((data_frame.destination == ADDR_BROADCAST) || (data_frame.pk_size  < RTS_PK_SIZE))
 			change_next_frame(data_frame);
 		
 		//Generates a new RTS, it will be automatically registered as the new frame to send
@@ -5471,7 +5463,7 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 
 
 //debug
-debug_print(MEDIUM , DEBUG_SEND , "has a packet to send to %d (type %s, id %d, nb_retry %d)\n", next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg) , next_frame_to_send.frame_id , next_frame_to_send.nb_retry);
+debug_print(MEDIUM , DEBUG_SEND , "has a packet to send to %d (type %s, id %d, nb_retry %d)\n", next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , next_frame_to_send.nb_retry);
 
 
 
@@ -5547,7 +5539,7 @@ if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 
 
 	if (!IS_MEDIUM_BUSY){
-		if ((!is_node_privileged) &&     (     (next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.destination == BROADCAST) || ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE))   )      ){
+		if ((!is_node_privileged) &&     (     (next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.destination == ADDR_BROADCAST) || ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE))   )      ){
 
 			//Takes a new backoff
 			my_backoff = op_dist_outcome (backoff_dist);
@@ -5561,10 +5553,10 @@ if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 		}
 		else{
 			debug_print(MEDIUM , DEBUG_BACKOFF , "priv %d & \n", (!is_node_privileged));
-			debug_print(MEDIUM , DEBUG_BACKOFF , " rts %d | broadcast %d | data without rts %d\n", (next_frame_to_send.type == RTS_PK_TYPE) , (next_frame_to_send.destination == BROADCAST) , ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE)));
+			debug_print(MEDIUM , DEBUG_BACKOFF , " rts %d | broadcast %d | data without rts %d\n", (next_frame_to_send.type == RTS_PK_TYPE) , (next_frame_to_send.destination == ADDR_BROADCAST) , ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE)));
 			debug_print(MEDIUM , DEBUG_BACKOFF , "%d = %d & %f < %f\n", next_frame_to_send.type, DATA_UNICAST_PK_TYPE, next_frame_to_send.pk_size, RTS_PK_SIZE);
 			my_backoff = 0;
-			debug_print(MEDIUM , DEBUG_BACKOFF , "no backoff required (priviledged %d, next=rts %d, broadcast %d, data_with_previous_rts %d, rts_thresh %f)\n", is_node_privileged , next_frame_to_send.type == RTS_PK_TYPE , next_frame_to_send.destination == BROADCAST, ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE)), RTS_PK_SIZE);
+			debug_print(MEDIUM , DEBUG_BACKOFF , "no backoff required (priviledged %d, next=rts %d, broadcast %d, data_with_previous_rts %d, rts_thresh %f)\n", is_node_privileged , next_frame_to_send.type == RTS_PK_TYPE , next_frame_to_send.destination == ADDR_BROADCAST, ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE)), RTS_PK_SIZE);
 		}		
 	}
 	else
@@ -5790,14 +5782,14 @@ if (DEBUG_STATE_MACHINE)
 				<value-text>
 <![CDATA[
 //Control
-char	msg[500];
+char	msg[100];
 
 
 
 //Just a debug message when we start to wait the reply for one of our frame
 if (is_reply_required){
 	//debug
-	debug_print(MAX , DEBUG_SEND , "%s sent, it must wait a reply\n", pk_type_to_str(last_frame_sent.type , msg));
+	debug_print(MAX , DEBUG_SEND , "%s sent, it must wait a reply\n", pk_type_to_str(last_frame_sent.type , msg, 100));
 
 
 	//We did not received yet a reply for our transmission (we just leave it !)
@@ -5814,11 +5806,7 @@ if (is_reply_required){
 				<value-text>
 <![CDATA[
 //Control
-char		msg[500];
-//char		msg2[500];
-//packet and info
-//Packet		*frame;
-//int			source , destination , type;
+char		msg[100];
 
 
 //Default (will change of the received packet is not that we expect
@@ -5843,7 +5831,7 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 	if ((last_frame_sent.type == DATA_UNICAST_PK_TYPE) || (last_frame_sent.type == RTS_PK_TYPE))
 		increment_nb_rety_unicast_frame_buffer(last_frame_sent.frame_id);
 		
-	debug_print(LOW , DEBUG_TIMEOUT , "the flow to %d is broken for one of my frame (type %s, retry %d , id %d, next type %d) (timeout %d bad_reply %d)\n", last_frame_sent.destination , pk_type_to_str(last_frame_sent.type, msg) , last_frame_sent.nb_retry , last_frame_sent.frame_id , next_frame_to_send.type , IS_FRAME_TIMEOUT , is_reply_bad);
+	debug_print(LOW , DEBUG_TIMEOUT , "the flow to %d is broken for one of my frame (type %s, retry %d , id %d, next type %d) (timeout %d bad_reply %d)\n", last_frame_sent.destination , pk_type_to_str(last_frame_sent.type, msg, 100) , last_frame_sent.nb_retry , last_frame_sent.frame_id , next_frame_to_send.type , IS_FRAME_TIMEOUT , is_reply_bad);
 	
 	
 	//CTR -> we must retransmit it

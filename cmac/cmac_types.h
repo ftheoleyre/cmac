@@ -22,7 +22,7 @@
 
 
 //-----------------------------------------------
-//				COMMON
+//				PARAMETERS
 //-----------------------------------------------
 
 //mac layer names
@@ -33,9 +33,21 @@
 #define		TIME_BEFORE_HELLO_CONVERGENCE	5.0 + HELLO_PK_PERIOD * 1.1
 #define		TIME_START_DATA					60.0
 
+//debug
+#define		LOG_DIR							"/tmp/debug"
+#define		LOG_SUFFIX_NODES				"nodes"
+
+
+
+
+
+//-----------------------------------------------
+//				CONSTANTS
+//-----------------------------------------------
+
 
 //reserved addresses
-#define		BROADCAST						-1
+#define		ADDR_BROADCAST					-1
 
 //backoff
 #define		MAX_BACKOFF						32
