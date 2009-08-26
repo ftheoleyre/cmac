@@ -7,15 +7,9 @@
 				<default-value value="1.0"/>
 			</properties>
 		</attribute>
-		<attribute name="Start Time Packet Generation" type="double">
-			<properties type="double" auto-assign="no" symbolic-only="no">
-				<default-value value="0.0"/>
-			</properties>
-		</attribute>
 	</model-attributes>
 	<attribute-assignments>
 		<assignment attribute-name="Packet Interarrival Arg1" type="double" status="promoted"/>
-		<assignment attribute-name="Start Time Packet Generation" type="double" status="promoted"/>
 		<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
 		<assignment attribute-name="doc file" type="string" status="hidden"/>
 		<assignment attribute-name="endsim intrpt" type="toggle" status="hidden"/>
@@ -91,7 +85,9 @@ double				next_packet_arrival_time;
 	<header-block>
 <![CDATA[
 /* Include files. */
-#include <math.h>
+#include 	<math.h>
+#include 	"../cmac/cmac_types.h"
+
 
 #define		PACKET_TIME_DISTRIBUTION		"constant"
 #define		PACKET_TIME_ARG2				0
@@ -209,22 +205,16 @@ op_intrpt_schedule_self (op_sim_time () + 0.01 + op_dist_uniform(inter_pk_time) 
 <![CDATA[
 //----------- Traffic generation  -----------------
 double				arg1_pk_time;
-double				time_start;
 
 //Parameters
-op_ima_obj_attr_get (op_id_self(), 		"Packet Interarrival Arg1", 		&arg1_pk_time);
-intarrvl_time_dist_handle = op_dist_load (PACKET_TIME_DISTRIBUTION , arg1_pk_time , PACKET_TIME_ARG2);
-op_ima_obj_attr_get (op_id_self(), 		"Start Time Packet Generation",			&time_start);
-
-
-
+op_ima_obj_attr_get (op_id_self(), 		"Packet Interarrival Arg1", 	&arg1_pk_time);
+intarrvl_time_dist_handle = op_dist_load (PACKET_TIME_DISTRIBUTION , 	arg1_pk_time , PACKET_TIME_ARG2);
 
 //next packet
 next_packet_arrival_time = op_sim_time () + op_dist_outcome (intarrvl_time_dist_handle);
 
-
 //only if start is over-passed (One interarrival pk has surely changed)
-if (time_start < op_sim_time()){
+if (op_sim_time() > TIME_START_DATA){
 
 	//PK creation
 	pksize = floor ((SimT_Pk_Size) op_dist_outcome (packet_size_dist_handle));
@@ -257,7 +247,7 @@ if (time_start < op_sim_time()){
 }
 
 //	Schedule the next packet arrival
-if ((next_packet_arrival_time) && (time_start != OPC_DBL_INFINITY))
+if (next_packet_arrival_time)
 	op_intrpt_schedule_self (next_packet_arrival_time, 0);
   
 ]]>

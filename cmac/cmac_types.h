@@ -25,6 +25,15 @@
 //				COMMON
 //-----------------------------------------------
 
+//mac layer names
+#define		CMAC							1
+#define		IEEE80211						2
+
+//some specific time values
+#define		TIME_BEFORE_HELLO_CONVERGENCE	5.0 + HELLO_PK_PERIOD * 1.1
+#define		TIME_START_DATA					60.0
+
+
 //reserved addresses
 #define		BROADCAST						-1
 
@@ -68,7 +77,8 @@
 //				HELLOS
 //-----------------------------------------------
 
-#define		INTERVALL_HELLO					30.0
+//time between 2 hellos
+#define		HELLO_PK_PERIOD					1.0
 
 //The maximum number of stabilities to store
 #define		MAX_STAB						10
@@ -210,7 +220,36 @@
 //MTU in bits
 #define		MTU_MAX							2400.0
 
+
 	
+//fields names
+#define		FIELD_PK_SOURCE					"SOURCE"
+#define		FIELD_PK_DESTINATION			"DESTINATION"
+#define		FIELD_PK_ID						"Data Packet ID"	
+#define		FIELD_PK_DURATION				"DURATION"	
+#define		FIELD_PK_TYPE					"TYPE"
+#define		FIELD_PK_ACCEPT					"Accept"
+#define		FIELD_PK_POWER_RATIO			"POWER_RATIO"
+
+//hellos
+#define		FIELD_PK_HELLO_DIST_SINK		"DIST_SINK"
+#define		FIELD_PK_HELLO_DIST_BORDER		"DIST_BORDER"
+#define		FIELD_PK_HELLO_SYNC_POWER		"SYNC_POWER"
+#define		FIELD_PK_HELLO_BRANCH			"BRANCH"
+#define		FIELD_PK_HELLO_NEXT				"NEXT"
+#define		FIELD_PK_HELLO_NB_BORDERS		"NB_BORDERS"
+#define		FIELD_PK_HELLO_BORDER			"BORDER"
+
+//data
+#define		FIELD_PK_DATA_PAYLOAD			"PAYLOAD"
+
+//ctr
+#define		FIELD_PK_CTR_FREQ				"FREQ"
+#define		FIELD_PK_CTR_TSLOT				"T_SLOT"
+#define		FIELD_PK_CTR_OFFSET				"OFFSET"
+
+//sync
+#define		FIELD_PK_SYNC_BRANCH			"BRANCH"
 
 
 

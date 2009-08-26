@@ -282,12 +282,12 @@ network.
 				</symbol-map>
 			</properties>
 		</attribute>
-		<attribute name="CTR" group="cmac" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="yes">
-				<default-value value-symbol="YES"/>
+		<attribute name="mac_layer" group="cmac" type="integer">
+			<properties type="integer" auto-assign="yes" symbolic-only="yes">
+				<default-value value-symbol="CMAC"/>
 				<symbol-map>
-					<symbol name="YES" value="1"/>
-					<symbol name="NO" value="0"/>
+					<symbol name="CMAC" value="1"/>
+					<symbol name="IEEE80211" value="2"/>
 				</symbol-map>
 				<comments>
 <![CDATA[
@@ -314,7 +314,7 @@ remains privileged
 				<default-value value="4"/>
 			</properties>
 		</attribute>
-		<attribute name="routing_mac" group="routing" type="integer">
+		<attribute name="routing" group="routing" type="integer">
 			<properties type="integer" auto-assign="no" symbolic-only="yes">
 				<default-value value-symbol="BORDER"/>
 				<symbol-map>
@@ -534,8 +534,8 @@ Boolean	\is_hello_to_send;
 /* The list of frame_id already received */
 List*	\my_frame_id_seen;
 
-/* CTR are periodically sent by the sink */
-Boolean	\is_ctr_activated;
+/* My mac layer protocol */
+int	\mac_layer;
 
 /* Border nodes are allowed to send packets only when they are privileged */
 Boolean	\strict_privileged_mode;
@@ -2258,13 +2258,13 @@ List *create_bn_list_from_packet(Packet *pk){
 	ll = op_prg_list_create();
 		
 	//nb border nodes
-	op_pk_nfd_get(pk ,"NB_BORDERS" , 	&nb_borders);
-	op_pk_nfd_get(pk ,"SOURCE" , 		&source);
+	op_pk_nfd_get(pk,	FIELD_PK_HELLO_NB_BORDERS, 	&nb_borders);
+	op_pk_nfd_get(pk, 	FIELD_PK_SOURCE, 			&source);
 
 	//insert each border node in the list
 	for(i=0 ; i<nb_borders; i++){
 		ptr = op_prg_mem_alloc(sizeof(int));		
-		sprintf(field_name ,"BORDER_%d", i);
+		sprintf(field_name ,"%s_%d", FIELD_PK_HELLO_BORDER, i);
 		op_pk_nfd_get(pk , field_name , ptr);
 		op_prg_list_insert(ll , ptr , OPC_LISTPOS_HEAD);
 	}
@@ -2510,12 +2510,12 @@ void fill_border_nodes_fields(Packet *pk){
 	compute_current_bn_list(&bn_list);
 	
 	//Nb of border nodes
-	op_pk_nfd_set(pk , "NB_BORDERS" , op_prg_list_size(bn_list));
+	op_pk_nfd_set(pk , FIELD_PK_HELLO_NB_BORDERS , op_prg_list_size(bn_list));
 	
 	
 	//Fills border fields
 	for(i=0 ; i < MAX_NB_BRANCHES ; i++){
-		sprintf(field_name , "BORDER_%d", i);
+		sprintf(field_name , "%s_%d", FIELD_PK_HELLO_BORDER, i);
 		
 		//Border fields
 		if (i < op_prg_list_size(bn_list)){
@@ -2709,8 +2709,7 @@ void  generate_hello(double next_hello){
 	add_in_multicast_frame_buffer(frame , OPC_LISTPOS_HEAD);
 	is_hello_to_send 			= OPC_TRUE;
 	
-	debug_print(LOW , DEBUG_HELLO , "HELLO generated\n");
-	debug_print(MAX , DEBUG_NODE , "HELLO generated\n");
+	debug_print(LOW , DEBUG_HELLO , "HELLO generated toward %d\n", frame.destination);
 	
 	FOUT;
 }
@@ -2733,7 +2732,7 @@ void delete_timeouted_neighbors(void *ptr , int code){
 		//The entry is timeouted -> stability --
 		if (neigh_ptr->timeout <= op_sim_time()){
 			update_stability(neigh_ptr->stability , OPC_FALSE);
-			neigh_ptr->timeout = INTERVALL_HELLO + op_sim_time();
+			neigh_ptr->timeout = HELLO_PK_PERIOD + op_sim_time();
 
 			//Stability = 0 -> delete the entry
 			if (compute_stability(neigh_ptr->stability) == 0){		
@@ -2834,7 +2833,7 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 		//We add one entry -> we must schedule the timeout verification
 		if (op_prg_list_size(my_neighborhood_table) == 0)
 			
-			op_intrpt_schedule_call(op_sim_time() + INTERVALL_HELLO , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
+			op_intrpt_schedule_call(op_sim_time() + HELLO_PK_PERIOD , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
 
 		neigh_ptr = op_prg_mem_alloc(sizeof(neigh_struct));
 		neigh_ptr->address				= source;
@@ -2842,7 +2841,7 @@ void update_neighborhood_table(int source , int dist_sink , int dist_border, dou
 		neigh_ptr->dist_border			= dist_border;
 		neigh_ptr->sync_rx_power		= sync_rx_power;
 		neigh_ptr->branch				= branch;
-		neigh_ptr->timeout				= op_sim_time() +INTERVALL_HELLO;
+		neigh_ptr->timeout				= op_sim_time() + HELLO_PK_PERIOD;
 		neigh_ptr->border_nodes_list	= bn_list_tmp;
 		neigh_ptr->timeout				= op_sim_time() + next_hello + 0.1;			
 		init_stability(neigh_ptr->stability , OPC_TRUE);
@@ -2969,54 +2968,54 @@ Packet* create_packet(frame_struct frame){
 		case DATA_MULTICAST_PK_TYPE:
 		case DATA_UNICAST_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_frame");
-			op_pk_nfd_set(pk , "PAYLOAD" , 		op_pk_copy(frame.payload));
-			op_pk_nfd_set(pk , "DURATION" , 	frame.duration);
-			op_pk_nfd_set(pk , "POWER_RATIO" , 	frame.power_ratio);
+			op_pk_nfd_set(pk , FIELD_PK_DATA_PAYLOAD , 	op_pk_copy(frame.payload));
+			op_pk_nfd_set(pk , FIELD_PK_DURATION , 		frame.duration);
+			op_pk_nfd_set(pk , FIELD_PK_POWER_RATIO , 	frame.power_ratio);
 		break;
 		case HELLO_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_hello");
-			op_pk_nfd_set(pk , "DIST_SINK" , 	my_dist_sink);
-			op_pk_nfd_set(pk , "DIST_BORDER" ,	my_dist_border);
-			op_pk_nfd_set(pk , "SYNC_POWER" ,	my_sync_rx_power);
-			op_pk_nfd_set(pk , "BRANCH" ,		my_branch);
-			op_pk_nfd_set(pk , "NEXT" ,			frame.next_hello);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_SINK , 	my_dist_sink);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_BORDER ,	my_dist_border);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_SYNC_POWER ,	my_sync_rx_power);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_BRANCH,		my_branch);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_NEXT,			frame.next_hello);
 			fill_border_nodes_fields(pk);
 		break;
 		case RTS_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_rts");
-			op_pk_nfd_set(pk , "DURATION" , 	frame.duration);
-			op_pk_nfd_set(pk , "POWER_RATIO" , 	frame.power_ratio);
+			op_pk_nfd_set(pk , FIELD_PK_DURATION , 		frame.duration);
+			op_pk_nfd_set(pk , FIELD_PK_POWER_RATIO , 	frame.power_ratio);
 		break;
 		case CTS_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_cts");
-			op_pk_nfd_set(pk , "DURATION" , 	frame.duration);
-			op_pk_nfd_set(pk , "POWER_RATIO" , 	frame.power_ratio);
+			op_pk_nfd_set(pk , FIELD_PK_DURATION, 		frame.duration);
+			op_pk_nfd_set(pk , FIELD_PK_POWER_RATIO, 	frame.power_ratio);
 		break;
 		case CTR_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr");
-			op_pk_nfd_set(pk , "FREQ" , 		my_privileged_frequency);
-			op_pk_nfd_set(pk , "T_SLOT" , 		slot_privileged_duration);
-			op_pk_nfd_set(pk , "OFFSET" , 	   	op_sim_time() - frame.time_added);
-debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_FREQ, 		my_privileged_frequency);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_TSLOT , 	slot_privileged_duration);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 	op_sim_time() - frame.time_added);
+			debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
 //TAG
 //			op_pk_nfd_set(pk , "OFFSET" , 		0);
 		
 		break;
 		case CTR_ACK_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr_ack");
-			op_pk_nfd_set(pk , "FREQ" , 		my_privileged_frequency);
-			op_pk_nfd_set(pk , "T_SLOT" , 		slot_privileged_duration);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_FREQ , 		my_privileged_frequency);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_TSLOT , 	slot_privileged_duration);
 		break;
 		case CTR_END_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr_end");
 		break;
 		case ACK_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ack");
-			op_pk_nfd_set(pk , "DURATION" , 	frame.duration);
+			op_pk_nfd_set(pk , FIELD_PK_DURATION , 		frame.duration);
 		break;
 		case SYNC_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_sync");
-			op_pk_nfd_set(pk , "BRANCH" , 		sync_last_branch);
+			op_pk_nfd_set(pk , FIELD_PK_SYNC_BRANCH, 	sync_last_branch);
 		break;
 		default:
 			strcpy(msg, "Packet type %d unknown");
@@ -3026,12 +3025,12 @@ debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_add
 	
 	
 	//Common fields
-	op_pk_nfd_set(pk , "SOURCE" , 			frame.source);
-	op_pk_nfd_set(pk , "DESTINATION" , 		frame.destination);
-	op_pk_nfd_set(pk , "TYPE" ,				frame.type);
-	op_pk_nfd_set(pk , "Data Packet ID" ,	frame.frame_id);
-	op_pk_nfd_set(pk , "Accept" ,			OPC_TRUE);
-	
+	op_pk_nfd_set(pk , FIELD_PK_SOURCE, 	frame.source);
+	op_pk_nfd_set(pk , FIELD_PK_DESTINATION,frame.destination);
+	op_pk_nfd_set(pk , FIELD_PK_TYPE,		frame.type);
+	op_pk_nfd_set(pk , FIELD_PK_ID,			frame.frame_id);
+	op_pk_nfd_set(pk , FIELD_PK_ACCEPT,		OPC_TRUE);
+		
 	//returns the frame !
 	FRET(pk);
 }
@@ -3668,13 +3667,14 @@ void receive_packet_from_radio(){
 	//Gets the packet
 	frame  = op_pk_get(op_intrpt_strm());
 
+	op_pk_print(frame);
 	
 	//Some pk fields
-	op_pk_nfd_get(frame , "Accept" , 		&accepted);
-	op_pk_nfd_get(frame , "SOURCE" , 		&source);
-	op_pk_nfd_get(frame , "DESTINATION" , 	&destination);
-	op_pk_nfd_get(frame , "TYPE" , 			&frame_type);
-	op_pk_nfd_get(frame , "Data Packet ID" ,&frame_id);
+	op_pk_nfd_get(frame, FIELD_PK_ACCEPT,		&accepted);
+	op_pk_nfd_get(frame, FIELD_PK_SOURCE, 		&source);
+	op_pk_nfd_get(frame, FIELD_PK_DESTINATION, 	&destination);
+	op_pk_nfd_get(frame, FIELD_PK_TYPE, 		&frame_type);
+	op_pk_nfd_get(frame, FIELD_PK_ID,			&frame_id);
 	
 	//DEBUG
 	debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main freq %f)\n", source , destination , pk_type_to_str(frame_type , msg) , frame_id , accepted , is_reply_required , get_nav_main_freq());
@@ -3744,13 +3744,13 @@ void receive_packet_from_radio(){
 			case DATA_UNICAST_PK_TYPE :
 			case DATA_MULTICAST_PK_TYPE :
 			
-				op_pk_nfd_get(frame, "POWER_RATIO" , &power_ratio);
+				op_pk_nfd_get(frame, FIELD_PK_POWER_RATIO , &power_ratio);
 				
 				
 				//Duration of the whole exchange
 				transmission_time = 0;
-				if (op_pk_nfd_is_set(frame, "DURATION")){
-					op_pk_nfd_get(frame , "DURATION", &duration);
+				if (op_pk_nfd_is_set(frame, FIELD_PK_DURATION)){
+					op_pk_nfd_get(frame , FIELD_PK_DURATION, &duration);
 					if (duration != 0)
 						transmission_time = compute_data_ack_time(duration);
 				}
@@ -3760,7 +3760,7 @@ void receive_packet_from_radio(){
 				if ((destination == my_address) || (destination == BROADCAST)){
 				 	
 					//gets the payload
-				 	op_pk_nfd_get(frame , "PAYLOAD",	&payload);
+				 	op_pk_nfd_get(frame , FIELD_PK_DATA_PAYLOAD,	&payload);
 
 					
 					//Transmission to the upper layer
@@ -3797,8 +3797,8 @@ void receive_packet_from_radio(){
 			
 				//Duration of the whole exchange
 				transmission_time = 0;
-				if (op_pk_nfd_is_set(frame, "DURATION")){
-					op_pk_nfd_get(frame , "DURATION", &duration);
+				if (op_pk_nfd_is_set(frame, FIELD_PK_DURATION)){
+					op_pk_nfd_get(frame, FIELD_PK_DURATION, &duration);
 					if (duration != 0)
 						transmission_time = compute_data_ack_time(duration);
 				}
@@ -3818,8 +3818,8 @@ void receive_packet_from_radio(){
 			case RTS_PK_TYPE:
 			
 				//Duration of the whole exchange
-				op_pk_nfd_get(frame , "DURATION", 		&duration);
-				op_pk_nfd_get(frame , "POWER_RATIO", 	&power_ratio);
+				op_pk_nfd_get(frame, FIELD_PK_DURATION, 		&duration);
+				op_pk_nfd_get(frame, FIELD_PK_POWER_RATIO, 	&power_ratio);
 				transmission_time = compute_cts_data_ack_time(duration);
 			
 				//We received a RTS for us -> we have to send now a CTS to accept the connection
@@ -3846,7 +3846,7 @@ void receive_packet_from_radio(){
 			case CTS_PK_TYPE:
 			
 				//Duration of the whole exchange
-				op_pk_nfd_get(frame , "DURATION", &duration);
+				op_pk_nfd_get(frame, FIELD_PK_DURATION, &duration);
 				transmission_time = compute_data_ack_time(duration);
 				
 			
@@ -3875,9 +3875,9 @@ void receive_packet_from_radio(){
 			//We become privileged node
 			//-> automatically, we will send a DATA_PK (or a CTR if we have none)
 			case CTR_PK_TYPE:
-				op_pk_nfd_get(frame , "FREQ" , 		&freq);
-				op_pk_nfd_get(frame , "T_SLOT" , 	&t_slot);
-				op_pk_nfd_get(frame , "OFFSET" , 	&offset);
+				op_pk_nfd_get(frame , FIELD_PK_CTR_FREQ, 	&freq);
+				op_pk_nfd_get(frame , FIELD_PK_CTR_TSLOT, 	&t_slot);
+				op_pk_nfd_get(frame , FIELD_PK_CTR_OFFSET, 	&offset);
 				
 				//Multi-channel -> this border node is in privileged mode (using another frequency)
 				if (nb_channels > 1)
@@ -3933,8 +3933,8 @@ void receive_packet_from_radio(){
 			case CTR_ACK_PK_TYPE:
 				//A node which sends a CTR-ACK will become unavailable during t_slot
 				//Then, it will send a CTR to indicate that it will privilege receiver
-				op_pk_nfd_get(frame , "FREQ" , 		&freq);
-				op_pk_nfd_get(frame , "T_SLOT" , 	&t_slot);
+				op_pk_nfd_get(frame , FIELD_PK_CTR_FREQ, 	&freq);
+				op_pk_nfd_get(frame , FIELD_PK_CTR_TSLOT, 	&t_slot);
 				
 				//And I will update this only if it comes from the 'normal' frequency
 				//If it comes throug the privileged frequency -> I already set this NAV (with an higher value since I know that I is busy 2*t_slot)
@@ -3951,15 +3951,15 @@ void receive_packet_from_radio(){
 			
 			//Updates the neighborhood table
 			case HELLO_PK_TYPE:
-				op_pk_nfd_get(frame , "BRANCH" , 	&branch);
-				op_pk_nfd_get(frame , "NEXT" , 		&next_hello);
+				op_pk_nfd_get(frame , FIELD_PK_HELLO_BRANCH,&branch);
+				op_pk_nfd_get(frame , FIELD_PK_HELLO_NEXT, 	&next_hello);
 			
 				if (destination != BROADCAST){
-					op_sim_end("An hello is sent in broadcast" , "not in unicast", "please correct the bug", "");
+					op_sim_end("An hello is sent in unicast" , "not in broadcast", "please correct the bug", "");
 				}
-				op_pk_nfd_get(frame , "DIST_SINK" , 	&dist_sink);
-				op_pk_nfd_get(frame , "DIST_BORDER" , 	&dist_border);
-				op_pk_nfd_get(frame , "SYNC_POWER" , 	&sync_power);
+				op_pk_nfd_get(frame , FIELD_PK_HELLO_DIST_SINK, 	&dist_sink);
+				op_pk_nfd_get(frame , FIELD_PK_HELLO_DIST_BORDER, 	&dist_border);
+				op_pk_nfd_get(frame , FIELD_PK_HELLO_SYNC_POWER, 	&sync_power);
 				bn_list_tmp = create_bn_list_from_packet(frame);
 				update_neighborhood_table(source , dist_sink , dist_border , sync_power , branch , bn_list_tmp , next_hello);
 			
@@ -3968,7 +3968,7 @@ void receive_packet_from_radio(){
 			//Reception of a sync frame from the sink 
 			//in order to select border nodes
 			case SYNC_PK_TYPE:			
-				op_pk_nfd_get(frame , "BRANCH" , 	&my_branch);
+				op_pk_nfd_get(frame , FIELD_PK_SYNC_BRANCH, 	&my_branch);
 			
 				my_sync_rx_power = last_rx_power * 1E14;
 				debug_print(LOW , DEBUG_NODE , "%d -> SYNC Level reception : %f , branch %d\n", my_address , my_sync_rx_power , my_branch);
@@ -4151,11 +4151,9 @@ void interrupt_process(){
 		
 			//HELLO
 			if (op_intrpt_code() == HELLO_PK_CODE){
+				
 				//The next HELLO
-				if(op_sim_time() < 60.0 - INTERVALL_HELLO / 10)
-					next_hello = INTERVALL_HELLO / 10 - op_dist_uniform(1);
-				else
-					next_hello = INTERVALL_HELLO - op_dist_uniform(1);
+				next_hello = HELLO_PK_PERIOD - op_dist_uniform(HELLO_PK_PERIOD / 10);
 				
 				//prepares the packet
 				generate_hello(next_hello);
@@ -4716,9 +4714,9 @@ else
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "debug_level",			&DEBUG);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "beta",					&BETA);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR",					&is_ctr_activated);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "mac_layer",				&mac_layer);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , "routing_mac",			&MAC_ROUTING);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "routing",				&MAC_ROUTING);
 
 //No RTS / CTS -> pk_size set to the infinity value
 if (RTS_PK_SIZE == -1)
@@ -4737,7 +4735,7 @@ op_ima_obj_attr_get(op_id_self() ,  "Transmission Power",	&POWER_TX);
 
 
 //A border node is allowed to send packets only when it is privileged
-strict_privileged_mode = is_ctr_activated;
+strict_privileged_mode = (mac_layer == CMAC);
 
 //The busy tone is not activated if RTS are not used
 //NB : the busy tone is currently descativated (no better performances for a more complex system)
@@ -4792,15 +4790,6 @@ my_branch					= -1;
 
 
 
-
-
-
-
-
-
-
-
-
 //-----------------------------------------------
 //		  				 DEBUG
 //-----------------------------------------------
@@ -4822,7 +4811,7 @@ if (DEBUG > NO){
 		open_debug_file(&debug_files[DEBUG_HELLO] ,		"/tmp/debug/%d_cmac_debug_hello.txt" , 	cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_UP] ,		"/tmp/debug/%d_cmac_debug_up.txt" , 	cmac_timestamp);
 	}
-	open_debug_file(&my_debug_file,					"/tmp/debug/nodes/%d.txt" , 				my_address);
+	open_debug_file(&my_debug_file,						"/tmp/debug/nodes/%d.txt" , 			my_address);
 		
 }
 
@@ -4852,13 +4841,11 @@ op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 				&my_main_bandw
 op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 			&my_main_frequency);	
 
 
-if ((!is_ctr_activated) && (strict_privileged_mode))
-	op_sim_end("We can not desactivate the CTR" , "and function in BLOCKED_MODE" , "" , "");
 
 
 
 //-----------------------------------------------
-//				NORMAL RADIO
+//				DATA RADIO
 //-----------------------------------------------
 
 
@@ -5067,10 +5054,6 @@ op_intrpt_schedule_self (op_sim_time (), 0);
 			<attribute name="Exit Execs" type="textlist">
 				<value-text>
 <![CDATA[
-//Objid	mac_layer_intf_id;
-//int		*int_ptr;
-//List	**list_ptr_tmp;
-
 
 
 //----------------------------------------------
@@ -5090,8 +5073,8 @@ if (my_stat_id == 0)
 //The sink must send periodically a CTR (create it, not forward it)
 //NB: let the routing info converge (dist_sink and dist_border)
 if (is_sink){
-	if (is_ctr_activated)
-		op_intrpt_schedule_self(op_sim_time() + 5.0 + INTERVALL_HELLO * 1.1 , SINK_CTR_CODE); 
+	if (mac_layer == CMAC)
+		op_intrpt_schedule_self(TIME_BEFORE_HELLO_CONVERGENCE , SINK_CTR_CODE); 
 
 	op_intrpt_schedule_self(op_sim_time() + 0.1 , SINK_SYNC_CODE); 
 }
@@ -5153,15 +5136,6 @@ if (!is_tx_busy){
 	
 	//The reply was sent (if it was a reply!)
 	is_reply_required = OPC_TRUE;
-
-	
-	// ---- TRANSMISSION POWER ----
-	
-	/*if ((my_current_tx_power != next_frame_to_send.power_ratio) && (next_frame_to_send.type != SYNC_PK_TYPE)){
-		change_tx_power(POWER_TX * next_frame_to_send.power_ratio , STREAM_TO_RADIO);
-		my_current_tx_power = next_frame_to_send.power_ratio;
-	}
-	*/
 	
 	// -----  SPECIAL ACTIONS  -----
 
