@@ -1,15 +1,14 @@
 <?xml version="1.0"?>
 <process-model model-name="bursty_source_perso" code-language="C" tv-in-db="yes" tv-in-tb="yes">
 	<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
-	<model-attributes>
-		<attribute name="Packet Interarrival Arg1" type="double">
+	<simulation-attributes>
+		<attribute name="interpacket_time" group="traffic" type="double">
 			<properties type="double" auto-assign="no" symbolic-only="no">
 				<default-value value="1.0"/>
 			</properties>
 		</attribute>
-	</model-attributes>
+	</simulation-attributes>
 	<attribute-assignments>
-		<assignment attribute-name="Packet Interarrival Arg1" type="double" status="promoted"/>
 		<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
 		<assignment attribute-name="doc file" type="string" status="hidden"/>
 		<assignment attribute-name="endsim intrpt" type="toggle" status="hidden"/>
@@ -189,10 +188,11 @@ bursty_source_sv_init ();
 /* will not generate any traffic.					*/
 //The mac_interface or mac processes are badly conceived, they require a synchronization
 
-op_ima_obj_attr_get (op_id_self(), 	"Packet Interarrival Arg1", &inter_pk_time);
+op_ima_sim_attr_get (OPC_IMA_DOUBLE, "interpacket_time" , &inter_pk_time);
 op_intrpt_schedule_self (op_sim_time () + 0.01 + op_dist_uniform(inter_pk_time) , 0);
 
-
+//the distribution for inter=packet times
+intarrvl_time_dist_handle = op_dist_load (PACKET_TIME_DISTRIBUTION , 	inter_pk_time , PACKET_TIME_ARG2);
 
 ]]>
 				</value-text>
@@ -203,13 +203,6 @@ op_intrpt_schedule_self (op_sim_time () + 0.01 + op_dist_uniform(inter_pk_time) 
 			<attribute name="Enter Execs" type="textlist">
 				<value-text>
 <![CDATA[
-//----------- Traffic generation  -----------------
-double				arg1_pk_time;
-
-//Parameters
-op_ima_obj_attr_get (op_id_self(), 		"Packet Interarrival Arg1", 	&arg1_pk_time);
-intarrvl_time_dist_handle = op_dist_load (PACKET_TIME_DISTRIBUTION , 	arg1_pk_time , PACKET_TIME_ARG2);
-
 //next packet
 next_packet_arrival_time = op_sim_time () + op_dist_outcome (intarrvl_time_dist_handle);
 

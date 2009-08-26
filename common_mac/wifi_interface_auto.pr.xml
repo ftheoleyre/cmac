@@ -31,34 +31,6 @@ priority of the packet.
 			</properties>
 		</attribute>
 	</model-attributes>
-	<simulation-attributes>
-		<attribute name="interpacket time" group="traffic" type="double">
-			<properties type="double" auto-assign="no" symbolic-only="no">
-				<default-value value="1.0"/>
-				<comments>
-<![CDATA[
-time between two packets (with an exponential distribution)
-]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="debug_level" group="debug" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="yes">
-				<default-value value-symbol="NO"/>
-				<symbol-map>
-					<symbol name="NO" value="0"/>
-					<symbol name="LOW" value="1"/>
-					<symbol name="MEDIUM" value="2"/>
-					<symbol name="MAX" value="3"/>
-				</symbol-map>
-				<comments>
-<![CDATA[
-the log level
-]]>
-				</comments>
-			</properties>
-		</attribute>
-	</simulation-attributes>
 	<attribute-assignments>
 		<assignment attribute-name="Destination" type="integer" status="promoted"/>
 		<assignment attribute-name="Type of Service" type="integer" status="promoted"/>
@@ -331,6 +303,26 @@ double min(double a, double b){
 }
 
 
+//converts the mac layer id into a string
+char *get_mac_layer_to_str(int id, char *msg, int length){
+	FIN(get_mac_layer_to_str(int id, char *msg, int length));
+	switch(id){
+	
+		case CMAC:
+			strncpy(msg, "cmac", length);
+		break;
+		
+		case IEEE80211:
+			strncpy(msg, "IEEE 80211", length);
+		break;
+		
+		default:
+			strncpy(msg, "ERROR", length);
+		break;
+	}
+	FRET(msg);
+}
+
 
 //-----------------------------------------------------------
 //
@@ -593,17 +585,17 @@ void debug_write_pk_info(){
 
 	int			i;
 	FILE* 		pfile;
-	char		filename[200];
-	char		msg[500];
+	char		filename[100];
+	char		msg[100];
 	//Stats
 	pk_info		*elem;
 
-	sprintf(filename , "/tmp/debug/cmac_%d_debug_pk.txt", (int) timestamp + (int)op_dist_uniform(128));
+	snprintf(filename , 100, "/tmp/debug/cmac_%d_debug_pk.txt", (int) timestamp + (int)op_dist_uniform(128));
 	pfile = fopen(filename , "w");
 
 
 	if (pfile == NULL){
-		sprintf(msg, "Filename %s creates an error: %s", filename, strerror(errno));
+		snprintf(msg, 100, "Filename %s creates an error: %s", filename, strerror(errno));
 		printf("ERROR: %s, %d (%s)\n", msg, errno, strerror(errno));
 		op_sim_end(msg, "" , "" , "");
 	}
@@ -656,23 +648,6 @@ void print_route(List* route_tmp){
 
 
 
-
-//-----------------------------------------------------------
-//
-//			  			 TRANSMISSION
-//
-//-----------------------------------------------------------
-
-void pk_send_to_mac(Packet * pkptr , int destination){
-	FIN(pk_send_to_mac(Packet * pkptr , int destination));
-		
-	//Packet transmission
-	op_ici_attr_set (wlan_mac_req_iciptr, "dest_addr", 	destination);
-	op_ici_install (wlan_mac_req_iciptr);
-	op_pk_send (pkptr, STREAM_TO_MAC);
-
-	FOUT;
-}
 ]]>
 	</function-block>
 	<states initial-state-id="10">
@@ -732,7 +707,7 @@ op_ima_obj_attr_set(mac_id , "Address" , 	my_address);
 
 op_ima_obj_attr_get(op_id_self(), 		"Destination" , 		&pk_destination);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"debug_level",			&DEBUG);
-op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"interpacket time", 	&inter_pk_time);
+op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"interpacket_time", 	&inter_pk_time);
 
 
 //----------------------------------------------------
@@ -864,7 +839,7 @@ info_ptr->time_sent		= op_sim_time();
 op_prg_list_insert(pk_list, info_ptr, OPC_LISTPOS_TAIL);
 
 //effective transmission to the layer below
-pk_send_to_mac(pkptr, pk_destination);
+op_pk_send (pkptr, STREAM_TO_MAC);
 
 ]]>
 				</value-text>
@@ -986,8 +961,8 @@ op_ima_obj_attr_get(mac_id , "Address" , 	&mac_address);
 				<value-text>
 <![CDATA[
 FILE* 		pfile;
-char		filename[200];
-char		msg[500];
+char		filename[100];
+char		msg[100];
 int			i;
 //Stats
 pk_info		*elem;
@@ -1002,11 +977,17 @@ int			RTS;
 int			mac_layer = 0;
 
 
-printf("end\n");
-
 if (my_stat_id == 0){
+	
+	//-------------------------------------------
+	//				PARAMETERS
+	//-------------------------------------------
+	
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 		&RTS);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"mac_layer",	&mac_layer);
 
 
+	
 	//-------------------------------------------
 	//				PACKETS
 	//-------------------------------------------
@@ -1032,26 +1013,19 @@ if (my_stat_id == 0){
 	if (DEBUG)
 		debug_write_pk_info();
 
+	
+	
 	//-------------------------------------------
 	//					WRITING
 	//-------------------------------------------
-	sprintf(filename , "/tmp/debug/%d-stats-nodes=%d-mac=%d.txt", timestamp, nb_nodes, mac_layer);
+	snprintf(filename , 100, "%s/%d_stats-nodes=%d-mac=%d.txt", LOG_DIR, timestamp, nb_nodes, mac_layer);
 	pfile = fopen(filename , "w");
 
-
 	if (pfile == NULL){
-		sprintf(msg, "Filename %s creates an error: %s", filename, strerror(errno));
+		snprintf(msg, 100, "Filename %s creates an error: %s", filename, strerror(errno));
 		printf("ERROR: %s, %d (%s)\n", msg, errno, strerror(errno));
 		op_sim_end(msg, "" , "" , "");
 	}
-
-	
-	//-------------------------------------------
-	//				PARAMETERS
-	//-------------------------------------------
-	
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 		&RTS);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"MAC layer",	&mac_layer);
 
 
 	fprintf(pfile, " --------------------------------------------------------------\n");
@@ -1059,11 +1033,12 @@ if (my_stat_id == 0){
 	fprintf(pfile, " --------------------------------------------------------------\n");
 
 	fprintf(pfile, "-------------------------  GENERAL ----------------------------\n");
-	fprintf(pfile, "Number of nodes                   : %d\n", nb_nodes);
-	fprintf(pfile, "Mac layer                         : %d\n", mac_layer);
-	fprintf(pfile, "Duration                          : %f\n", op_sim_time());
-	fprintf(pfile, "RTS                               : %d\n", RTS);
-	fprintf(pfile, "Inter Packet Time                 : %f\n", inter_pk_time);
+	fprintf(pfile, "Number of nodes                    : %d\n", nb_nodes);
+	fprintf(pfile, "Mac layer id                       : %d\n", mac_layer);
+	fprintf(pfile, "Mac layer name                     : %s\n", get_mac_layer_to_str(mac_layer, msg, 100));
+	fprintf(pfile, "Duration                           : %f\n", op_sim_time());
+	fprintf(pfile, "RTS                                : %d\n", RTS);
+	fprintf(pfile, "Inter Packet Time                  : %f\n", inter_pk_time);
 	fprintf(pfile, "\n");
 		
 	
@@ -1076,24 +1051,20 @@ if (my_stat_id == 0){
 	fprintf(pfile, "-----------------------------------------------------------------\n");
 	fprintf(pfile, "|                          TRAFFIC                               |\n");
 	fprintf(pfile, " ----------------------------------------------------------------\n");
-	fprintf(pfile, "Nb packets sent                   : %d\n", nb_pk_sent);
-	fprintf(pfile, "Delivery Ratio                    : %f\n", (double)nb_pk_received / nb_pk_sent);
+	fprintf(pfile, "Nb packets sent                    : %d\n", nb_pk_sent);
+	fprintf(pfile, "Delivery Ratio                     : %f\n", (double)nb_pk_received / nb_pk_sent);
 	fprintf(pfile, "\n");
 		
 	fprintf(pfile, "\n\n--------------------  DELAY ---------------------------------\n");
-	fprintf(pfile, "Average Delay                     : %f\n", cumulated_delay / nb_pk_received);
-	fprintf(pfile, "Max Delay                         : %f\n", max_delay);
+	fprintf(pfile, "Average Delay                      : %f\n", cumulated_delay / nb_pk_received);
+	fprintf(pfile, "Max Delay                          : %f\n", max_delay);
 	fprintf(pfile, "\n");
 
-	
-	
 	
 	
 	//-------------------------------------------
 	//		CLOSE
 	//-------------------------------------------
-
-
 	fclose(pfile);
 
 
