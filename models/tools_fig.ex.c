@@ -126,7 +126,7 @@ void tools_fig_write_xfig_file(short **graph, pos_struct *positions, int *states
 		fprintf(pfile ,"1 3 0 1 %d %d %d -1 15 0.000 1 0.000 %d %d %d %d 0 0 0 0\n", color2 , color , 1 , (int)(positions[i].x * GRAPHIC_XMAX / MAX_X) , (int)(positions[i].y * GRAPHIC_YMAX / MAX_Y) , radius , radius);
 		
 		//Address associated to this node (this must be printed not far from the node itself)
-		fprintf(pfile ,"4 0 0 %d -1 0 %d 0.0000 4 135 135 %d %d %d\\001\n", 0 , GRAPHIC_POLICE_SIZE , GRAPHIC_SHIFT_X + (int)(positions[i].x * GRAPHIC_XMAX / MAX_X) , GRAPHIC_SHIFT_Y + (int)(positions[i].y * GRAPHIC_YMAX / MAX_Y) , nodeid_to_addr[i]);
+		fprintf(pfile ,"4 0 0 %d -1 0 %d 0.0000 4 135 135 %d %d %d\\001\n", 0 , GRAPHIC_POLICE_SIZE , GRAPHIC_SHIFT_X + (int)(positions[i].x * GRAPHIC_XMAX / MAX_X) , GRAPHIC_SHIFT_Y + (int)(positions[i].y * GRAPHIC_YMAX / MAX_Y) , nodeid_to_addr(i));
 	}
 			
 			
@@ -215,7 +215,11 @@ void tools_fig_generate(){
 		op_ima_obj_attr_get_dbl(node_ids[i], "y position", &(positions[i].y));
 
 		//states
-		ptr_int = op_ima_obj_svar_get(mac_ids[i], "is_border_node");
+		ptr_int = op_ima_obj_svar_get(mac_ids[i], "is_in_ktree");
+		if (ptr_int == OPC_NIL){
+			printf("The is_in_ktree state variable is not defined, I break the xfig generation\n");
+			FOUT;
+		}
 		states[i] = *ptr_int;
 	}
 	
@@ -236,7 +240,11 @@ void tools_fig_generate(){
 		for(j=0; j<nb_neigh; j++){
 			neigh_ptr = op_prg_list_access(*neigh_table_ptr, j);
 						
-			neigh_id = addr_to_nodeid[neigh_ptr->address];			
+			neigh_id = addr_to_nodeid(neigh_ptr->address);	
+			if (neigh_id == ADDR_INVALID){
+				printf("invalid neighid, cannot plot xfig\n");
+				FOUT;
+			}
 			
 			graph[i][neigh_id] = GRAPH_LINK_RADIO;
 			graph[neigh_id][i] = GRAPH_LINK_RADIO;		

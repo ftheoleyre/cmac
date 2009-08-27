@@ -48,6 +48,7 @@
 
 //reserved addresses
 #define		ADDR_BROADCAST					-1
+#define		ADDR_INVALID					-2
 
 //backoff
 #define		MAX_BACKOFF						32

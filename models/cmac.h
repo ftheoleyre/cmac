@@ -21,15 +21,6 @@
 
 
 
-//-----------------------------------------------
-//				GLOBAL SHARED VARIABLES
-//-----------------------------------------------
-//this method is not the cleanest implementation, but ....
-
-//nodeid / addr conversion
-int		*nodeid_to_addr;
-int		*addr_to_nodeid;
-
 
 
 //-----------------------------------------------
@@ -168,6 +159,12 @@ typedef struct{
 //				PROTOTYPES
 //-----------------------------------------------
 
+//parameters
+int		get_nb_nodes();
+int 	nodeid_to_addr(int nodeid);
+int 	addr_to_nodeid(int addr);
+
+
 //debug
 void	debug_print(const int level, const int type , const char* fmt, ...);
 char* 	pk_type_to_str(short pk_type , char *msg, int length);
@@ -214,10 +211,6 @@ void 	maintain_busy_tone(double time);
 //antennas
 void 	change_antenna_direction(int stream , int branch);
 void 	change_tx_power(double power , int stream);
-
-
-// parameters
-int		get_nb_nodes();
 
 
 

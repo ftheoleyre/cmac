@@ -1,71 +1,71 @@
 <?xml version="1.0"?>
 <process-model model-name="cmac_interface" code-language="C" tv-in-db="yes" tv-in-tb="yes">
-	<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
-	<model-attributes>
-		<attribute name="Type of Service" type="integer">
-			<properties type="integer" auto-assign="yes" symbolic-only="yes">
-				<default-value value-symbol="Best Effort (0)"/>
-				<symbol-map>
-					<symbol name="Best Effort (0)" value="0"/>
-					<symbol name="Background (1)" value="1"/>
-					<symbol name="Standard (2)" value="2"/>
-					<symbol name="Excellent Effort (3)" value="3"/>
-					<symbol name="Streaming Multimedia (4)" value="4"/>
-					<symbol name="Interactive Multimedia (5)" value="5"/>
-					<symbol name="Interactive Voice (6)" value="6"/>
-					<symbol name="Reserved (7)" value="7"/>
-				</symbol-map>
-				<comments>
+<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
+<model-attributes>
+<attribute name="Type of Service" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="yes">
+<default-value value-symbol="Best Effort (0)"/>
+<symbol-map>
+<symbol name="Best Effort (0)" value="0"/>
+<symbol name="Background (1)" value="1"/>
+<symbol name="Standard (2)" value="2"/>
+<symbol name="Excellent Effort (3)" value="3"/>
+<symbol name="Streaming Multimedia (4)" value="4"/>
+<symbol name="Interactive Multimedia (5)" value="5"/>
+<symbol name="Interactive Voice (6)" value="6"/>
+<symbol name="Reserved (7)" value="7"/>
+</symbol-map>
+<comments>
 <![CDATA[
 Indicates packet's type of 
 service (TOS). SRP MAC uses 
 this to determine the 
 priority of the packet.
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="Destination" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="no">
-				<default-value value="1"/>
-			</properties>
-		</attribute>
-	</model-attributes>
-	<attribute-assignments>
-		<assignment attribute-name="Destination" type="integer" status="promoted"/>
-		<assignment attribute-name="Type of Service" type="integer" status="promoted"/>
-		<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
-		<assignment attribute-name="doc file" type="string" status="hidden"/>
-		<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="1"/>
-		<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
-		<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
-		<assignment attribute-name="priority" type="integer" status="hidden"/>
-		<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
-		<assignment attribute-name="subqueue" type="compound">
-			<sub-object>
-				<attribute creation-mechanics="EMA" name="count" type="integer" value="1"/>
-				<attribute creation-mechanics="EMA" name="list" type="object list">
-					<object-list>
-						<sub-object/>
-					</object-list>
-				</attribute>
-			</sub-object>
-		</assignment>
-		<assignment attribute-name="super priority" type="toggle" status="hidden"/>
-	</attribute-assignments>
-	<interfaces>
-		<interface promoted-name="begsim intrpt" type="toggle" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
-			<attribute-names>
+</comments>
+</properties>
+</attribute>
+<attribute name="Destination" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value="1"/>
+</properties>
+</attribute>
+</model-attributes>
+<attribute-assignments>
+<assignment attribute-name="Destination" type="integer" status="promoted"/>
+<assignment attribute-name="Type of Service" type="integer" status="promoted"/>
+<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
+<assignment attribute-name="doc file" type="string" status="hidden"/>
+<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="1"/>
+<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
+<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
+<assignment attribute-name="priority" type="integer" status="hidden"/>
+<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
+<assignment attribute-name="subqueue" type="compound">
+<sub-object>
+<attribute creation-mechanics="EMA" name="count" type="integer" value="1"/>
+<attribute creation-mechanics="EMA" name="list" type="object list">
+<object-list>
+<sub-object/>
+</object-list>
+</attribute>
+</sub-object>
+</assignment>
+<assignment attribute-name="super priority" type="toggle" status="hidden"/>
+</attribute-assignments>
+<interfaces>
+<interface promoted-name="begsim intrpt" type="toggle" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
+<attribute-names>
 <![CDATA[
 begsim intrpt
 ]]>
-			</attribute-names>
-			<properties type="toggle" auto-assign="no" symbolic-only="no">
-				<default-value value="0"/>
-			</properties>
-		</interface>
-	</interfaces>
-	<state-variables>
+</attribute-names>
+<properties type="toggle" auto-assign="no" symbolic-only="no">
+<default-value value="0"/>
+</properties>
+</interface>
+</interfaces>
+<state-variables>
 <![CDATA[
 /* Object identifier of the surrounding module.	 */
 Objid	\my_objid;
@@ -103,8 +103,8 @@ int	\DEBUG;
 double	\inter_pk_time;
 
 ]]>
-	</state-variables>
-	<header-block>
+</state-variables>
+<header-block>
 <![CDATA[
 /***** Include Files. *****/
 #include <stdlib.h>
@@ -112,7 +112,7 @@ double	\inter_pk_time;
 #include <math.h>
 #include <errno.h>
 
-#include "../cmac/cmac_types.h"
+#include "cmac.h"
 
 
 
@@ -241,8 +241,8 @@ int		current_pk_id = 0;
 
 
 ]]>
-	</header-block>
-	<function-block>
+</header-block>
+<function-block>
 <![CDATA[
 static void
 wlan_mac_higher_layer_intf_sv_init ()
@@ -649,12 +649,12 @@ void print_route(List* route_tmp){
 
 
 ]]>
-	</function-block>
-	<states initial-state-id="10">
-		<state id="10" x="90" y="150">
-			<attribute name="name" type="string" value="init"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</function-block>
+<states initial-state-id="10">
+<state id="10" x="90" y="150">
+<attribute name="name" type="string" value="init"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 //Addresses
 char		str[500];
@@ -759,10 +759,10 @@ my_stat_id = nb_nodes;
 nb_nodes++;
 
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 /* Schedule a self interrupt to wait for lower layer	*/
 /* wlan MAC process to initialize and register itself in*/
@@ -770,20 +770,20 @@ nb_nodes++;
 op_intrpt_schedule_self (op_sim_time (), 0);
 
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="11" x="330" y="150">
-			<attribute name="name" type="string" value="idle"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="11" x="330" y="150">
+<attribute name="name" type="string" value="idle"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 /* The only interrupt expected in this state is a	*/
 /* stream interrupt. It can be either from the MAC	*/
@@ -806,13 +806,13 @@ if (intrpt_type == OPC_INTRPT_SELF){
 
 */
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="12" x="450" y="30">
-			<attribute name="name" type="string" value="appl layer arrival"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="12" x="450" y="30">
+<attribute name="name" type="string" value="appl layer arrival"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 
 pk_info	*info_ptr;
@@ -842,14 +842,14 @@ op_prg_list_insert(pk_list, info_ptr, OPC_LISTPOS_TAIL);
 op_pk_send (pkptr, STREAM_TO_MAC);
 
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="status" type="toggle" value="1"/>
-		</state>
-		<state id="13" x="450" y="270">
-			<attribute name="name" type="string" value="mac layer arrival"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="status" type="toggle" value="1"/>
+</state>
+<state id="13" x="450" y="270">
+<attribute name="name" type="string" value="mac layer arrival"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 //Src and destination
 int			source , dest;
@@ -919,21 +919,21 @@ else
 
 
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="status" type="toggle" value="1"/>
-		</state>
-		<state id="14" x="210" y="150">
-			<attribute name="name" type="string" value="wait"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="status" type="toggle" value="1"/>
+</state>
+<state id="14" x="210" y="150">
+<attribute name="name" type="string" value="wait"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 //Inter pk time
 int		mac_id;
@@ -952,13 +952,13 @@ op_ima_obj_attr_get(mac_id , "Address" , 	&mac_address);
 
 
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="18" x="570" y="150">
-			<attribute name="name" type="string" value="END_SIM"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="18" x="570" y="150">
+<attribute name="name" type="string" value="END_SIM"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 FILE* 		pfile;
 char		filename[100];
@@ -1070,72 +1070,72 @@ if (my_stat_id == 0){
 
 }
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-	</states>
-	<transitions>
-		<transition source-state-id="13" destination-state-id="18" label-x="509" label-y="205">
-			<path-point x="463" y="261"/>
-			<path-point x="556" y="153"/>
-			<attribute name="name" type="string" value="tr_31"/>
-			<attribute name="condition" type="string" value="ENDSIM"/>
-		</transition>
-		<transition source-state-id="11" destination-state-id="12" label-x="318" label-y="61">
-			<path-point x="320" y="138"/>
-			<path-point x="451" y="11"/>
-			<attribute name="name" type="string" value="tr_14"/>
-			<attribute name="condition" type="string" value="APPL_LAYER_PKT_ARVL &amp;&amp; !ENDSIM"/>
-			<attribute name="drawing style" type="toggle" value="0"/>
-		</transition>
-		<transition source-state-id="11" destination-state-id="13" label-x="322" label-y="254">
-			<path-point x="327" y="164"/>
-			<path-point x="437" y="281"/>
-			<attribute name="name" type="string" value="tr_17"/>
-			<attribute name="condition" type="string" value="MAC_LAYER_PKT_ARVL &amp;&amp; !ENDSIM"/>
-			<attribute name="drawing style" type="toggle" value="0"/>
-		</transition>
-		<transition source-state-id="12" destination-state-id="18" label-x="502" label-y="88">
-			<path-point x="462" y="34"/>
-			<path-point x="551" y="145"/>
-			<attribute name="name" type="string" value="tr_32"/>
-			<attribute name="condition" type="string" value="ENDSIM"/>
-		</transition>
-		<transition source-state-id="11" destination-state-id="18" label-x="450" label-y="170">
-			<path-point x="343" y="151"/>
-			<path-point x="553" y="147"/>
-			<attribute name="name" type="string" value="tr_30"/>
-			<attribute name="condition" type="string" value="ENDSIM"/>
-		</transition>
-		<transition source-state-id="12" destination-state-id="11" label-x="425" label-y="103">
-			<path-point x="452" y="49"/>
-			<path-point x="347" y="155"/>
-			<attribute name="name" type="string" value="tr_16"/>
-			<attribute name="condition" type="string" value="!ENDSIM"/>
-			<attribute name="drawing style" type="toggle" value="0"/>
-		</transition>
-		<transition source-state-id="13" destination-state-id="11" label-x="422" label-y="210">
-			<path-point x="447" y="258"/>
-			<path-point x="343" y="147"/>
-			<attribute name="name" type="string" value="tr_19"/>
-			<attribute name="condition" type="string" value="!ENDSIM"/>
-			<attribute name="drawing style" type="toggle" value="0"/>
-		</transition>
-		<transition source-state-id="14" destination-state-id="11" label-x="280" label-y="148">
-			<path-point x="226" y="146"/>
-			<path-point x="331" y="150"/>
-			<attribute name="name" type="string" value="tr_22"/>
-		</transition>
-		<transition source-state-id="10" destination-state-id="14" label-x="158" label-y="152">
-			<path-point x="101" y="154"/>
-			<path-point x="215" y="150"/>
-			<attribute name="name" type="string" value="tr_12"/>
-		</transition>
-	</transitions>
-	<local-statistics>
-		<statistic name="outstat" group="" dimension="100" capture-mode="normal" display-mode="linear" low-bound="0.0" high-bound="disabled"/>
-	</local-statistics>
-	<comments>
+</value-text>
+</attribute>
+</state>
+</states>
+<transitions>
+<transition source-state-id="13" destination-state-id="18" label-x="509" label-y="205">
+<path-point x="463" y="261"/>
+<path-point x="556" y="153"/>
+<attribute name="name" type="string" value="tr_31"/>
+<attribute name="condition" type="string" value="ENDSIM"/>
+</transition>
+<transition source-state-id="11" destination-state-id="12" label-x="318" label-y="61">
+<path-point x="320" y="138"/>
+<path-point x="451" y="11"/>
+<attribute name="name" type="string" value="tr_14"/>
+<attribute name="condition" type="string" value="APPL_LAYER_PKT_ARVL &amp;&amp; !ENDSIM"/>
+<attribute name="drawing style" type="toggle" value="0"/>
+</transition>
+<transition source-state-id="11" destination-state-id="13" label-x="322" label-y="254">
+<path-point x="327" y="164"/>
+<path-point x="437" y="281"/>
+<attribute name="name" type="string" value="tr_17"/>
+<attribute name="condition" type="string" value="MAC_LAYER_PKT_ARVL &amp;&amp; !ENDSIM"/>
+<attribute name="drawing style" type="toggle" value="0"/>
+</transition>
+<transition source-state-id="12" destination-state-id="18" label-x="502" label-y="88">
+<path-point x="462" y="34"/>
+<path-point x="551" y="145"/>
+<attribute name="name" type="string" value="tr_32"/>
+<attribute name="condition" type="string" value="ENDSIM"/>
+</transition>
+<transition source-state-id="11" destination-state-id="18" label-x="450" label-y="170">
+<path-point x="343" y="151"/>
+<path-point x="553" y="147"/>
+<attribute name="name" type="string" value="tr_30"/>
+<attribute name="condition" type="string" value="ENDSIM"/>
+</transition>
+<transition source-state-id="12" destination-state-id="11" label-x="425" label-y="103">
+<path-point x="452" y="49"/>
+<path-point x="347" y="155"/>
+<attribute name="name" type="string" value="tr_16"/>
+<attribute name="condition" type="string" value="!ENDSIM"/>
+<attribute name="drawing style" type="toggle" value="0"/>
+</transition>
+<transition source-state-id="13" destination-state-id="11" label-x="422" label-y="210">
+<path-point x="447" y="258"/>
+<path-point x="343" y="147"/>
+<attribute name="name" type="string" value="tr_19"/>
+<attribute name="condition" type="string" value="!ENDSIM"/>
+<attribute name="drawing style" type="toggle" value="0"/>
+</transition>
+<transition source-state-id="14" destination-state-id="11" label-x="280" label-y="148">
+<path-point x="226" y="146"/>
+<path-point x="331" y="150"/>
+<attribute name="name" type="string" value="tr_22"/>
+</transition>
+<transition source-state-id="10" destination-state-id="14" label-x="158" label-y="152">
+<path-point x="101" y="154"/>
+<path-point x="215" y="150"/>
+<attribute name="name" type="string" value="tr_12"/>
+</transition>
+</transitions>
+<local-statistics>
+<statistic name="outstat" group="" dimension="100" capture-mode="normal" display-mode="linear" low-bound="0.0" high-bound="disabled"/>
+</local-statistics>
+<comments>
 <![CDATA[
 General Process Description: 
 
@@ -1185,5 +1185,5 @@ Restrictions:
 None
 
 ]]>
-	</comments>
+</comments>
 </process-model>
