@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<process-model model-name="bursty_source_perso" code-language="C" tv-in-db="yes" tv-in-tb="yes">
+<process-model model-name="cmac_source" code-language="C" tv-in-db="yes" tv-in-tb="yes">
 	<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
 	<simulation-attributes>
 		<attribute name="interpacket_time" group="traffic" type="double">
