@@ -1,0 +1,1 @@
+op_runsim -net_name _cmac-line -ef _cmac-line-DES-1 -noprompt
