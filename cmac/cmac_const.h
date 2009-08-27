@@ -4,15 +4,6 @@
 
 
 
-//-----------------------------------------------
-//				GLOBAL SHARED VARIABLES
-//-----------------------------------------------
-//this method is not the cleanest implementation, but ....
-
-//nodeid / addr conversion
-int		*nodeid_to_addr;
-int		*addr_to_nodeid;
-
 
 
 //-----------------------------------------------
@@ -63,7 +54,7 @@ int		*addr_to_nodeid;
 #define		MAX_EXPO_BACKOFF				1024
 
 //Power
-#define		MAX_BORDER_DIST					10
+#define		MAX_KTREE_DIST					10
 
 #define		PI								3.141592653589793238462 
 
@@ -168,7 +159,7 @@ int		*addr_to_nodeid;
 //				ROUTING
 //-----------------------------------------------
 
-#define		ROUTING_MAC_BORDER				2
+#define		ROUTING_MAC_KTREE				2
 #define		ROUTING_MAC_SHORT				1
 #define		ROUTING_MAC_NO					0
 
@@ -191,6 +182,7 @@ int		*addr_to_nodeid;
 
 #define		DEBUG_GLOBAL					0
 #define		DEBUG_STATE						1
+#define		DEBUG_CMAC						11
 
 #define		DEBUG_BACKOFF					2
 
@@ -235,7 +227,7 @@ int		*addr_to_nodeid;
 #define		NB_TIER_SIZE					4
 #define		DURATION_SIZE					16
 #define		DIST_SINK_SIZE					4
-#define		DIST_BORDER_SIZE				4
+#define		DIST_KTREE_SIZE					4
 
 
 //MTU in bits
@@ -244,166 +236,33 @@ int		*addr_to_nodeid;
 
 	
 //fields names
-#define		FIELD_PK_SOURCE					"SOURCE"
-#define		FIELD_PK_DESTINATION			"DESTINATION"
-#define		FIELD_PK_ID						"Data Packet ID"	
-#define		FIELD_PK_DURATION				"DURATION"	
-#define		FIELD_PK_TYPE					"TYPE"
-#define		FIELD_PK_ACCEPT					"Accept"
-#define		FIELD_PK_POWER_RATIO			"POWER_RATIO"
+#define		FIELD_PK_SOURCE						"SOURCE"
+#define		FIELD_PK_DESTINATION				"DESTINATION"
+#define		FIELD_PK_ID							"Data Packet ID"	
+#define		FIELD_PK_DURATION					"DURATION"	
+#define		FIELD_PK_TYPE						"TYPE"
+#define		FIELD_PK_ACCEPT						"Accept"
+#define		FIELD_PK_POWER_RATIO				"POWER_RATIO"
 
 //hellos
-#define		FIELD_PK_HELLO_DIST_SINK		"DIST_SINK"
-#define		FIELD_PK_HELLO_DIST_BORDER		"DIST_BORDER"
-#define		FIELD_PK_HELLO_SYNC_POWER		"SYNC_POWER"
-#define		FIELD_PK_HELLO_BRANCH			"BRANCH"
-#define		FIELD_PK_HELLO_NEXT				"NEXT"
-#define		FIELD_PK_HELLO_NB_BORDERS		"NB_BORDERS"
-#define		FIELD_PK_HELLO_BORDER			"BORDER"
+#define		FIELD_PK_HELLO_DIST_SINK			"DIST_SINK"
+#define		FIELD_PK_HELLO_DIST_KTREE			"DIST_KTREE"
+#define		FIELD_PK_HELLO_SYNC_POWER			"SYNC_POWER"
+#define		FIELD_PK_HELLO_BRANCH				"BRANCH"
+#define		FIELD_PK_HELLO_NEXT					"NEXT"
+#define		FIELD_PK_HELLO_NB_KTREE_CHILDREN	"NB_KTREE_CHILDREN"
+#define		FIELD_PK_HELLO_KTREE_CHILDREN		"KTREE_CHILDREN"
 
 //data
-#define		FIELD_PK_DATA_PAYLOAD			"PAYLOAD"
+#define		FIELD_PK_DATA_PAYLOAD				"PAYLOAD"
 
 //ctr
-#define		FIELD_PK_CTR_FREQ				"FREQ"
-#define		FIELD_PK_CTR_TSLOT				"T_SLOT"
-#define		FIELD_PK_CTR_OFFSET				"OFFSET"
+#define		FIELD_PK_CTR_FREQ					"FREQ"
+#define		FIELD_PK_CTR_TSLOT					"T_SLOT"
+#define		FIELD_PK_CTR_OFFSET					"OFFSET"
 
 //sync
-#define		FIELD_PK_SYNC_BRANCH			"BRANCH"
-
-
-
-
-
-//-----------------------------------------------
-//					FRAME
-//-----------------------------------------------
-
-typedef struct{
-	int			source;
-	int			destination;
-	short		type;
-	int			frame_id;
-	Boolean		nb_retry;
-	double		time_added;
-	double		time_sent;
-	double		time_transmission_min;
-	double		pk_size;
-	int			duration;			//for RTS / CTS (pk_size of the data_frame)
-	double		ifs;				//inter frame spacing for this packet type
-	Boolean		released;			//The memory was released (packet destroyed)
-	Packet		*payload;
-	double		next_hello;
-	double		power_ratio;
-}frame_struct;
-
-
-//-----------------------------------------------
-//					HELLOS
-//-----------------------------------------------
-
-
-typedef struct{
-	int		address;
-	int		dist_sink;
-	int		dist_border;
-	double	sync_rx_power;
-	int		branch;
-	List	*border_nodes_list;	
-	Boolean	stability[MAX_STAB];
-	double	timeout;
-} neigh_struct;
-
-
-
-
-
-
-
-//-----------------------------------------------
-//				FRAME ID LIST
-//-----------------------------------------------
-
-
-typedef struct{
-	int		id;
-	double	timeout;
-}id_timeout_struct;
-
-
-
-//-----------------------------------------------
-//				STATS ABOUT PACKETS
-//-----------------------------------------------
-
-
-
-typedef struct {
-	int		source;
-	int		destination;
-	int		hops;
-	int		pk_id;
-	Boolean	received;
-	double	time_sent;
-	double	time_received;
-} pk_info;
-
-
-//-----------------------------------------------
-//					NAV
-//-----------------------------------------------
-
-
-typedef struct{
-	int		address;
-	double	timeout;
-	double	frequency;
-}nav_struct;
-
-
-
-
-
-//-----------------------------------------------
-//			COMPARISON FOR NEXT HOP
-//-----------------------------------------------
-
-
-typedef struct{
-	int		addr;
-	short	prio;
-	short	stab;
-} compar_struct;
-
-
-
-
-
-
-//-----------------------------------------------
-//			ELECTION OF BORDER NODES
-//-----------------------------------------------
-
-
-typedef struct{
-	int		addr;
-	double	pow;
-	short	stab;
-	short	branch;
-}election_struct;
-
-
-
-//-----------------------------------------------
-//			geo POSITION
-//-----------------------------------------------
-
-
-typedef struct{
-	double	x;
-	double	y;
-}pos_struct;
+#define		FIELD_PK_SYNC_BRANCH				"BRANCH"
 
 
 
