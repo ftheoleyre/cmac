@@ -602,6 +602,7 @@ int	\KTREE_ALGO;
 	<header-block>
 <![CDATA[
 #include	"cmac.h"
+#include	"cmac_interface.h"
 
 
 
@@ -2010,7 +2011,7 @@ int get_next_hop(){
 					next.prio	= 2;
 					next.stab	= compute_stability(neigh_ptr->stability);
 				}
-				debug_print(LOW , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d, stab %d). NH = %d ((prio %d, stab %d))\n",  neigh_ptr->address , neigh_ptr->dist_ktree, neigh_ptr->dist_sink, compute_stability(neigh_ptr->stability) , next.prio , next.stab, next.addr);
+				debug_print(LOW , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d, stab %d). NH = %d ((prio %d, stab %d))\n",  neigh_ptr->address , neigh_ptr->dist_ktree, neigh_ptr->dist_sink, compute_stability(neigh_ptr->stability) , next.addr, next.prio , next.stab);
 			}
 		break;
 		case ROUTING_MAC_SHORT:
@@ -3007,7 +3008,7 @@ void set_next_frame_null(){
 	
 	char	msg[100];
 
-	debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) canceled / deleted\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg, 100));
+	debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) canceled / deleted / in_progress\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg, 100));
 	
 	next_frame_to_send.type = NO_PK_TYPE;
 	
@@ -3421,17 +3422,17 @@ void receive_packet_from_up(){
 	
 	Packet	*payload;
 	int		frame_id;
+	int		data_id;
 	//Info from the upper layer
 	int		next_hop;
 	double	power_ratio;
-	
 	
 	//frame id
 	frame_id = get_new_frame_id();
 	
 	//Packet from upper
 	payload = op_pk_get(op_intrpt_strm());
-	
+	op_pk_fd_get(payload, FIELD_PAYLOAD_ID, &data_id);
 	
 	//routing
 	next_hop	= get_next_hop();		
@@ -3441,7 +3442,7 @@ void receive_packet_from_up(){
 	if (next_hop != -1)
 		prepare_data_frame(payload , frame_id , next_hop , power_ratio);
 
-	debug_print(LOW , DEBUG_DATA , "data frame sent by %d to %d (id %d)\n", my_address , next_hop , frame_id);
+	debug_print(LOW , DEBUG_DATA , "DATA frame sent by %d to %d (frameid %d, dataid %d)\n", my_address , next_hop , frame_id, data_id);
 	
 	FOUT;
 }
@@ -3708,8 +3709,10 @@ void receive_packet_from_radio(){
 
 					
 					//Transmission to the upper layer
-					if ((!is_frame_id_seen(frame_id)) && ((is_sink) || (MAC_ROUTING == ROUTING_MAC_NO)))
+					if ((!is_frame_id_seen(frame_id)) && ((is_sink) || (MAC_ROUTING == ROUTING_MAC_NO))){
+						debug_print(LOW, DEBUG_DATA, "The data frame was received by the sink (id %d)\n", frame_id);
 						op_pk_send(op_pk_copy(payload), STREAM_TO_UP);
+					}
 					
 					//Forwarding (max power, since we have no info)
 					else if (!is_frame_id_seen(frame_id)){
@@ -4028,12 +4031,12 @@ void interrupt_process(){
 					if (new_rx_power > rx_power_threshold){
 						is_rx_busy 		= OPC_TRUE;
 						last_rx_power 	= new_rx_power;
-						debug_print(MAX, DEBUG_RADIO , "last_rx_power %f -> %f\n", last_rx_power , new_rx_power);
+						//debug_print(MAX, DEBUG_RADIO , "last_rx_power %f -> %f\n", last_rx_power , new_rx_power);
 					}
 					else
 						is_rx_busy 		= OPC_FALSE;
 				
-					debug_print(MEDIUM , DEBUG_RADIO , "rx_busy %d -> %d (rx pow %f)\n", old , is_rx_busy , new_rx_power * 1E14);
+					//debug_print(MEDIUM , DEBUG_RADIO , "rx_busy %d -> %d (rx pow %f)\n", old , is_rx_busy , new_rx_power * 1E14);
 				break;
 				
 				//Signal from my busy tone receiver	
@@ -4054,7 +4057,7 @@ void interrupt_process(){
 				
 					is_tx_busy = (op_stat_local_read(op_intrpt_stat()) == 1.0);
 				
-					debug_print(MEDIUM , DEBUG_RADIO , "tx_busy %d -> %d\n", old , is_tx_busy);
+					//debug_print(MEDIUM , DEBUG_RADIO , "tx_busy %d -> %d\n", old , is_tx_busy);
 				break;
 				
 				//End of busy tone -> we send another packet
@@ -5186,7 +5189,7 @@ interrupt_process();
 	
 //Transmission finished !
 if (!is_tx_busy){
-	debug_print(MEDIUM , DEBUG_DATA, "transmission ended\n");
+	debug_print(MEDIUM , DEBUG_RADIO, "transmission ended\n");
 
 
 	//-----------------------------------------------------
@@ -5521,11 +5524,11 @@ if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 			debug_print(MAX , DEBUG_BACKOFF , "new backoff %d\n", my_backoff);
 		}
 		else{
-			debug_print(MEDIUM , DEBUG_BACKOFF , "priv %d & \n", (!is_node_privileged));
-			debug_print(MEDIUM , DEBUG_BACKOFF , " rts %d | broadcast %d | data without rts %d\n", (next_frame_to_send.type == RTS_PK_TYPE) , (next_frame_to_send.destination == ADDR_BROADCAST) , ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE)));
-			debug_print(MEDIUM , DEBUG_BACKOFF , "%d = %d & %f < %f\n", next_frame_to_send.type, DATA_UNICAST_PK_TYPE, next_frame_to_send.pk_size, RTS_PK_SIZE);
+			//debug_print(MEDIUM , DEBUG_BACKOFF , "No backoff nedded: privileged %d & \n", (!is_node_privileged));
+			//debug_print(MEDIUM , DEBUG_BACKOFF , "rts %d | broadcast %d | data without rts %d\n", (next_frame_to_send.type == RTS_PK_TYPE) , (next_frame_to_send.destination == ADDR_BROADCAST) , ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE)));
+			//debug_print(MEDIUM , DEBUG_BACKOFF , "%d = %d & %f < %f\n", next_frame_to_send.type, DATA_UNICAST_PK_TYPE, next_frame_to_send.pk_size, RTS_PK_SIZE);
+			debug_print(MEDIUM , DEBUG_BACKOFF , "no backoff required (!priviledged %d, next=rts %d, broadcast %d, data_without_rts %d, rts_thresh %f)\n", !is_node_privileged , next_frame_to_send.type == RTS_PK_TYPE , next_frame_to_send.destination == ADDR_BROADCAST, ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE)), RTS_PK_SIZE);
 			my_backoff = 0;
-			debug_print(MEDIUM , DEBUG_BACKOFF , "no backoff required (priviledged %d, next=rts %d, broadcast %d, data_with_previous_rts %d, rts_thresh %f)\n", is_node_privileged , next_frame_to_send.type == RTS_PK_TYPE , next_frame_to_send.destination == ADDR_BROADCAST, ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE)), RTS_PK_SIZE);
 		}		
 	}
 	else
@@ -5758,7 +5761,7 @@ char	msg[100];
 //Just a debug message when we start to wait the reply for one of our frame
 if (is_reply_required){
 	//debug
-	debug_print(MAX , DEBUG_DATA , "%s sent, it must wait a reply\n", pk_type_to_str(last_frame_sent.type , msg, 100));
+	debug_print(MAX , DEBUG_RADIO , "%s sent, it must wait a reply\n", pk_type_to_str(last_frame_sent.type , msg, 100));
 
 
 	//We did not received yet a reply for our transmission (we just leave it !)

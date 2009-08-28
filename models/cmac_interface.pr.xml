@@ -113,6 +113,7 @@ double	\inter_pk_time;
 #include <errno.h>
 
 #include "cmac.h"
+#include "cmac_interface.h"
 
 
 
@@ -142,56 +143,7 @@ double	\inter_pk_time;
 
 
 
-//--------------------------------------
-//
-//			ROUTING TYPES
-//
-//--------------------------------------
 
-
-
-#define		ROUTING_APPLI_NO			-1
-#define		ROUTING_APPLI_XY			0
-#define		ROUTING_APPLI_OPT			1
-#define		ROUTING_APPLI_SHORT			2
-#define		ROUTING_APPLI_SIDES			3
-#define		ROUTING_APPLI_ALPHA			4
-#define		ROUTING_APPLI_OPT2			5
-
-
-
-
-
-//--------------------------------------
-//
-//			CONSTANTS
-//
-//--------------------------------------
-
-//Radio range (in meters)
-#define		PHYSIC_RADIO_RANGE			21
-
-//Addresses
-#define		MIN_ADDRESS					101
-
-
-#define		TIMEOUT_ID					5.0
-
-
-
-
-
-//--------------------------------------
-//
-//			TRAFFIC GENERATION
-//
-//--------------------------------------
-
-//to start the packet generation
-#define		TIME_START_PK_GENERATION	60.0
-
-//The maximum delay allowed to consider the reception of a packet valid
-#define		MAX_DELAY					5.0
 
 
 
@@ -823,9 +775,8 @@ pkptr = op_pk_get(op_intrpt_strm());
 
 
 //Sets source and destination (embedded directly in the frame)
-op_pk_fd_set(pkptr, 0, OPC_FIELD_TYPE_INTEGER, mac_address,	 	16);
-op_pk_fd_set(pkptr, 1, OPC_FIELD_TYPE_INTEGER, pk_destination, 	16);
-op_pk_fd_set(pkptr, 2, OPC_FIELD_TYPE_INTEGER, current_pk_id, 	16);
+op_pk_fd_set(pkptr, FIELD_PAYLOAD_SOURCE, 	OPC_FIELD_TYPE_INTEGER, mac_address,	16);
+op_pk_fd_set(pkptr, FIELD_PAYLOAD_ID, 		OPC_FIELD_TYPE_INTEGER, current_pk_id, 	16);
 
 
 //Stats
@@ -852,12 +803,10 @@ op_pk_send (pkptr, STREAM_TO_MAC);
 				<value-text>
 <![CDATA[
 //Src and destination
-int			source , dest;
+int			source;
 //Information about the packet to receive/forward
 pk_info		*info_ptr;
 int			pk_id_tmp;
-//Debug
-char		msg[500];
 //tmp vaue
 Packet		*pkptr;
 
@@ -874,17 +823,9 @@ pkptr = op_pk_get(op_intrpt_strm());
 //-----------------------------------
 
 //fields are directly embedded in the data frame
-op_pk_fd_get(pkptr , 0, &source);
-op_pk_fd_get(pkptr , 1, &dest);
-op_pk_fd_get(pkptr , 2, &pk_id_tmp);
+op_pk_fd_get(pkptr , FIELD_PAYLOAD_SOURCE, 	&source);
+op_pk_fd_get(pkptr , FIELD_PAYLOAD_ID, 		&pk_id_tmp);
 
-if (dest != pk_destination){
-	sprintf(msg , "%d received a packet to forward to %d, but its own destination is set to %d", mac_address, dest , pk_destination);
-	op_sim_end(msg , "It is a bug: the routes to the sink are not uniform" , "" , "");
-}
-
-
-//printf("%d from %d to %d\n", mac_address, source , dest);
 
 
 
@@ -897,11 +838,12 @@ if (info_ptr == NULL)
 	op_sim_end("The pk_id is not found in the list of generated packets" , "Do you use one single wlan_mac_intf ?" , "" , "");
 else{
 	info_ptr->hops ++;
-	if (mac_address == dest){
-		info_ptr->received 		= OPC_TRUE;
-		info_ptr->time_received = op_sim_time();
-	}
+	
+	info_ptr->received 		= OPC_TRUE;
+	info_ptr->time_received = op_sim_time();
 }
+
+
 
 //If I have not stream to the upper layer, I am not the sink (i.e. the destination)
 if (op_strm_connected(OPC_STRM_OUT , STREAM_TO_UP) == OPC_TRUE)
