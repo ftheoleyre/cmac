@@ -185,26 +185,21 @@
 
 
 #define		DEBUG_GLOBAL					0
-#define		DEBUG_STATE						1
-#define		DEBUG_CMAC						11
 
-#define		DEBUG_BACKOFF					2
+#define		DEBUG_BACKOFF					1
 
-#define		DEBUG_SEND						3
-#define		DEBUG_RECEIVE					4
-#define		DEBUG_RADIO						5
+#define		DEBUG_DATA						2
+#define		DEBUG_RADIO						3
 
-#define		DEBUG_CONTROL					6
+#define		DEBUG_CONTROL					4
+#define		DEBUG_CMAC						5
+#define		DEBUG_HELLO						6
 
 #define		DEBUG_TIMEOUT					7
 
-#define		DEBUG_HELLO						8
+#define		DEBUG_NODE						8
 
-#define		DEBUG_UP						9
-
-#define		DEBUG_NODE						10
-
-
+//current MAX=11
 
 
 //-----------------------------------------------

@@ -353,7 +353,7 @@ number of channels
 		</attribute>
 		<attribute name="busy_tone" group="cmac" type="integer">
 			<properties type="integer" auto-assign="yes" symbolic-only="yes">
-				<default-value value-symbol="YES"/>
+				<default-value value-symbol="NO"/>
 				<symbol-map>
 					<symbol name="YES" value="1"/>
 					<symbol name="NO" value="0"/>
@@ -609,7 +609,7 @@ int	\KTREE_ALGO;
 //				SPECIAL DEBUG
 //-----------------------------------------------
 
-#define		DEBUG_STATE_MACHINE				OPC_TRUE
+#define		DEBUG_STATE_MACHINE				OPC_FALSE
 
 
 
@@ -978,7 +978,6 @@ void change_tx_power(double power , int stream){
 	}
 
 	debug_print(LOW , DEBUG_RADIO , "New power transmission %f\n", power);
-	debug_print(LOW , DEBUG_SEND , "New power transmission %f\n", power);
 	
 	FOUT;
 }
@@ -1421,7 +1420,7 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 			
 			//Verify that we dont have too many retransmissions
 			if (ptr->nb_retry >= MAX_NB_RETRY){
-				debug_print(LOW, DEBUG_SEND , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
+				debug_print(LOW, DEBUG_DATA , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 				debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 				
 				
@@ -1494,7 +1493,7 @@ void add_in_unicast_frame_buffer(frame_struct frame_tmp , int position){
 	*ptr  = frame_tmp;	
 	op_prg_list_insert(unicast_frame_buffer , ptr , position);
 	
-	debug_print(MEDIUM , DEBUG_SEND , "a unicast frame to %d (id %d) was added in the buffer\n", frame_tmp.destination , frame_tmp.frame_id);
+	debug_print(MEDIUM , DEBUG_DATA , "a unicast frame to %d (id %d) was added in the buffer\n", frame_tmp.destination , frame_tmp.frame_id);
 	
 	FOUT;
 }
@@ -1640,7 +1639,7 @@ void add_in_multicast_frame_buffer(frame_struct frame_tmp , int position){
 	*ptr  = frame_tmp;	
 	op_prg_list_insert(multicast_frame_buffer , ptr , position);
 	
-	debug_print(MEDIUM , DEBUG_SEND , "a multicast frame to %d (id %d) was added in the buffer\n", frame_tmp.destination , frame_tmp.frame_id);
+	debug_print(MEDIUM , DEBUG_DATA , "a multicast frame to %d (id %d) was added in the buffer\n", frame_tmp.destination , frame_tmp.frame_id);
 
 	FOUT;
 }
@@ -1657,7 +1656,6 @@ int get_multicast_frame_buffer_size(){
 	for(i=op_prg_list_size(multicast_frame_buffer)-1 ; i>=0 ; i--){
 		ptr = op_prg_list_access(multicast_frame_buffer , i);
 
-	//	debug_print(LOW , DEBUG_STATE , "->%f > %f\n", ptr->time_transmission_min , op_sim_time());
 		if (ptr->time_transmission_min < op_sim_time())
 			nb++;
 	}
@@ -1952,7 +1950,7 @@ void print_frame_buffer(int debug_type){
 Boolean compare_stab_prio(compar_struct val , short stab, short prio){
 	FIN(compare_stab_prio(compar_struct val , short stab, short prio));
 
-	debug_print(MAX , DEBUG_NODE , "stab prio %d %d %d %d\n", val.stab , val.prio , stab , prio);
+	//debug_print(MAX , DEBUG_NODE , "stab prio %d %d %d %d\n", val.stab , val.prio , stab , prio);
 
 	if (val.stab > stab + STAB_STEP)
 		FRET(OPC_FALSE);
@@ -1971,6 +1969,8 @@ int get_next_hop(){
 	int				i;
 	neigh_struct	*neigh_ptr;
 	compar_struct 	next;
+	
+	debug_print(LOW , DEBUG_DATA , "Routing computation toward the sink. Candidates are:\n");
 	
 	//Initialization
 	next.prio = 0;
@@ -2010,7 +2010,7 @@ int get_next_hop(){
 					next.prio	= 2;
 					next.stab	= compute_stability(neigh_ptr->stability);
 				}
-				debug_print(LOW , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
+				debug_print(LOW , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d, stab %d). NH = %d ((prio %d, stab %d))\n",  neigh_ptr->address , neigh_ptr->dist_ktree, neigh_ptr->dist_sink, compute_stability(neigh_ptr->stability) , next.prio , next.stab, next.addr);
 			}
 		break;
 		case ROUTING_MAC_SHORT:
@@ -2025,7 +2025,7 @@ int get_next_hop(){
 					next.stab	= compute_stability(neigh_ptr->stability);
 				}
 				
-				debug_print(MAX , DEBUG_NODE , "	->%d -> next hop %d (%d %d)\n",  neigh_ptr->address , next.addr , next.prio , next.stab);
+				debug_print(LOW , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d, stab %d). NH = %d ((prio %d, stab %d))\n",  neigh_ptr->address , neigh_ptr->dist_ktree, neigh_ptr->dist_sink, compute_stability(neigh_ptr->stability) , next.prio , next.stab, next.addr);
 			}
 		break;
 		case ROUTING_MAC_NO:
@@ -2261,28 +2261,6 @@ int get_nb_branches(){
 }
 
 
-//returns the id of my parent (and ktree node)
-int get_ktree_parent(){
-	FIN(get_ktree_parent());
-	
-	int				i;
-	neigh_struct	*neigh_ptr;
-	
-	//Walks in the list
-	for(i=0; i<op_prg_list_size(my_neighborhood_table) ; i++){
-		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-		if ((neigh_ptr->dist_ktree == 0) && (neigh_ptr->dist_sink + 1 == my_dist_sink))
-			FRET(neigh_ptr->address);
-	}
-	
-	//default behavior
-	FRET(-1);
-}
-
-
-
-
 //Compares to couples addr/power 
 int compare_election_struct(const void *value_a, const void * value_b){
 	FIN(compare_election_struct(void *value_a, void * value_b));
@@ -2324,57 +2302,6 @@ int compare_election_struct(const void *value_a, const void * value_b){
 		FRET(1);
 	FRET(-1);
 }
-
-//returns the min value
-int	min_int(int a , int b){
-	FIN(min_int(int a , int b));
-	
-	if (a < b)
-		FRET(a);
-	FRET(b);
-}
-
-//compare two int_ptr
-int	compare_int(const void *a1 , const void *a2){
-	FIN(compare_int(void *a1 , void *a2));
-	int		a, b;
-	
-	a = *(int*)a1;
-	b = *(int*)a2;
-	
-	if (a < b)
-		FRET(1);
-	if (a > b )
-		FRET(-1);
-	FRET(0);
-
-}
-	
-//returns true if the lists are identical
-Boolean ktree_children_identical(List *l1, List * l2){
-	FIN(ktree_children_identical(List *l1, List * l2));
-	
-	int		i;
-	int		*a , *b;
-
-	if (op_prg_list_size(l1) != op_prg_list_size(l2))
-		FRET(OPC_FALSE);
-
-	//sorts the lists
-	op_prg_list_sort(l1, compare_int);
-	op_prg_list_sort(l2, compare_int);
-	
-	//Compare it
-	for (i=0 ; i < op_prg_list_size(l1) ; i++){
-		a = op_prg_list_access(l1 , i);
-		b = op_prg_list_access(l2 , i);
-		
-		if (*a != *b)
-			FRET(OPC_FALSE);
-	}
-	FRET(OPC_TRUE);
-}
-
 
 
 
@@ -2555,7 +2482,7 @@ void compute_current_my_ktree_children(List **ll){
 	switch(KTREE_ALGO){
 	
 		case KTREE_ALGO_SYNC :
-			compute_current_my_ktree_children(ll);
+			compute_current_my_ktree_children_sync(ll);
 			FOUT;
 		break;
 		
@@ -3080,7 +3007,7 @@ void set_next_frame_null(){
 	
 	char	msg[100];
 
-	debug_print(MEDIUM , DEBUG_SEND , "old frame scheduled (destination %d, type %s) canceled / deleted\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg, 100));
+	debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) canceled / deleted\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg, 100));
 	
 	next_frame_to_send.type = NO_PK_TYPE;
 	
@@ -3095,7 +3022,7 @@ void change_next_frame(frame_struct new_frame){
 	char	msg1[100];
 	char	msg2[100];
 
-	debug_print(MEDIUM , DEBUG_SEND , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
+	debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
 	
 	next_frame_to_send = new_frame;
 	
@@ -3459,7 +3386,7 @@ void prepare_data_frame(Packet	*payload , int frame_id , int next_hop , double p
 	
 	if (DEBUG >= MAX)
 		print_neighborhood_table(DEBUG_NODE);
-	debug_print(MAX , DEBUG_NODE , "NEXT HOP %d -> %d\n", my_address , next_hop); 
+	debug_print(MAX , DEBUG_NODE , "NEXT HOP to the sink is %d\n", my_address , next_hop); 
 	
 	//Fields
 	frame.source				= my_address;
@@ -3514,7 +3441,7 @@ void receive_packet_from_up(){
 	if (next_hop != -1)
 		prepare_data_frame(payload , frame_id , next_hop , power_ratio);
 
-	debug_print(LOW , DEBUG_UP , "data frame sent by %d to %d (id %d)\n", my_address , next_hop , frame_id);
+	debug_print(LOW , DEBUG_DATA , "data frame sent by %d to %d (id %d)\n", my_address , next_hop , frame_id);
 	
 	FOUT;
 }
@@ -3850,7 +3777,7 @@ void receive_packet_from_radio(){
 
 				//debug
 				else if (destination == my_address)
-					debug_print(LOW , DEBUG_RECEIVE , "no reply authorized: reply_possible (%d), is rep_required (%d), piviledged %d\n" , is_reply_possible(destination , my_main_frequency) , is_reply_required , is_node_privileged);
+					debug_print(LOW , DEBUG_DATA , "no reply authorized: reply_possible (%d), is rep_required (%d), piviledged %d\n" , is_reply_possible(destination , my_main_frequency) , is_reply_required , is_node_privileged);
 			
 				//exchange : RTS - CTS - DATA - ACK
 				else if (destination != my_address)
@@ -4067,7 +3994,7 @@ void interrupt_process(){
 	double		next_hello;
 	
 	if (DEBUG_STATE_MACHINE)
-		debug_print(MAX , DEBUG_STATE, "type %d (self %d, stat %d , pk %d)\n", op_intrpt_type() , OPC_INTRPT_SELF , OPC_INTRPT_STAT , OPC_INTRPT_STRM);
+		debug_print(MAX , DEBUG_GLOBAL, "type %d (self %d, stat %d , pk %d)\n", op_intrpt_type() , OPC_INTRPT_SELF , OPC_INTRPT_STAT , OPC_INTRPT_STRM);
 
 	switch (op_intrpt_type()){
 	
@@ -4455,7 +4382,10 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 	if (op_intrpt_type() == OPC_INTRPT_ENDSIM)
 		FOUT;
 	
-	
+	//error
+	if ((type <0) || (type > DEBUG_NODE))
+		op_sim_end("Error, you specify an unkwnown type for debug_print()", "", "", "");
+
 	//Prepares the args
 	va_start(argptr, fmt);	
 	
@@ -4468,7 +4398,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 	
 	if (level <= DEBUG)	{			
 		//Normal debug
-		if (type != DEBUG_STATE){
+		if (type != DEBUG_GLOBAL){
 			fprintf(pfile , "[%4ds , "	, (int) floor(time));
 			fprintf(pfile , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			fprintf(pfile , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
@@ -4486,7 +4416,8 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 			vprintf(fmt, argptr);   
 		}
 		
-		if (OPC_FALSE){ //((type == DEBUG_SEND) || (type == DEBUG_RECEIVE)){
+		//print some particular message per node
+		if (OPC_FALSE){
 			fprintf(my_debug_file , "[%4ds , "	, (int) floor(time));
 			fprintf(my_debug_file , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			fprintf(my_debug_file , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
@@ -4823,16 +4754,13 @@ if (DEBUG > NO){
 	
 		//open the associated debug files
 		open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"%s/%d_all.txt" , 		LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_STATE] ,		"%s/%d_state.txt" , 	LOG_DIR, cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"%s/%d_backoff.txt" ,	LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_SEND] ,		"%s/%d_send.txt" , 		LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_RECEIVE] ,	"%s/%d_receive.txt" ,	LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_DATA] ,		"%s/%d_data.txt" , 		LOG_DIR, cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_RADIO] ,		"%s/%d_radio.txt" , 	LOG_DIR, cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"%s/%d_control.txt" ,	LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"%s/%d_timeout.txt" ,	LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_HELLO] ,		"%s/%d_hello.txt" , 	LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_UP] ,		"%s/%d_up.txt" , 		LOG_DIR, cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_CMAC] ,		"%s/%d_cmac.txt" , 		LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_HELLO] ,		"%s/%d_hello.txt" , 	LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"%s/%d_timeout.txt" ,	LOG_DIR, cmac_timestamp);
 	}
 	open_debug_file(&my_debug_file,						"%s/%s/%d.txt" , 		LOG_DIR, LOG_SUFFIX_NODES, my_address);
 		
@@ -5051,14 +4979,14 @@ op_intrpt_schedule_self (op_sim_time (), 0);
 				<value-text>
 <![CDATA[
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "ENTER - IDLE2 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "ENTER - IDLE2 - %d\n", my_address);
 
 //Handles the possible interruptions (STREAM || STAT)
 interrupt_process();
 
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "EXIT - IDLE2 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "EXIT - IDLE2 - %d\n", my_address);
 ]]>
 				</value-text>
 			</attribute>
@@ -5147,7 +5075,7 @@ char		msg[100];
 Packet*		frame_pk;
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "ENTER - EMISSION1 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "ENTER - EMISSION1 - %d\n", my_address);
 
 
 //------------------------------------------
@@ -5160,7 +5088,7 @@ if (DEBUG_STATE_MACHINE)
 if (!is_tx_busy){
 
 	//debug
-	debug_print(LOW , DEBUG_SEND , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
+	debug_print(LOW , DEBUG_DATA , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
 
 
 	//Prepares the packet
@@ -5235,7 +5163,7 @@ if (!is_tx_busy){
 
 //Timeouts -> an interruption will be scheduled when we finished the transmission (the medium becomes idle)
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "EXIT - EMISSION1 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "EXIT - EMISSION1 - %d\n", my_address);
 ]]>
 				</value-text>
 			</attribute>
@@ -5245,7 +5173,7 @@ if (DEBUG_STATE_MACHINE)
 
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(MAX , DEBUG_STATE , "ENTER - EMISSION2 - %d\n", my_address);
+	debug_print(MAX , DEBUG_GLOBAL , "ENTER - EMISSION2 - %d\n", my_address);
 
 
 //Handles the possible interruptions (STREAM || STAT)
@@ -5258,7 +5186,7 @@ interrupt_process();
 	
 //Transmission finished !
 if (!is_tx_busy){
-	debug_print(MEDIUM , DEBUG_SEND , "transmission ended\n");
+	debug_print(MEDIUM , DEBUG_DATA, "transmission ended\n");
 
 
 	//-----------------------------------------------------
@@ -5382,7 +5310,7 @@ if (!is_tx_busy){
 }
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "EXIT - EMISSION2 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "EXIT - EMISSION2 - %d\n", my_address);
 ]]>
 				</value-text>
 			</attribute>
@@ -5404,7 +5332,7 @@ char			msg[100];
 
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "ENTER - DEFER1 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "ENTER - DEFER1 - %d\n", my_address);
 
 
 //------------------------------------------
@@ -5489,8 +5417,8 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 			generate_rts(data_frame.destination , data_frame.pk_size , data_frame.frame_id , data_frame.power_ratio);
 
 			if (DEBUG >= MAX){
-				print_unicast_frame_buffer(DEBUG_SEND);
-				print_multicast_frame_buffer(DEBUG_SEND);
+				print_unicast_frame_buffer(DEBUG_DATA);
+				print_multicast_frame_buffer(DEBUG_DATA);
 			}
 		}
 	}
@@ -5505,8 +5433,7 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 
 
 //debug
-debug_print(MEDIUM , DEBUG_SEND , "has a packet to send to %d (type %s, id %d, nb_retry %d)\n", next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , next_frame_to_send.nb_retry);
-
+debug_print(MEDIUM , DEBUG_DATA , "has a packet to send to %d (type %s, id %d, nb_retry %d)\n", next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , next_frame_to_send.nb_retry);
 
 
 
@@ -5529,7 +5456,7 @@ if (!IS_MEDIUM_BUSY){
 		next_frame_to_send.ifs = SIFS;
 
 	//We will verify that the medium remains idle
-	debug_print(DEBUG_BACKOFF, DEBUG, "self interrupt, ifs %f\n", next_frame_to_send.ifs);
+	debug_print(MEDIUM, DEBUG_BACKOFF, "self interrupt, ifs %f\n", next_frame_to_send.ifs);
 	op_intrpt_schedule_self(op_sim_time() + next_frame_to_send.ifs , DEFER_CODE);
 }
 
@@ -5537,9 +5464,9 @@ if (!IS_MEDIUM_BUSY){
 
 
 if (DEBUG_STATE_MACHINE){
-	debug_print(LOW , DEBUG_STATE , "EXIT - DEFER1 - %d - timeout %f\n", my_address , next_frame_to_send.ifs *1E6);
-	debug_print(LOW, DEBUG_STATE , "%d : %d %d %d %d %d %d %d\n", IS_MEDIUM_BUSY , is_rx_busy , is_tx_busy , get_nav_main_freq() >= op_sim_time() , is_busy_tone_rx , !busy_tone_rx_ignored , BUSY_TONE_ACTIVATED , !is_in_ktree);
-	print_nav_list(DEBUG_STATE);
+	debug_print(LOW , DEBUG_GLOBAL , "EXIT - DEFER1 - %d - timeout %f\n", my_address , next_frame_to_send.ifs *1E6);
+	debug_print(LOW, DEBUG_GLOBAL , "%d : %d %d %d %d %d %d %d\n", IS_MEDIUM_BUSY , is_rx_busy , is_tx_busy , get_nav_main_freq() >= op_sim_time() , is_busy_tone_rx , !busy_tone_rx_ignored , BUSY_TONE_ACTIVATED , !is_in_ktree);
+	print_nav_list(DEBUG_GLOBAL);
 }
 ]]>
 				</value-text>
@@ -5553,7 +5480,7 @@ if (DEBUG_STATE_MACHINE){
 
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "ENTER - DEFER2 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "ENTER - DEFER2 - %d\n", my_address);
 
 
 
@@ -5602,12 +5529,12 @@ if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 		}		
 	}
 	else
-		debug_print(MEDIUM , DEBUG_SEND , "the medium is busy, we must wait\n");
+		debug_print(MEDIUM , DEBUG_DATA , "the medium is busy, we must wait\n");
 
 
 	//The medium is busy and we have the priority -> that is not regular !
 	if (PRIORITY_AND_MEDIUM_BUSY){
-		debug_print(LOW , DEBUG_SEND , "a collision occurred (we have the priority and the medium is busy, we discard the current flow\n");
+		debug_print(LOW , DEBUG_DATA , "a collision occurred (we have the priority and the medium is busy, we discard the current flow\n");
 		
 		//Discard the current packet
 		set_next_frame_null();
@@ -5621,18 +5548,18 @@ if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 //------------------------------------------
 
 if 	((next_frame_to_send.type == RTS_PK_TYPE) && (is_unicast_frame_buffer_empty())){
-	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: RTS and the frame buffer is empty\n");
+	debug_print(LOW , DEBUG_DATA , "Tranmission canceled: RTS and the frame buffer is empty\n");
 	set_next_frame_null();
 }
 
 
 if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
-	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
+	debug_print(LOW , DEBUG_DATA , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
 	set_next_frame_null();
 }
 
 if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && IS_BROADCAST_FORBIDDEN){
-	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
+	debug_print(LOW , DEBUG_DATA , "Tranmission canceled: the broadcast is currently not authorized\n");
 	set_next_frame_null();
 }
 
@@ -5640,10 +5567,10 @@ if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send
 
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "EXIT - DEFER2 - %d (%d, %d)\n", my_address, IS_MEDIUM_BUSY , my_backoff);
+	debug_print(LOW , DEBUG_GLOBAL , "EXIT - DEFER2 - %d (%d, %d)\n", my_address, IS_MEDIUM_BUSY , my_backoff);
 
 
-//debug_print(MAX , DEBUG_SEND , "busy -> rx_busy %d tx_busy %d nav %f -> %d medium busy %d\n", is_rx_busy , is_tx_busy , get_nav_main_freq() , get_nav_main_freq() > op_sim_time() , IS_MEDIUM_BUSY);
+//debug_print(MAX , DEBUG_DATA , "busy -> rx_busy %d tx_busy %d nav %f -> %d medium busy %d\n", is_rx_busy , is_tx_busy , get_nav_main_freq() , get_nav_main_freq() > op_sim_time() , IS_MEDIUM_BUSY);
 
 ]]>
 				</value-text>
@@ -5656,7 +5583,7 @@ if (DEBUG_STATE_MACHINE)
 <![CDATA[
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "Enter in backoff state\n");
+	debug_print(LOW , DEBUG_GLOBAL , "Enter in backoff state\n");
 
 
 ]]>
@@ -5669,7 +5596,7 @@ if (DEBUG_STATE_MACHINE)
 //double		time_to_wait;
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "ENTER - BACKOFF2 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "ENTER - BACKOFF2 - %d\n", my_address);
 
 
 
@@ -5754,18 +5681,18 @@ if ((!op_ev_valid(backoff_intrpt)) && (!IS_MEDIUM_BUSY) && (!op_ev_valid(defer_i
 // This case can occur if we received an ack athough we already entered in backoff mode
 
 if 	((next_frame_to_send.type == RTS_PK_TYPE) && (is_unicast_frame_buffer_empty())){
-	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: RTS and the frame buffer is empty\n");
+	debug_print(LOW , DEBUG_DATA , "Tranmission canceled: RTS and the frame buffer is empty\n");
 	set_next_frame_null();
 }
 
 
 if 	(((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && (!is_in_frame_buffer(next_frame_to_send.frame_id))){
-	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
+	debug_print(LOW , DEBUG_DATA , "Tranmission canceled: the frame is no longer present in the frame buffer\n");
 	set_next_frame_null();
 }
 
 if 	(((next_frame_to_send.type == DATA_MULTICAST_PK_TYPE) || (next_frame_to_send.type == DATA_MULTICAST_PK_TYPE)) && IS_BROADCAST_FORBIDDEN){
-	debug_print(LOW , DEBUG_SEND , "Tranmission canceled: the broadcast is currently not authorized\n");
+	debug_print(LOW , DEBUG_DATA , "Tranmission canceled: the broadcast is currently not authorized\n");
 	set_next_frame_null();
 }
 
@@ -5813,7 +5740,7 @@ if ((IS_BACK_TO_DEFER) || (TRANSMISSION_CANCELED))
 
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "EXIT - BACKOFF2 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "EXIT - BACKOFF2 - %d\n", my_address);
 ]]>
 				</value-text>
 			</attribute>
@@ -5831,7 +5758,7 @@ char	msg[100];
 //Just a debug message when we start to wait the reply for one of our frame
 if (is_reply_required){
 	//debug
-	debug_print(MAX , DEBUG_SEND , "%s sent, it must wait a reply\n", pk_type_to_str(last_frame_sent.type , msg, 100));
+	debug_print(MAX , DEBUG_DATA , "%s sent, it must wait a reply\n", pk_type_to_str(last_frame_sent.type , msg, 100));
 
 
 	//We did not received yet a reply for our transmission (we just leave it !)
@@ -5856,7 +5783,7 @@ is_reply_bad = OPC_FALSE;
 
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "ENTER - WAIT_NEXT2 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "ENTER - WAIT_NEXT2 - %d\n", my_address);
 
 
 //Handles the possible interruptions (STREAM || STAT)
@@ -5918,7 +5845,7 @@ if ((is_reply_received) || (IS_FRAME_TIMEOUT) || is_reply_bad) {
 
 
 if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_STATE , "EXIT - WAIT_NEXT2 - %d\n", my_address);
+	debug_print(LOW , DEBUG_GLOBAL , "EXIT - WAIT_NEXT2 - %d\n", my_address);
 
 ]]>
 				</value-text>
