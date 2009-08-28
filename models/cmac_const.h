@@ -37,7 +37,10 @@
 #define		LOG_DIR							"/tmp/debug"
 #define		LOG_SUFFIX_NODES				"nodes"
 
-
+//ktree algo
+#define		KTREE_ALGO_SYNC					1
+#define		KTREE_ALGO_XXX					2
+#define		KTREE_ALGO_NONE					0
 
 
 
