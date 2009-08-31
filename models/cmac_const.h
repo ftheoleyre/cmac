@@ -34,12 +34,11 @@
 #define		TIME_START_DATA					60.0
 
 //debug
-#define		LOG_DIR							"/tmp/debug"
 #define		LOG_SUFFIX_NODES				"nodes"
 
 //ktree algo
 #define		KTREE_ALGO_SYNC					1
-#define		KTREE_ALGO_XXX					2
+#define		KTREE_ALGO_MAXTREE				2
 #define		KTREE_ALGO_NONE					0
 
 
@@ -112,10 +111,6 @@
 
 // PRIVILEGED MODE
 #define		PRIV_MIN_RATIO					0.9
-
-//Maximum number of branches for the AP
-#define		MAX_NB_BRANCHES					4
-
 
 //A CTR could be delayed
 #define		MAX_CTR_DELAY_FROM_SINK			100E-6
@@ -251,6 +246,8 @@
 #define		FIELD_PK_HELLO_NEXT					"NEXT"
 #define		FIELD_PK_HELLO_NB_KTREE_CHILDREN	"NB_KTREE_CHILDREN"
 #define		FIELD_PK_HELLO_KTREE_CHILDREN		"KTREE_CHILDREN"
+//Maximum number of branches in the packet
+#define		PK_HELLO_MAX_NB_BRANCHES			4
 
 //data
 #define		FIELD_PK_DATA_PAYLOAD				"PAYLOAD"

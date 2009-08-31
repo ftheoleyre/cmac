@@ -31,6 +31,18 @@ priority of the packet.
 			</properties>
 		</attribute>
 	</model-attributes>
+	<simulation-attributes>
+		<attribute name="Result_Directory" group="execution" type="string">
+			<properties type="string" auto-assign="yes" symbolic-only="no">
+				<default-value value="/tmp/debug"/>
+				<comments>
+<![CDATA[
+the directory where to save the results
+]]>
+				</comments>
+			</properties>
+		</attribute>
+	</simulation-attributes>
 	<attribute-assignments>
 		<assignment attribute-name="Destination" type="integer" status="promoted"/>
 		<assignment attribute-name="Type of Service" type="integer" status="promoted"/>
@@ -113,6 +125,7 @@ double	\inter_pk_time;
 #include <errno.h>
 
 #include "cmac.h"
+#include "cmac_tools.h"
 #include "cmac_interface.h"
 
 
@@ -542,7 +555,7 @@ void debug_write_pk_info(){
 	//Stats
 	pk_info		*elem;
 
-	snprintf(filename , 100, "%s/%d_data_pk.txt", LOG_DIR, (int) timestamp);
+	snprintf(filename , 100, "%s/%d_data_pk.txt", get_log_dir(), (int) timestamp);
 	pfile = fopen(filename , "w");
 
 
@@ -616,6 +629,7 @@ int			i;
 //Topology
 int			node_id;
 int			mac_id;
+char 		log_dir_tmp[FILENAME_LOG_MAX];
 
 
 
@@ -657,10 +671,11 @@ op_ima_obj_attr_set(mac_id , "Address" , 	my_address);
 //--------------------------------------------
 
 
-op_ima_obj_attr_get(op_id_self(), 		"Destination" , 		&pk_destination);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"debug_level",			&DEBUG);
-op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"interpacket_time", 	&inter_pk_time);
-
+op_ima_obj_attr_get(op_id_self(),"Destination" ,&pk_destination);
+op_ima_sim_attr_get_int32("debug_level",		&DEBUG);
+op_ima_sim_attr_get_dbl("interpacket_time", 	&inter_pk_time);
+op_ima_sim_attr_get_str("Result_Directory", 	FILENAME_LOG_MAX, log_dir_tmp);
+set_log_dir(log_dir_tmp);
 
 //----------------------------------------------------
 //
@@ -962,7 +977,7 @@ if (my_stat_id == 0){
 	//-------------------------------------------
 	//					WRITING
 	//-------------------------------------------
-	snprintf(filename , 100, "%s/%d_stats-nodes=%d-mac=%d.txt", LOG_DIR, timestamp, nb_nodes, mac_layer);
+	snprintf(filename , 100, "%s/%d_stats-nodes=%d-mac=%d.txt", get_log_dir(), timestamp, nb_nodes, mac_layer);
 	pfile = fopen(filename , "w");
 
 	if (pfile == NULL){

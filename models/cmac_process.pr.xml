@@ -347,8 +347,17 @@ number of channels
 				<default-value value-symbol="SYNC"/>
 				<symbol-map>
 					<symbol name="SYNC" value="1"/>
-					<symbol name="ALGO1" value="2"/>
+					<symbol name="MTree" value="2"/>
 				</symbol-map>
+				<comments>
+<![CDATA[
+The algorithm used to select the k-tree nodes:
+
+SYNC: a SYNC packets is sent by the sink, with a maximum power. Any node receives this packet and records the reception power. The children will be chosen among the nodes with the minimum rx=power
+
+MTree: firstly, a tree which maximizes the leaves is constructed. Then, we construct a node-disjoint k-tree core (i.e. selection of the k different branches which maximizes the number of descendants)
+]]>
+				</comments>
 			</properties>
 		</attribute>
 		<attribute name="busy_tone" group="cmac" type="integer">
@@ -358,6 +367,16 @@ number of channels
 					<symbol name="YES" value="1"/>
 					<symbol name="NO" value="0"/>
 				</symbol-map>
+			</properties>
+		</attribute>
+		<attribute name="nb_branches" group="cmac" type="integer">
+			<properties type="integer" auto-assign="yes" symbolic-only="no">
+				<default-value value="4"/>
+				<comments>
+<![CDATA[
+The number of leaves for the k-tree core (in our case, the number of branches starting from the sink) 
+]]>
+				</comments>
 			</properties>
 		</attribute>
 	</simulation-attributes>
@@ -597,11 +616,15 @@ Distribution *	\backoff_dist;
 /* the algo I am executing to form the ktree-core */
 int	\KTREE_ALGO;
 
+/* the number of branches for the tree of cMAC */
+int	\NB_BRANCHES;
+
 ]]>
 	</state-variables>
 	<header-block>
 <![CDATA[
 #include	"cmac.h"
+#include	"cmac_tools.h"
 #include	"cmac_interface.h"
 
 
@@ -1052,7 +1075,7 @@ void change_antenna_direction(int stream , int branch){
 	
 	
 	//Direction
-	theta = 2 * PI * branch / MAX_NB_BRANCHES;
+	theta = 2 * PI * branch / NB_BRANCHES;
 	x = cos(theta);
 	y = sin(theta);
 
@@ -2319,11 +2342,30 @@ int compare_election_struct(const void *value_a, const void * value_b){
 
 
 
+//returns the list of current ktree chdilren
+void compute_current_my_ktree_children_maxtree(List **ll_ptr){
+	FIN(compute_current_my_ktree_children_maxtree(List **ll_ptr));
+	//Control
+	int		*int_ptr;
+	int		i;
+	List	*ll = *ll_ptr;
+
+	op_sim_end("not yet implemented", "", "", "");
+	
+	
+	debug_print(LOW , DEBUG_CMAC , "FINAL_LIST\n");
+	for(i=0 ; i < op_prg_list_size(ll) ; i++){
+		int_ptr = op_prg_list_access(ll , i);
+		debug_print(LOW , DEBUG_CMAC , "  : %d\n", *int_ptr);
+	}
+	
+	FOUT;
+}
 
 
 //returns the list of current ktree chdilren
-void compute_current_my_ktree_children_sync(List **ll){
-	FIN(compute_current_my_ktree_children_sync(List **ll));
+void compute_current_my_ktree_children_sync(List **ll_ptr){
+	FIN(compute_current_my_ktree_children_sync(List **ll_ptr));
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
@@ -2333,14 +2375,15 @@ void compute_current_my_ktree_children_sync(List **ll){
 	//Control
 	int				*int_ptr;
 	int				branch_tmp = -1;
+	List			*ll = *ll_ptr;
 	//conditions
 	Boolean			direct_and_new;
 	Boolean			no_direct_and_new;
 
 	
 	//empty the old list
-	while(op_prg_list_size(*ll) > 0){
-		int_ptr = op_prg_list_remove(*ll , 0);
+	while(op_prg_list_size(ll) > 0){
+		int_ptr = op_prg_list_remove(ll , 0);
 		op_prg_mem_free(int_ptr);
 	}
 
@@ -2398,7 +2441,7 @@ void compute_current_my_ktree_children_sync(List **ll){
 				
 				//Eliminates nodes nearer from the sink than I am
 				direct_and_new		= (is_sync_direct_antenna) && (ptr->branch > branch_tmp);
-				no_direct_and_new	= (!is_sync_direct_antenna) && (i < MAX_NB_BRANCHES);
+				no_direct_and_new	= (!is_sync_direct_antenna) && (i < NB_BRANCHES);
 				
 				if ((ptr->pow != 0) && (direct_and_new || no_direct_and_new)){
 					branch_tmp = ptr->branch;
@@ -2406,7 +2449,7 @@ void compute_current_my_ktree_children_sync(List **ll){
 					//creates a list of current ktree children
 					int_ptr = op_prg_mem_alloc(sizeof(int));
 					*int_ptr = ptr->addr;
-					op_prg_list_insert(*ll , int_ptr , OPC_LISTPOS_TAIL);
+					op_prg_list_insert(ll , int_ptr , OPC_LISTPOS_TAIL);
 					
 					debug_print(MAX , DEBUG_CMAC , "	->%d\n", ptr->addr);					
 				}
@@ -2425,7 +2468,7 @@ void compute_current_my_ktree_children_sync(List **ll){
 				//creates a list of current ktree nodes
 				int_ptr = op_prg_mem_alloc(sizeof(int));
 				*int_ptr = ptr->addr;
-				op_prg_list_insert(*ll , int_ptr , OPC_LISTPOS_TAIL);
+				op_prg_list_insert(ll , int_ptr , OPC_LISTPOS_TAIL);
 			}
 			else
 				debug_print(MAX , DEBUG_CMAC , "no ktree node : %d\n", ptr->pow < my_sync_rx_power , ptr->pow != 0);
@@ -2445,8 +2488,8 @@ void compute_current_my_ktree_children_sync(List **ll){
 	}
 	
 	debug_print(LOW , DEBUG_CMAC , "FINAL_LIST\n");
-	for(i=0 ; i < op_prg_list_size(my_ktree_children) ; i++){
-		int_ptr = op_prg_list_access(my_ktree_children , i);
+	for(i=0 ; i < op_prg_list_size(ll) ; i++){
+		int_ptr = op_prg_list_access(ll , i);
 		debug_print(LOW , DEBUG_CMAC , "  : %d\n", *int_ptr);
 	}
 	
@@ -2487,7 +2530,8 @@ void compute_current_my_ktree_children(List **ll){
 			FOUT;
 		break;
 		
-		case KTREE_ALGO_XXX :
+		case KTREE_ALGO_MAXTREE :
+			compute_current_my_ktree_children_maxtree(ll);
 			FOUT;
 		break;
 		
@@ -2518,27 +2562,26 @@ List *create_my_ktree_children_from_packet(Packet *pk){
 	List	*ll;
 	//List size and elements
 	int		nb_ktree_children;
-	int		*ptr, field_value;
+	int		*ptr;
 	//Control
-	char	field_name[50];
 	int		i;
 	//info
 	int		source;
+	//list of children
+	int		*list_children_ptr;
 	
 	//init
 	ll = op_prg_list_create();
 		
 	//nb ktree nodes
-	op_pk_nfd_get(pk,	FIELD_PK_HELLO_NB_KTREE_CHILDREN, 	&nb_ktree_children);
-	op_pk_nfd_get(pk, 	FIELD_PK_SOURCE, 					&source);
+	op_pk_nfd_get(pk,		FIELD_PK_HELLO_NB_KTREE_CHILDREN, 	&nb_ktree_children);
+	op_pk_nfd_get_int32(pk, FIELD_PK_SOURCE, 					&source);
+	op_pk_nfd_get_ptr(pk, 	FIELD_PK_HELLO_KTREE_CHILDREN,		(void**)&list_children_ptr);
 
 	//insert each ktree children in the list
 	for(i=0 ; i<nb_ktree_children; i++){
-		snprintf(field_name, 50, "%s_%d", FIELD_PK_HELLO_KTREE_CHILDREN, i);
-		op_pk_nfd_get(pk , field_name , &field_value);
-		
 		ptr 	= op_prg_mem_alloc(sizeof(int));
-		*ptr 	= field_value;
+		*ptr 	= list_children_ptr[i];
 		op_prg_list_insert(ll , ptr , OPC_LISTPOS_HEAD);
 	}
 	
@@ -2550,32 +2593,29 @@ List *create_my_ktree_children_from_packet(Packet *pk){
 void fill_ktree_children_fields(Packet *pk){
 	FIN(fill_ktree_children_fields(Packet *pk));
 	
-	int				*int_ptr;
+	int		*int_ptr;
 	//Control
-	int				i;
-	char			field_name[60];
-
+	int		i;
+	//list of children
+	int		*list_children_ptr;
+	int		nb_children;
 
 	//Current ktree children
 	compute_current_my_ktree_children(&my_ktree_children);
+	nb_children = op_prg_list_size(my_ktree_children);
 	
 	//Nb of ktree children
-	op_pk_nfd_set(pk , FIELD_PK_HELLO_NB_KTREE_CHILDREN , op_prg_list_size(my_ktree_children));
-	
-	
-	//Fills ktree children fields
-	for(i=0 ; i < MAX_NB_BRANCHES ; i++){
-		snprintf(field_name , 60, "%s_%d", FIELD_PK_HELLO_KTREE_CHILDREN, i);
+	op_pk_nfd_set(pk , FIELD_PK_HELLO_NB_KTREE_CHILDREN , nb_children);
 		
-		//ktree children fields
-		if (i < op_prg_list_size(my_ktree_children)){
-			int_ptr = op_prg_list_access(my_ktree_children , i);
-			op_pk_nfd_set(pk, field_name , *int_ptr);
-		}
-		//No more ktree children fields
-		else if (op_pk_nfd_is_set(pk, field_name))
-			op_pk_nfd_strip(pk , field_name);
+	//Fills ktree children fields
+	if (nb_children != 0){
+		list_children_ptr = op_prg_mem_alloc(sizeof(int) * nb_children);
 	
+		for(i=0; i<nb_children; i++){
+			int_ptr = op_prg_list_access(my_ktree_children, i);
+			list_children_ptr[i] = *int_ptr;			
+		}		
+		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_KTREE_CHILDREN, list_children_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(int) * nb_children);
 	}
 	
 	print_neighborhood_table(DEBUG_NODE);
@@ -2942,9 +2982,12 @@ Packet* create_packet(frame_struct frame){
 			pk = op_pk_create_fmt("cmac_hello");
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_SINK , 	my_dist_sink);
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_KTREE ,	my_dist_ktree);
-			op_pk_nfd_set(pk , FIELD_PK_HELLO_SYNC_POWER ,	my_sync_rx_power);
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_BRANCH,		my_branch);
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_NEXT,			frame.next_hello);
+
+			//ktree info
+			if (KTREE_ALGO == KTREE_ALGO_SYNC)
+				op_pk_nfd_set(pk , FIELD_PK_HELLO_SYNC_POWER ,	my_sync_rx_power);
 			fill_ktree_children_fields(pk);
 		break;
 		case RTS_PK_TYPE:
@@ -4580,6 +4623,7 @@ double	threshold;
 //for debug files
 char	dirname[200];
 DIR		*pdir;
+char 	log_dir_tmp[FILENAME_LOG_MAX];
 //Id
 int		intf_id;
 
@@ -4601,7 +4645,7 @@ if (cmac_timestamp == 0)
 //Address
 op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
 my_address = atoi(str);
-op_ima_obj_attr_set (op_id_self(), "Address", &my_address);
+op_ima_obj_attr_set (op_id_self(), "Address", my_address);
 
 
 
@@ -4660,12 +4704,17 @@ op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "routing",				&MAC_ROUTING);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "ktree_algo",				&KTREE_ALGO);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "busy_tone",				&BUSY_TONE_ACTIVATED);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_branches",			&NB_BRANCHES);
 
 //no ktree-algo if I do not execute CMAC
 if (MAC_LAYER != CMAC)
 	KTREE_ALGO = KTREE_ALGO_NONE;
 
-	
+//log directory name
+if (op_ima_sim_attr_exists("Result_Directory")){
+	op_ima_sim_attr_get_str("Result_Directory", 	FILENAME_LOG_MAX, log_dir_tmp);
+	set_log_dir(log_dir_tmp);
+}
 	
 //No RTS / CTS -> pk_size set to the infinity value
 if (RTS_PK_SIZE == -1)
@@ -4747,25 +4796,25 @@ if (DEBUG > NO){
 	if (my_stat_id == 0){
 	
 		//create debug directories if they do not exist	
-		pdir = opendir(LOG_DIR);
+		pdir = opendir(get_log_dir());
 		if (!pdir)
-			mkdir(LOG_DIR , 0777);
-		snprintf(dirname , 200, "%s/%s", LOG_DIR , LOG_SUFFIX_NODES);
+			mkdir(get_log_dir() , 0777);
+		snprintf(dirname , 200, "%s/%s", get_log_dir() , LOG_SUFFIX_NODES);
 		pdir = opendir(dirname);
 		if (!pdir)
 			mkdir(dirname , 0777);
 	
 		//open the associated debug files
-		open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"%s/%d_all.txt" , 		LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"%s/%d_backoff.txt" ,	LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_DATA] ,		"%s/%d_data.txt" , 		LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_RADIO] ,		"%s/%d_radio.txt" , 	LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"%s/%d_control.txt" ,	LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_CMAC] ,		"%s/%d_cmac.txt" , 		LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_HELLO] ,		"%s/%d_hello.txt" , 	LOG_DIR, cmac_timestamp);
-		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"%s/%d_timeout.txt" ,	LOG_DIR, cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_GLOBAL] ,	"%s/%d_all.txt" , 		get_log_dir(), cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_BACKOFF] ,	"%s/%d_backoff.txt" ,	get_log_dir(), cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_DATA] ,		"%s/%d_data.txt" , 		get_log_dir(), cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_RADIO] ,		"%s/%d_radio.txt" , 	get_log_dir(), cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"%s/%d_control.txt" ,	get_log_dir(), cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_CMAC] ,		"%s/%d_cmac.txt" , 		get_log_dir(), cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_HELLO] ,		"%s/%d_hello.txt" , 	get_log_dir(), cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"%s/%d_timeout.txt" ,	get_log_dir(), cmac_timestamp);
 	}
-	open_debug_file(&my_debug_file,						"%s/%s/%d.txt" , 		LOG_DIR, LOG_SUFFIX_NODES, my_address);
+	open_debug_file(&my_debug_file,						"%s/%s/%d.txt" , 		get_log_dir(), LOG_SUFFIX_NODES, my_address);
 		
 }
 
@@ -5205,7 +5254,7 @@ if (!is_tx_busy){
 			change_tx_power(POWER_TX , STREAM_TO_RADIO);
 		
 		//Next sync if we have a directional antenna
-		if ((sync_last_branch != MAX_NB_BRANCHES - 1) && (is_sync_direct_antenna)){
+		if ((sync_last_branch != NB_BRANCHES - 1) && (is_sync_direct_antenna)){
 			sync_last_branch++;
 			generate_sync();
 		}
