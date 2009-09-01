@@ -12,7 +12,7 @@
 							<attribute creation-mechanics="Model" name="list" type="object list">
 								<object-list>
 									<sub-object>
-										<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
+										<attribute creation-mechanics="Model" name="Channel Settings" type="compound" spectype="0">
 											<sub-object>
 												<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
 												<attribute creation-mechanics="Model" name="list" type="object list">
@@ -623,7 +623,7 @@ int	\NB_BRANCHES;
 	</state-variables>
 	<header-block>
 <![CDATA[
-#include	"cmac.h"
+#include	"cmac_process.h"
 #include	"cmac_tools.h"
 #include	"cmac_interface.h"
 
@@ -757,7 +757,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 #define		END_PRIV_SLOT					(time_start_privileged + slot_privileged_duration - slot_privileged_offset <= op_sim_time())
 #define		END_PRIV_INTRPT					((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == PRIVILEGED_MAX_CODE))
 
-#define		PRIVILEGED_MEDIUM_LIMIT			((is_node_privileged) && (is_frame_buffer_empty()) && (time_start_privileged + slot_privileged_duration * PRIV_MIN_RATIO <= op_sim_time()))
+#define		PRIVILEGED_MEDIUM_LIMIT			((is_node_privileged) && (is_frame_buffer_empty()) && (time_start_privileged + slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO <= op_sim_time()))
 #define		PRIVILEGED_HIGH_LIMIT			((is_node_privileged) && (END_PRIV_SLOT || END_PRIV_INTRPT))
 
 
@@ -2413,7 +2413,6 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 				ptr->addr 	= neigh_ptr->address;
 				ptr->pow 	= neigh_ptr->sync_rx_power;
 				ptr->stab	= compute_stability(neigh_ptr->stability);
-				ptr->branch	= neigh_ptr->branch;
 				op_prg_list_insert_sorted(max_sync_rx_power , ptr , compare_election_struct);
 			}
 		}
@@ -2821,7 +2820,6 @@ void update_neighborhood_table(int source , int dist_sink , int dist_ktree, doub
 			neigh_ptr->dist_sink			= dist_sink;
 			neigh_ptr->dist_ktree			= dist_ktree;
 			neigh_ptr->sync_rx_power		= sync_rx_power;
-			neigh_ptr->branch				= branch;
 			neigh_ptr->ktree_children		= my_ktree_children_tmp;
 			update_stability(neigh_ptr->stability , OPC_TRUE);
 			neighbor_updated = OPC_TRUE;
@@ -2849,7 +2847,6 @@ void update_neighborhood_table(int source , int dist_sink , int dist_ktree, doub
 		neigh_ptr->dist_sink			= dist_sink;
 		neigh_ptr->dist_ktree			= dist_ktree;
 		neigh_ptr->sync_rx_power		= sync_rx_power;
-		neigh_ptr->branch				= branch;
 		neigh_ptr->timeout				= op_sim_time() + HELLO_PK_PERIOD;
 		neigh_ptr->ktree_children		= my_ktree_children_tmp;
 		neigh_ptr->timeout				= op_sim_time() + next_hello + 0.1;			
@@ -2901,7 +2898,7 @@ void print_neighborhood_table(int debug_type){
 	debug_print(LOW , debug_type , "---------------------------------------\n");
 	debug_print(LOW , debug_type , "\n");
 	
-	debug_print(LOW , debug_type , "addr |Sink|ktree|Branch|Timeout|Stability|my_ktree_children\n");
+	debug_print(LOW , debug_type , "addr |Sink|ktree|Timeout|Stability|my_ktree_children\n");
 	
 	for (i=0 ; i< op_prg_list_size(my_neighborhood_table) ; i++){
 		ptr = op_prg_list_access(my_neighborhood_table , i);
@@ -2914,7 +2911,7 @@ void print_neighborhood_table(int debug_type){
 		}
 			
 		//the whole info
-		debug_print(LOW , debug_type , "%5d| %3d| %3d  | %2d  | %f |%d|%s\n", ptr->address , convert_int(ptr->dist_sink) , convert_int(ptr->dist_ktree) , ptr->branch , ptr->timeout , compute_stability(ptr->stability) , msg);
+		debug_print(LOW , debug_type , "%5d| %3d| %3d  | %f |%d|%s\n", ptr->address , convert_int(ptr->dist_sink) , convert_int(ptr->dist_ktree) , ptr->timeout , compute_stability(ptr->stability) , msg);
 	}
 	debug_print(LOW , debug_type , "sink = %d, ktree = %d, isBN = %d, syncPw = %f, bn list = %s\n", 	my_dist_sink , 	my_dist_ktree, is_in_ktree, convert_double(my_sync_rx_power), print_ktree_children(msg, 50));
 
@@ -2982,7 +2979,6 @@ Packet* create_packet(frame_struct frame){
 			pk = op_pk_create_fmt("cmac_hello");
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_SINK , 	my_dist_sink);
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_KTREE ,	my_dist_ktree);
-			op_pk_nfd_set(pk , FIELD_PK_HELLO_BRANCH,		my_branch);
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_NEXT,			frame.next_hello);
 
 			//ktree info
@@ -3895,8 +3891,8 @@ void receive_packet_from_radio(){
 					
 					//Schedules the end of the privileged mode
 					if (slot_privileged_duration > offset){
-						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - slot_privileged_offset) * PRIV_MIN_RATIO , 	PRIVILEGED_MIN_CODE);
-						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - slot_privileged_offset), 					PRIVILEGED_MAX_CODE);
+						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - slot_privileged_offset) * PRIVILEGED_MIN_TIME_RATIO , 	PRIVILEGED_MIN_CODE);
+						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - slot_privileged_offset), 								PRIVILEGED_MAX_CODE);
 					}
 					else
 						op_intrpt_schedule_self(op_sim_time() , PRIVILEGED_MAX_CODE);
@@ -3941,7 +3937,6 @@ void receive_packet_from_radio(){
 			
 			//Updates the neighborhood table
 			case HELLO_PK_TYPE:
-				op_pk_nfd_get(frame , FIELD_PK_HELLO_BRANCH,&branch);
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_NEXT, 	&next_hello);
 			
 				if (destination != ADDR_BROADCAST){
@@ -5394,7 +5389,7 @@ if (DEBUG_STATE_MACHINE)
 
 debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, ktree %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg, 100) ,  IS_PK_TO_SEND , is_in_ktree , is_node_privileged);
 if (is_node_privileged)
-	debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d (medium %d, high %d)\n", time_start_privileged , slot_privileged_duration * PRIV_MIN_RATIO , time_start_privileged + slot_privileged_duration * PRIV_MIN_RATIO <= op_sim_time() , PRIVILEGED_END , PRIVILEGED_MEDIUM_LIMIT , PRIVILEGED_HIGH_LIMIT);
+	debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d (medium %d, high %d)\n", time_start_privileged , slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO , time_start_privileged + slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO <= op_sim_time() , PRIVILEGED_END , PRIVILEGED_MEDIUM_LIMIT , PRIVILEGED_HIGH_LIMIT);
 		
 
 //We have no frame which is scheduled to be transmitted

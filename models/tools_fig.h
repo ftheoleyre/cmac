@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <opnet.h>
 
-#include "cmac.h"
 
 
 

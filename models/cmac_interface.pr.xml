@@ -124,7 +124,7 @@ double	\inter_pk_time;
 #include <math.h>
 #include <errno.h>
 
-#include "cmac.h"
+#include "cmac_process.h"
 #include "cmac_tools.h"
 #include "cmac_interface.h"
 

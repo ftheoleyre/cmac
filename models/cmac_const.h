@@ -109,8 +109,8 @@
 //-----------------------------------------------
 
 
-// PRIVILEGED MODE
-#define		PRIV_MIN_RATIO					0.9
+//the 
+#define		PRIVILEGED_MIN_TIME_RATIO		0.9
 
 //A CTR could be delayed
 #define		MAX_CTR_DELAY_FROM_SINK			100E-6
@@ -242,10 +242,11 @@
 #define		FIELD_PK_HELLO_DIST_SINK			"DIST_SINK"
 #define		FIELD_PK_HELLO_DIST_KTREE			"DIST_KTREE"
 #define		FIELD_PK_HELLO_SYNC_POWER			"SYNC_POWER"
-#define		FIELD_PK_HELLO_BRANCH				"BRANCH"
 #define		FIELD_PK_HELLO_NEXT					"NEXT"
 #define		FIELD_PK_HELLO_NB_KTREE_CHILDREN	"NB_KTREE_CHILDREN"
 #define		FIELD_PK_HELLO_KTREE_CHILDREN		"KTREE_CHILDREN"
+#define		FIELD_PK_HELLO_PARENT				"PARENT"
+
 //Maximum number of branches in the packet
 #define		PK_HELLO_MAX_NB_BRANCHES			4
 

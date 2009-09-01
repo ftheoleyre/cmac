@@ -8,7 +8,8 @@
 
  
 #include 	"tools_fig.h"
-#include	"cmac.h"
+#include	"cmac_process.h"
+#include	"cmac_tools.h"
 
 
 
@@ -77,7 +78,7 @@ void tools_fig_write_xfig_file(short **graph, pos_struct *positions, int *states
 
 	//Opens the associated file and 
 	//Initialization
-	snprintf(filename , 200, "%s/topology.fig", LOG_DIR);
+	snprintf(filename , 200, "%s/topology.fig", get_log_dir());
 	pfile = fopen(filename , "w");
 	if (pfile==NULL){
 		printf("Error : we cannot create the file %s\n", filename);
