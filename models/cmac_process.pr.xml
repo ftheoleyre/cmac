@@ -468,12 +468,6 @@ Boolean	\is_node_privileged;
 /* Is the node a sink ? */
 Boolean	\is_sink;
 
-/* The distance in hops to the sink */
-int	\my_sink_dist;
-
-/* The distance in hops to the ktree core */
-int	\my_ktree_dist;
-
 /* The neighborhood table */
 List*	\my_neighborhood_table;
 
@@ -1997,7 +1991,7 @@ int get_next_hop(){
 	
 	//Initialization
 	next.addr 		= ADDR_BROADCAST;
-	next.ktree_dist = my_ktree_dist;
+	next.ktree_dist = my_sink_tree.ktree_dist;
 	next.sink_dist	= my_sink_tree.sink_dist;
 	switch (MAC_ROUTING){
 	
@@ -2115,7 +2109,7 @@ Boolean update_is_in_ktree(){
 		
 		//updates the ktree distance
 		if (is_in_ktree)
-			my_ktree_dist = 0;
+			my_sink_tree.ktree_dist = 0;
 	
 		//debug
 		debug_print(LOW , DEBUG_NODE , "changed the ktree_node status: %d -> %d\n", old_value , is_in_ktree);
@@ -2151,8 +2145,8 @@ void update_sink_tree_infos(){
 	
 	//particular case
 	if (is_sink){
-		my_sink_dist 	= 0;
-		my_ktree_dist	= 0;
+		my_sink_tree.sink_dist 	= 0;
+		my_sink_tree.ktree_dist	= 0;
 		FOUT;
 	}
 	
@@ -2177,8 +2171,8 @@ void update_sink_tree_infos(){
 	if (is_in_ktree)
 		current_ktree_dist = 0;
 	
-	my_sink_dist 	= current_sink_dist;
-	my_ktree_dist	= current_ktree_dist;
+	my_sink_tree.sink_dist 	= current_sink_dist;
+	my_sink_tree.ktree_dist	= current_ktree_dist;
 	
 	debug_print(MAX , DEBUG_HELLO , "Distances update\n");
 	if (DEBUG >= MEDIUM)
@@ -2346,7 +2340,7 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 	//--------------------------------------------------
 	//				NO KTREE NODE
 	//--------------------------------------------------
-	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_in_ktree) || (my_sink_dist > MAX_BRANCH_LENGTH))){
+	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_in_ktree) || (my_sink_tree.sink_dist > MAX_BRANCH_LENGTH))){
 		//debug_print(MAX , DEBUG_CMAC , "No ktree node: %d %d %d\n", my_sync_rx_power == 0 , !is_in_ktree , my_sink_dist > MAX_BRANCH_LENGTH);
 		FOUT;
 	}
@@ -2364,7 +2358,7 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
 			//Adds the power if the node is farther from the sink
-			if (neigh_ptr->sink_dist > my_sink_dist){
+			if (neigh_ptr->sink_dist > my_sink_tree.sink_dist){
 				election_ptr = op_prg_mem_alloc(sizeof(election_struct));
 				election_ptr->addr 	= neigh_ptr->address;
 				election_ptr->pow 	= neigh_ptr->sync_rx_power;
@@ -2695,17 +2689,17 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 	//---------------------------
 	//	DIST SINK / KTREE
 	//---------------------------
-	if (my_ktree_dist > ktree_dist + 1){
-		my_ktree_dist	= ktree_dist + 1 ;
-		my_sink_dist 	= sink_dist + 1 ;
+	if (my_sink_tree.ktree_dist > ktree_dist + 1){
+		my_sink_tree.ktree_dist	= ktree_dist + 1 ;
+		my_sink_tree.sink_dist 	= sink_dist + 1 ;
 		
-		debug_print(LOW , DEBUG_HELLO , "Distances updated : ktree %d, sink %d via %d\n", my_sink_dist, my_ktree_dist , source);
+		debug_print(LOW , DEBUG_HELLO , "Distances updated : ktree %d, sink %d via %d\n", my_sink_tree.sink_dist, my_sink_tree.ktree_dist , source);
 	//	hello_required = OPC_TRUE;
 	}
-	if ((ktree_dist == my_ktree_dist) && (my_sink_dist > sink_dist + 1)){
-		my_sink_dist = sink_dist + 1;
+	if ((ktree_dist == my_sink_tree.ktree_dist) && (my_sink_tree.sink_dist > sink_dist + 1)){
+		my_sink_tree.sink_dist = sink_dist + 1;
 		
-		debug_print(LOW , DEBUG_HELLO , "Sink distance updated : sink %d via %d\n", my_sink_dist, my_ktree_dist , source);
+		debug_print(LOW , DEBUG_HELLO , "Sink distance updated : sink %d via %d\n", my_sink_tree.sink_dist, my_sink_tree.ktree_dist , source);
 	//	hello_required = OPC_TRUE;
 	}
 		
@@ -2810,7 +2804,7 @@ void print_neighborhood_table(int debug_type){
 		//the whole info
 		debug_print(LOW , debug_type , "%5d| %3d| %3d  | %f |%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , msg);
 	}
-	debug_print(LOW , debug_type , "sink = %d, ktree = %d, isBN = %d, syncPw = %f, bn list = %s\n", 	my_sink_dist , 	my_ktree_dist, is_in_ktree, convert_double(my_sync_rx_power), print_ktree_children(msg, 50));
+	debug_print(LOW , debug_type , "sink = %d, ktree = %d, isBN = %d, syncPw = %f, bn list = %s\n", 	my_sink_tree.sink_dist , 	my_sink_tree.ktree_dist, is_in_ktree, convert_double(my_sync_rx_power), print_ktree_children(msg, 50));
 
 	
 	FOUT;
@@ -2874,8 +2868,8 @@ Packet* create_packet(frame_struct frame){
 		break;
 		case HELLO_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_hello");
-			op_pk_nfd_set(pk , FIELD_PK_HELLO_SINK_DIST , 	my_sink_dist);
-			op_pk_nfd_set(pk , FIELD_PK_HELLO_KTREE_DIST,	my_ktree_dist);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_SINK_DIST , 	my_sink_tree.sink_dist);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_KTREE_DIST,	my_sink_tree.ktree_dist);
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_NEXT,			frame.next_hello);
 
 			//ktree algo info
@@ -4589,15 +4583,15 @@ if (is_sink){
 //---------  DISTANCES / ROUTING  ------------
 
 if (is_sink)
-	my_sink_dist = 0;
+	my_sink_tree.sink_dist = 0;
 else
-	my_sink_dist = pow (2, 4) - 1;
+	my_sink_tree.sink_dist = pow (2, 4) - 1;
 
 //dist ktree
 if (is_in_ktree)
-	my_ktree_dist = 0;
+	my_sink_tree.ktree_dist = 0;
 else
-	my_ktree_dist = pow (2, 4) - 1;
+	my_sink_tree.ktree_dist = pow (2, 4) - 1;
 
 
 
@@ -5846,7 +5840,7 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_309"/>
 			<attribute name="condition" type="string" value="GO_TO_BACKOFF"/>
 		</transition>
-		<transition source-state-id="58" destination-state-id="54" label-x="479" label-y="552">
+		<transition source-state-id="58" destination-state-id="54" label-x="485" label-y="565">
 			<path-point x="278" y="513"/>
 			<path-point x="666" y="515"/>
 			<attribute name="name" type="string" value="tr_310"/>
@@ -5928,7 +5922,7 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_332"/>
 			<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
 		</transition>
-		<transition source-state-id="58" destination-state-id="41" label-x="103" label-y="275">
+		<transition source-state-id="58" destination-state-id="41" label-x="112" label-y="277">
 			<path-point x="261" y="501"/>
 			<path-point x="105" y="262"/>
 			<path-point x="205" y="155"/>

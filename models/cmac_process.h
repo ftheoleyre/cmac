@@ -128,6 +128,7 @@ typedef struct{
 typedef struct{
 	int		parent;
 	short	sink_dist;
+	short	ktree_dist;
 	short	subtree_size;
 } sink_tree_struct;
 
