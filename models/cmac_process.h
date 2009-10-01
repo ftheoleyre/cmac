@@ -62,12 +62,11 @@ typedef struct{
 
 typedef struct{
 	int		address;
-	int		dist_sink;
-	int		dist_ktree;
-	double	sync_rx_power;
+	int		sink_dist;
+	int		ktree_dist;
 	List	*ktree_children;	
-	Boolean	stability[MAX_STAB];
 	double	timeout;
+	double	sync_rx_power;
 } neigh_struct;
 
 
@@ -140,8 +139,8 @@ typedef struct{
 
 typedef struct{
 	int		addr;
-	short	prio;
-	short	stab;
+	short	sink_dist;
+	short	ktree_dist;
 } compar_struct;
 
 
@@ -157,7 +156,6 @@ typedef struct{
 typedef struct{
 	int		addr;
 	double	pow;
-	short	stab;
 	short	branch;
 }election_struct;
 

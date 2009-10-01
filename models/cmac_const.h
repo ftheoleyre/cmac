@@ -106,12 +106,13 @@
 
 //time between 2 hellos
 #define		HELLO_PK_PERIOD					1.0
+#define		HELLO_PK_TIMEOUT				3
 
 //The maximum number of stabilities to store
-#define		MAX_STAB						10
+//#define		MAX_STAB						10
 
 //Two stabilities with STAB_STEP difference are considered equal
-#define		STAB_STEP						2
+//#define		STAB_STEP						2
 
 
 
@@ -206,7 +207,6 @@
 
 #define		DEBUG_NODE						8
 
-//current MAX=11
 
 
 //-----------------------------------------------
@@ -232,47 +232,47 @@
 #define		HEADERS_PK_SIZE					(57 + 48*2 + 4 + 32)
 #define		NB_TIER_SIZE					4
 #define		DURATION_SIZE					16
-#define		DIST_SINK_SIZE					4
-#define		DIST_KTREE_SIZE					4
+#define		SINK_DIST_SIZE					4
+#define		KTREE_DIST_SIZE					4
 
 
 //MTU in bits
-#define		MTU_MAX							2400.0
+#define		MTU_MAX								2400.0
 
 
 	
 //fields names
-#define		FIELD_PK_SOURCE						"SOURCE"
-#define		FIELD_PK_DESTINATION				"DESTINATION"
+#define		FIELD_PK_SOURCE						"source"
+#define		FIELD_PK_DESTINATION				"destination"
 #define		FIELD_PK_ID							"Data Packet ID"	
-#define		FIELD_PK_DURATION					"DURATION"	
-#define		FIELD_PK_TYPE						"TYPE"
+#define		FIELD_PK_DURATION					"duration"	
+#define		FIELD_PK_TYPE						"type"
 #define		FIELD_PK_ACCEPT						"Accept"
-#define		FIELD_PK_POWER_RATIO				"POWER_RATIO"
+#define		FIELD_PK_POWER_RATIO				"power_ratio"
 
 //hellos
-#define		FIELD_PK_HELLO_DIST_SINK			"DIST_SINK"
-#define		FIELD_PK_HELLO_DIST_KTREE			"DIST_KTREE"
-#define		FIELD_PK_HELLO_NEXT					"NEXT_HELLO"
-#define		FIELD_PK_HELLO_NB_KTREE_CHILDREN	"NB_KTREE_CHILDREN"
-#define		FIELD_PK_HELLO_KTREE_CHILDREN		"KTREE_CHILDREN"
-#define		FIELD_PK_HELLO_PARENT				"PARENT"
+#define		FIELD_PK_HELLO_SINK_DIST			"sink_dist"
+#define		FIELD_PK_HELLO_KTREE_DIST			"ktree_dist"
+#define		FIELD_PK_HELLO_NEXT					"next_hello"
+#define		FIELD_PK_HELLO_NB_KTREE_CHILDREN	"nb_ktree_children"
+#define		FIELD_PK_HELLO_KTREE_CHILDREN		"ktree_children"
+#define		FIELD_PK_HELLO_PARENT				"parent"
 //SYNC power algo
-#define		FIELD_PK_HELLO_SYNC_POWER			"SYNC_POWER"
+#define		FIELD_PK_HELLO_SYNC_POWER			"sync_power"
 //Maxtree algo
-#define		FIELD_PK_HELLO_SINK_SUBTREE_SIZE	"SINK_SUBTREE_SIZE"
+#define		FIELD_PK_HELLO_SINK_SUBTREE_SIZE	"sink_subtree_size"
 
 
 //data
-#define		FIELD_PK_DATA_PAYLOAD				"PAYLOAD"
+#define		FIELD_PK_DATA_PAYLOAD				"payload"
 
 //ctr
-#define		FIELD_PK_CTR_FREQ					"FREQ"
-#define		FIELD_PK_CTR_TSLOT					"T_SLOT"
-#define		FIELD_PK_CTR_OFFSET					"OFFSET"
+#define		FIELD_PK_CTR_FREQ					"freq"
+#define		FIELD_PK_CTR_TSLOT					"t_slot"
+#define		FIELD_PK_CTR_OFFSET					"offset"
 
 //sync
-#define		FIELD_PK_SYNC_BRANCH				"BRANCH"
+#define		FIELD_PK_SYNC_BRANCH				"branch"
 
 
 

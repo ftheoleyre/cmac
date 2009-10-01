@@ -469,10 +469,10 @@ Boolean	\is_node_privileged;
 Boolean	\is_sink;
 
 /* The distance in hops to the sink */
-int	\my_dist_sink;
+int	\my_sink_dist;
 
 /* The distance in hops to the ktree core */
-int	\my_dist_ktree;
+int	\my_ktree_dist;
 
 /* The neighborhood table */
 List*	\my_neighborhood_table;
@@ -623,7 +623,7 @@ int	\NB_BRANCHES;
 /* -parent                                        */
 /* -distance to the sink                          */
 /* -size of my subtree (descendant + myself)      */
-sink_tree_struct	\sink_sp_tree_infos;
+sink_tree_struct	\my_sink_tree;
 
 ]]>
 	</state-variables>
@@ -1985,22 +1985,6 @@ void print_frame_buffer(int debug_type){
 //-----------------------------------------------------------
 
 
-//Comares stab / prio (stab is more important
-Boolean compare_stab_prio(compar_struct val , short stab, short prio){
-	FIN(compare_stab_prio(compar_struct val , short stab, short prio));
-
-	//debug_print(MAX , DEBUG_NODE , "stab prio %d %d %d %d\n", val.stab , val.prio , stab , prio);
-
-	if (val.stab > stab + STAB_STEP)
-		FRET(OPC_FALSE);
-	if (val.stab < stab - STAB_STEP)
-		FRET(OPC_TRUE);
-	if (val.prio < prio)
-		FRET(OPC_TRUE);
-	FRET(OPC_FALSE);
-
-}
-
 //returns the next_hop to the sink
 int get_next_hop(){
 	FIN(get_next_hop());
@@ -2012,69 +1996,52 @@ int get_next_hop(){
 	debug_print(LOW , DEBUG_DATA , "Routing computation toward the sink. Candidates are:\n");
 	
 	//Initialization
-	next.prio = 0;
-	next.addr = ADDR_BROADCAST;
-	next.stab = 0;
+	next.addr 		= ADDR_BROADCAST;
+	next.ktree_dist = my_ktree_dist;
+	next.sink_dist	= my_sink_tree.sink_dist;
 	switch (MAC_ROUTING){
+	
+		//In priority to the ktree and then to the sink
 		case ROUTING_MAC_KTREE:
 		
+		//since all nodes have a null distance to the ktree, equivalent to the shortest paths to the sink
+		case ROUTING_MAC_SHORT:
+		
 			//Walks in the list
 			for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 				neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
-				//Ktree node
-				if ((neigh_ptr->dist_ktree == 0) && (neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 4))){
-					next.addr	= neigh_ptr->address;
-					next.prio	= 5;
-					next.stab	= compute_stability(neigh_ptr->stability);
+				//Closer to the ktree core
+				if (neigh_ptr->ktree_dist < next.ktree_dist){
+					next.addr		= neigh_ptr->address;
+					next.ktree_dist	= neigh_ptr->ktree_dist;
+					next.sink_dist	= neigh_ptr->sink_dist;
+					
+					debug_print(MAX , DEBUG_DATA , "case 1\n");
 				}
 				   
-				//Other node -> to the ktree nodes	   
-				if ((neigh_ptr->dist_ktree < my_dist_ktree) && (neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 4))){
-					next.addr	= neigh_ptr->address;
-					next.prio	= 4;
-					next.stab	= compute_stability(neigh_ptr->stability);
+				//Closer to the sink (but not farther from the k-tree core)	   
+				else if ((neigh_ptr->ktree_dist == next.ktree_dist) && (neigh_ptr->sink_dist < next.sink_dist)){
+					next.addr		= neigh_ptr->address;
+					next.ktree_dist	= neigh_ptr->ktree_dist;
+					next.sink_dist	= neigh_ptr->sink_dist;
+					
+					debug_print(MAX , DEBUG_DATA , "case 2\n");
 				}
-		
-				//Other node -> to the Ktree nodes (there must be an improvement toward the sink) 
-				if ((neigh_ptr->dist_sink <= my_dist_sink) && (neigh_ptr->dist_ktree < my_dist_ktree) && (!is_in_ktree) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 3))){
-					next.addr	= neigh_ptr->address;
-					next.prio	= 3;
-					next.stab	= compute_stability(neigh_ptr->stability);
-					}
-		
-				//Other node -> to the sink if no ktree node		   
-				if ((neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 2))){
-					next.addr	= neigh_ptr->address;
-					next.prio	= 2;
-					next.stab	= compute_stability(neigh_ptr->stability);
-				}
-				debug_print(LOW , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d, stab %d). NH = %d ((prio %d, stab %d))\n",  neigh_ptr->address , neigh_ptr->dist_ktree, neigh_ptr->dist_sink, compute_stability(neigh_ptr->stability) , next.addr, next.prio , next.stab);
+				debug_print(MAX , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d)\n",  neigh_ptr->address, neigh_ptr->ktree_dist, neigh_ptr->sink_dist);
 			}
-		break;
-		case ROUTING_MAC_SHORT:
-			//Walks in the list
-			for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-				neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
-				//Shortest route to the sink
-				if ((neigh_ptr->dist_sink < my_dist_sink) && (compare_stab_prio(next , compute_stability(neigh_ptr->stability) , 2))){
-					next.addr	= neigh_ptr->address;
-					next.prio	= 2;
-					next.stab	= compute_stability(neigh_ptr->stability);
-				}
-				
-				debug_print(LOW , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d, stab %d). NH = %d ((prio %d, stab %d))\n",  neigh_ptr->address , neigh_ptr->dist_ktree, neigh_ptr->dist_sink, compute_stability(neigh_ptr->stability) , next.prio , next.stab, next.addr);
-			}
 		break;
 		case ROUTING_MAC_NO:
 			op_sim_end("I am not allowed to route packets" , "But I try to find one next hop" , "Please correct the corresponding bug" , "");
 		break;
+		
 		default:
 			op_sim_end("Unknown routing type" , "" , "" , "");
 		break;
 	}
 
+	debug_print(MEDIUM , DEBUG_DATA , "Next hop to the sink is %d\n",  next.addr);
 	FRET(next.addr);
 
 }
@@ -2148,7 +2115,7 @@ Boolean update_is_in_ktree(){
 		
 		//updates the ktree distance
 		if (is_in_ktree)
-			my_dist_ktree = 0;
+			my_ktree_dist = 0;
 	
 		//debug
 		debug_print(LOW , DEBUG_NODE , "changed the ktree_node status: %d -> %d\n", old_value , is_in_ktree);
@@ -2171,23 +2138,21 @@ Boolean update_is_in_ktree(){
 
 
 //Updates information about the tree toward the sink
-void routing_update_sink_sp_tree(){
-	FIN(routing_update_sink_sp_tree());
+void update_sink_tree_infos(){
+	FIN(update_sink_tree_infos());
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
-	int				current_dist_ktree , current_dist_sink;
-	int				current_stab;
+	int				current_ktree_dist , current_sink_dist;
 	
 	//init
-	current_dist_ktree	= OPC_INT_INFINITY;
-	current_dist_sink	= OPC_INT_INFINITY;
-	current_stab		= 0;
+	current_ktree_dist	= OPC_INT_INFINITY;
+	current_sink_dist	= OPC_INT_INFINITY;
 	
 	//particular case
 	if (is_sink){
-		my_dist_sink 	= 0;
-		my_dist_ktree	= 0;
+		my_sink_dist 	= 0;
+		my_ktree_dist	= 0;
 		FOUT;
 	}
 	
@@ -2195,44 +2160,25 @@ void routing_update_sink_sp_tree(){
 	for(i=0 ; i < op_prg_list_size(my_neighborhood_table) ; i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
-		
-		
-		//most stable -> most important
-		if (current_stab + STAB_STEP < compute_stability(neigh_ptr->stability)){
-			current_dist_sink	= neigh_ptr->dist_sink 		+ 1;
-			current_dist_ktree	= neigh_ptr->dist_ktree 	+ 1;
-			current_stab 		= compute_stability(neigh_ptr->stability);
+		//Distance to the ktree
+		if (current_ktree_dist > neigh_ptr->ktree_dist + 1){
+			current_ktree_dist = neigh_ptr->ktree_dist + 1;
 		}
-		
-		
-		//Else, if stability is too low -> nothing 
-		else if (current_stab > compute_stability(neigh_ptr->stability) + STAB_STEP){
-		}		
-		
-		//Else, update distances (consider that the stabilities are similar)		
-		else{
-			//Distance to the ktree
-			if (current_dist_ktree > neigh_ptr->dist_ktree + 1){
-				current_dist_ktree = neigh_ptr->dist_ktree + 1;
-				current_stab = compute_stability(neigh_ptr->stability);
-			}
 			
-			//Distance to the sink
-			if (current_dist_sink > neigh_ptr->dist_sink + 1){
-				current_dist_sink = neigh_ptr->dist_sink + 1;
-				current_stab = compute_stability(neigh_ptr->stability);
-			}
+		//Distance to the sink
+		if (current_sink_dist > neigh_ptr->sink_dist + 1){
+			current_sink_dist = neigh_ptr->sink_dist + 1;
 		}
 		
-		debug_print(MEDIUM , DEBUG_HELLO , "	-> %d:   %d/%d   %d/%d  %d/%d\n", neigh_ptr->address , compute_stability(neigh_ptr->stability) , current_stab , neigh_ptr->dist_ktree , current_dist_ktree , neigh_ptr->dist_sink , current_dist_sink);
+		debug_print(MEDIUM , DEBUG_HELLO , "	-> %d:   %d/%d   d/%d\n", neigh_ptr->address, neigh_ptr->ktree_dist, current_ktree_dist, neigh_ptr->sink_dist, current_sink_dist);
 	}
 	
 	//particular case
 	if (is_in_ktree)
-		current_dist_ktree = 0;
+		current_ktree_dist = 0;
 	
-	my_dist_sink 	= current_dist_sink;
-	my_dist_ktree	= current_dist_ktree;
+	my_sink_dist 	= current_sink_dist;
+	my_ktree_dist	= current_ktree_dist;
 	
 	debug_print(MAX , DEBUG_HELLO , "Distances update\n");
 	if (DEBUG >= MEDIUM)
@@ -2317,19 +2263,13 @@ int compare_election_struct(const void *value_a, const void * value_b){
 	if (a.pow == 0)
 		FRET(-1);
 	
-	//0 criterium: branch nb (for the sink, else no particular interest)
+	//First criterium: branch nb (for the sink, else no particular interest)
 	if ((is_sink) && (is_sync_direct_antenna)){
 		if (a.branch < b.branch)
 			FRET(1);
 		if (a.branch > b.branch)
 			FRET(-1);
 	}
-	
-	//First criterium: the stability
-	if (a.stab > b.stab + STAB_STEP)
-		FRET(1);
-	if (a.stab < b.stab - STAB_STEP)
-		FRET(-1);
 	
 	//Second criterium: power
 	if (a.pow < b.pow)
@@ -2406,8 +2346,8 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 	//--------------------------------------------------
 	//				NO KTREE NODE
 	//--------------------------------------------------
-	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_in_ktree) || (my_dist_sink > MAX_BRANCH_LENGTH))){
-		//debug_print(MAX , DEBUG_CMAC , "No ktree node: %d %d %d\n", my_sync_rx_power == 0 , !is_in_ktree , my_dist_sink > MAX_BRANCH_LENGTH);
+	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_in_ktree) || (my_sink_dist > MAX_BRANCH_LENGTH))){
+		//debug_print(MAX , DEBUG_CMAC , "No ktree node: %d %d %d\n", my_sync_rx_power == 0 , !is_in_ktree , my_sink_dist > MAX_BRANCH_LENGTH);
 		FOUT;
 	}
 	else{
@@ -2424,11 +2364,10 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
 			//Adds the power if the node is farther from the sink
-			if (neigh_ptr->dist_sink > my_dist_sink){
+			if (neigh_ptr->sink_dist > my_sink_dist){
 				election_ptr = op_prg_mem_alloc(sizeof(election_struct));
 				election_ptr->addr 	= neigh_ptr->address;
 				election_ptr->pow 	= neigh_ptr->sync_rx_power;
-				election_ptr->stab	= compute_stability(neigh_ptr->stability);
 				op_prg_list_insert_sorted(max_sync_rx_power , election_ptr , compare_election_struct);
 			}
 		}
@@ -2653,57 +2592,6 @@ void fill_ktree_children_fields(Packet *pk){
 //
 //-----------------------------------------------------------
 
-//Computes the stability metric
-int compute_stability(int stab[]){
-	FIN(compute_stability(int stab[]));
-	
-	int		i;
-	int		stability = 0;
-	
-	for(i=0 ; i < MAX_STAB ; i++)
-		if (stab[i] > 0)
-			stability ++;
-	
-	FRET(stability);
-}
-
-//updates one value of the stability metric
-void update_stability(int stab[], short value){
-	FIN(update_stability(int stab[], short value));
-	
-	int		i;
-	
-	for(i=0 ; stab[i] != -1 ; i++)
-		if (i >= MAX_STAB)
-			op_sim_end("stability metric has a bug" , "no -1 is present in any case" , "" , "");
-
-	//puts the value + next case = -1
-	stab[i] = value;
-	i++;
-	if (i == MAX_STAB)
-		i = 0;
-	stab[i] = -1;
-	FOUT;
-}
-
-//Initializes the stability metric (with 'value')
-void init_stability(int stab[], short value){
-	FIN(init_stability(int stab[], short value));
-	
-	int		i;
-	
-	//null array
-	for(i=0 ; i < MAX_STAB ; i++)
-		stab[i] = 0;
-	
-	
-	stab[0] = value;
-	stab[1] = -1;
-	
-	FOUT;
-}
-
-
 //Generates an hello (next frame to send !)
 void  generate_hello(double next_hello){ 
 	FIN(generate_hello(double next_hello));
@@ -2728,7 +2616,7 @@ void  generate_hello(double next_hello){
 	frame.payload				= NULL;
 	frame.duration				= 0;
 	frame.power_ratio			= 1;
-	frame.pk_size				= HEADERS_PK_SIZE + DIST_SINK_SIZE + DIST_KTREE_SIZE;
+	frame.pk_size				= HEADERS_PK_SIZE + SINK_DIST_SIZE + KTREE_DIST_SIZE;
 	frame.next_hello			= next_hello;
 	
 	//Adds the hello in head of the data packet buffer
@@ -2757,22 +2645,16 @@ void delete_timeouted_neighbors(void *ptr , int code){
 		
 		//The entry is timeouted -> stability --
 		if (neigh_ptr->timeout <= op_sim_time()){
-			update_stability(neigh_ptr->stability , OPC_FALSE);
-			neigh_ptr->timeout = HELLO_PK_PERIOD + op_sim_time();
-
-			//Stability = 0 -> delete the entry
-			if (compute_stability(neigh_ptr->stability) == 0){		
-				neigh_ptr = op_prg_list_remove(my_neighborhood_table , i);
+			neigh_ptr = op_prg_list_remove(my_neighborhood_table , i);
 			
-				debug_print(LOW , DEBUG_HELLO , "neighbor %d timeouted after a null stability\n", neigh_ptr->address);
-				debug_print(LOW , DEBUG_NODE , "neighbor %d timeouted after a null stability\n",  neigh_ptr->address);
+			debug_print(LOW , DEBUG_HELLO , "neighbor %d timeouted after a null stability\n", neigh_ptr->address);
+			debug_print(LOW , DEBUG_NODE , "neighbor %d timeouted after a null stability\n",  neigh_ptr->address);
 
-				empty_list(neigh_ptr->ktree_children);
-				op_prg_mem_free(neigh_ptr->ktree_children);
-				op_prg_mem_free(neigh_ptr);
-				neigh_ptr = NULL;
-			}
-			
+			empty_list(neigh_ptr->ktree_children);
+			op_prg_mem_free(neigh_ptr->ktree_children);
+			op_prg_mem_free(neigh_ptr);
+			neigh_ptr = NULL;
+
 			is_modif_required = OPC_TRUE;
 		}
 		
@@ -2789,7 +2671,7 @@ void delete_timeouted_neighbors(void *ptr , int code){
 			generate_hello(0);
 
 		//Distances
-		routing_update_dist_sink_and_ktree();
+		update_sink_tree_infos();
 	}
 	
 	//Next verification
@@ -2801,8 +2683,8 @@ void delete_timeouted_neighbors(void *ptr , int code){
 
 
 //updates the neighborhood table with one new entry !
-void update_neighborhood_table(int source , int dist_sink , int dist_ktree, double sync_rx_power, int branch , List *my_ktree_children_tmp , double next_hello){
-	FIN(update_neighborhood_table(int source , int dist_sink , int dist_ktree, double sync_rx_power, int branch , List *my_ktree_children_tmp , double next_hello));
+void update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int branch , List *my_ktree_children_tmp , double next_hello){
+	FIN(update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int branch , List *my_ktree_children_tmp , double next_hello));
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
@@ -2813,17 +2695,17 @@ void update_neighborhood_table(int source , int dist_sink , int dist_ktree, doub
 	//---------------------------
 	//	DIST SINK / KTREE
 	//---------------------------
-	if (my_dist_ktree > dist_ktree + 1){
-		my_dist_ktree	= dist_ktree + 1 ;
-		my_dist_sink 	= dist_sink + 1 ;
+	if (my_ktree_dist > ktree_dist + 1){
+		my_ktree_dist	= ktree_dist + 1 ;
+		my_sink_dist 	= sink_dist + 1 ;
 		
-		debug_print(LOW , DEBUG_HELLO , "Distances updated : ktree %d, sink %d via %d\n", my_dist_sink, my_dist_ktree , source);
+		debug_print(LOW , DEBUG_HELLO , "Distances updated : ktree %d, sink %d via %d\n", my_sink_dist, my_ktree_dist , source);
 	//	hello_required = OPC_TRUE;
 	}
-	if ((dist_ktree == my_dist_ktree) && (my_dist_sink > dist_sink + 1)){
-		my_dist_sink = dist_sink + 1;
+	if ((ktree_dist == my_ktree_dist) && (my_sink_dist > sink_dist + 1)){
+		my_sink_dist = sink_dist + 1;
 		
-		debug_print(LOW , DEBUG_HELLO , "Sink distance updated : sink %d via %d\n", my_dist_sink, my_dist_ktree , source);
+		debug_print(LOW , DEBUG_HELLO , "Sink distance updated : sink %d via %d\n", my_sink_dist, my_ktree_dist , source);
 	//	hello_required = OPC_TRUE;
 	}
 		
@@ -2835,18 +2717,16 @@ void update_neighborhood_table(int source , int dist_sink , int dist_ktree, doub
 	
 		if (neigh_ptr->address == source){
 			op_prg_mem_free(neigh_ptr->ktree_children);
-			neigh_ptr->dist_sink			= dist_sink;
-			neigh_ptr->dist_ktree			= dist_ktree;
+			neigh_ptr->sink_dist			= sink_dist;
+			neigh_ptr->ktree_dist			= ktree_dist;
 			neigh_ptr->sync_rx_power		= sync_rx_power;
 			neigh_ptr->ktree_children		= my_ktree_children_tmp;
-			update_stability(neigh_ptr->stability , OPC_TRUE);
-			neighbor_updated = OPC_TRUE;
+			neighbor_updated 				= OPC_TRUE;
 			if (next_hello != 0)
-				neigh_ptr->timeout				= op_sim_time() + next_hello + 0.1;			
+				neigh_ptr->timeout			= op_sim_time() + next_hello * HELLO_PK_TIMEOUT + 0.1;			
 				
-			debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d updated (sink %d, ktree %d)\n", source, dist_sink , dist_ktree);
-			//debug_print(MEDIUM , DEBUG_NODE, "neighbor %d updated (sink %d, ktree %d)\n", source, dist_sink , dist_ktree);
-			
+			debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d updated (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);
+			//debug_print(MEDIUM , DEBUG_NODE, "neighbor %d updated (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);	
 		}	
 	}
 	
@@ -2861,18 +2741,17 @@ void update_neighborhood_table(int source , int dist_sink , int dist_ktree, doub
 
 		neigh_ptr = op_prg_mem_alloc(sizeof(neigh_struct));
 		neigh_ptr->address				= source;
-		neigh_ptr->dist_sink			= dist_sink;
-		neigh_ptr->dist_ktree			= dist_ktree;
+		neigh_ptr->sink_dist			= sink_dist;
+		neigh_ptr->ktree_dist			= ktree_dist;
 		neigh_ptr->sync_rx_power		= sync_rx_power;
 		neigh_ptr->timeout				= op_sim_time() + HELLO_PK_PERIOD;
 		neigh_ptr->ktree_children		= my_ktree_children_tmp;
-		neigh_ptr->timeout				= op_sim_time() + next_hello + 0.1;			
-		init_stability(neigh_ptr->stability , OPC_TRUE);
+		neigh_ptr->timeout				= op_sim_time() + next_hello * HELLO_PK_TIMEOUT + 0.1;			
 		op_prg_list_insert(my_neighborhood_table , neigh_ptr , OPC_LISTPOS_TAIL);	  
 		
 	
-		debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d added (sink %d, ktree %d)\n", source, dist_sink , dist_ktree);
-		debug_print(MEDIUM , DEBUG_NODE, "neighbor %d added (sink %d, ktree %d)\n", source, dist_sink , dist_ktree);
+		debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d added (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);
+		debug_print(MEDIUM , DEBUG_NODE, "neighbor %d added (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);
 	}
 	
 	//---------------------------
@@ -2885,10 +2764,10 @@ void update_neighborhood_table(int source , int dist_sink , int dist_ktree, doub
 		hello_required = OPC_TRUE;
 		
 	
-	//---------------------------
-	//		IS KTREE NODE ?
-	//---------------------------
-	routing_update_dist_sink_and_ktree();
+	//-------------------------------------------------
+	//		INFOS ABOUT THE TREE ROOTED AT THE SINK
+	//-------------------------------------------------
+	update_sink_tree_infos();
 	
 	
 	
@@ -2929,9 +2808,9 @@ void print_neighborhood_table(int debug_type){
 		}
 			
 		//the whole info
-		debug_print(LOW , debug_type , "%5d| %3d| %3d  | %f |%d|%s\n", ptr->address , convert_int(ptr->dist_sink) , convert_int(ptr->dist_ktree) , ptr->timeout , compute_stability(ptr->stability) , msg);
+		debug_print(LOW , debug_type , "%5d| %3d| %3d  | %f |%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , msg);
 	}
-	debug_print(LOW , debug_type , "sink = %d, ktree = %d, isBN = %d, syncPw = %f, bn list = %s\n", 	my_dist_sink , 	my_dist_ktree, is_in_ktree, convert_double(my_sync_rx_power), print_ktree_children(msg, 50));
+	debug_print(LOW , debug_type , "sink = %d, ktree = %d, isBN = %d, syncPw = %f, bn list = %s\n", 	my_sink_dist , 	my_ktree_dist, is_in_ktree, convert_double(my_sync_rx_power), print_ktree_children(msg, 50));
 
 	
 	FOUT;
@@ -2995,15 +2874,15 @@ Packet* create_packet(frame_struct frame){
 		break;
 		case HELLO_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_hello");
-			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_SINK , 	my_dist_sink);
-			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_KTREE ,	my_dist_ktree);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_SINK_DIST , 	my_sink_dist);
+			op_pk_nfd_set(pk , FIELD_PK_HELLO_KTREE_DIST,	my_ktree_dist);
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_NEXT,			frame.next_hello);
 
 			//ktree algo info
-			if (op_pk_nfd_is_set(pk , FIELD_PK_HELLO_SYNC_POWER))
-				op_pk_nfd_strip(pk , FIELD_PK_HELLO_SYNC_POWER);
-			if (op_pk_nfd_is_set(pk , FIELD_PK_HELLO_SINK_SUBTREE_SIZE))
-				op_pk_nfd_strip(pk , FIELD_PK_HELLO_SINK_SUBTREE_SIZE);
+			if (op_pk_nfd_is_set(pk , 	FIELD_PK_HELLO_SYNC_POWER))
+				op_pk_nfd_strip(pk , 	FIELD_PK_HELLO_SYNC_POWER);
+			if (op_pk_nfd_is_set(pk , 	FIELD_PK_HELLO_SINK_SUBTREE_SIZE))
+				op_pk_nfd_strip(pk , 	FIELD_PK_HELLO_SINK_SUBTREE_SIZE);
 			
 			switch (KTREE_ALGO){
 				
@@ -3012,15 +2891,15 @@ Packet* create_packet(frame_struct frame){
 				break;
 		
 				case KTREE_ALGO_MAXTREE:
-					op_pk_nfd_set(pk, FIELD_PK_HELLO_SINK_SUBTREE_SIZE, sink_sp_tree_infos.subtree_size);
+					op_pk_nfd_set(pk, FIELD_PK_HELLO_SINK_SUBTREE_SIZE, my_sink_tree.subtree_size);
+				break;
+				
+				case KTREE_ALGO_NONE:
 				break;
 				
 				default:
 					op_sim_end("Unknown ktree algo", "", "", "");
-				
 			}
-		
-			
 		
 		fill_ktree_children_fields(pk);
 		break;
@@ -3674,7 +3553,7 @@ void receive_packet_from_radio(){
 	//data frame
 	frame_struct	*frame_ptr;
 	//hellos
-	int				dist_sink , dist_ktree , branch;
+	int				sink_dist , ktree_dist , branch;
 	List			*my_ktree_children_tmp;
 	double			sync_power;
 	//RTS / CTS / DATA / ACK for nav
@@ -3980,11 +3859,11 @@ void receive_packet_from_radio(){
 				if (destination != ADDR_BROADCAST){
 					op_sim_end("An hello is sent in unicast" , "not in ADDR_BROADCAST", "please correct the bug", "");
 				}
-				op_pk_nfd_get(frame , FIELD_PK_HELLO_DIST_SINK, 	&dist_sink);
-				op_pk_nfd_get(frame , FIELD_PK_HELLO_DIST_KTREE, 	&dist_ktree);
+				op_pk_nfd_get(frame , FIELD_PK_HELLO_SINK_DIST, 	&sink_dist);
+				op_pk_nfd_get(frame , FIELD_PK_HELLO_KTREE_DIST, 	&ktree_dist);
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_SYNC_POWER, 	&sync_power);
 				my_ktree_children_tmp = create_my_ktree_children_from_packet(frame);
-				update_neighborhood_table(source , dist_sink , dist_ktree , sync_power , branch , my_ktree_children_tmp , next_hello);
+				update_neighborhood_table(source , sink_dist , ktree_dist , sync_power , branch , my_ktree_children_tmp , next_hello);
 			
 			break;
 				
@@ -4689,10 +4568,10 @@ op_ima_obj_attr_set (op_id_self(), "Address", my_address);
 
 //-----------  IS_KTREE_NODE  --------------
 
-is_in_ktree 					= OPC_FALSE;
-sink_sp_tree_infos.subtree_size	= 0;
-sink_sp_tree_infos.parent		= ADDR_INVALID;
-sink_sp_tree_infos.sink_dist	= SHORT_INFINITY;
+is_in_ktree 				= OPC_FALSE;
+my_sink_tree.subtree_size	= 0;
+my_sink_tree.parent			= ADDR_INVALID;
+my_sink_tree.sink_dist		= SHORT_INFINITY;
 
 //--------------  IS_SINK  -----------------
 
@@ -4710,15 +4589,15 @@ if (is_sink){
 //---------  DISTANCES / ROUTING  ------------
 
 if (is_sink)
-	my_dist_sink = 0;
+	my_sink_dist = 0;
 else
-	my_dist_sink = pow (2, 4) - 1;
+	my_sink_dist = pow (2, 4) - 1;
 
 //dist ktree
 if (is_in_ktree)
-	my_dist_ktree = 0;
+	my_ktree_dist = 0;
 else
-	my_dist_ktree = pow (2, 4) - 1;
+	my_ktree_dist = pow (2, 4) - 1;
 
 
 
@@ -5855,7 +5734,7 @@ if (is_reply_required){
 			</attribute>
 			<attribute name="status" type="toggle" value="1"/>
 		</state>
-		<state id="63" x="990" y="90">
+		<state id="63" x="1050" y="90">
 			<attribute name="name" type="string" value="WAIT_NEXT"/>
 			<attribute name="Exit Execs" type="textlist">
 				<value-text>
@@ -5986,14 +5865,14 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_314"/>
 			<attribute name="condition" type="string" value="!is_tx_busy"/>
 		</transition>
-		<transition source-state-id="62" destination-state-id="63" label-x="888" label-y="85">
+		<transition source-state-id="62" destination-state-id="63" label-x="918" label-y="85">
 			<path-point x="807" y="134"/>
-			<path-point x="982" y="82"/>
+			<path-point x="1042" y="82"/>
 			<attribute name="name" type="string" value="tr_315"/>
 			<attribute name="condition" type="string" value="is_reply_required"/>
 		</transition>
-		<transition source-state-id="63" destination-state-id="62" label-x="904" label-y="147">
-			<path-point x="987" y="99"/>
+		<transition source-state-id="63" destination-state-id="62" label-x="1013" label-y="162">
+			<path-point x="1047" y="99"/>
 			<path-point x="827" y="151"/>
 			<attribute name="name" type="string" value="tr_316"/>
 			<attribute name="condition" type="string" value="is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad"/>
@@ -6057,11 +5936,11 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_337"/>
 			<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
 		</transition>
-		<transition source-state-id="63" destination-state-id="63" label-x="1116" label-y="92">
-			<path-point x="1004" y="78"/>
-			<path-point x="1207" y="130"/>
-			<path-point x="1194" y="184"/>
-			<path-point x="1002" y="94"/>
+		<transition source-state-id="63" destination-state-id="63" label-x="1176" label-y="93">
+			<path-point x="1064" y="78"/>
+			<path-point x="1137" y="88"/>
+			<path-point x="1124" y="142"/>
+			<path-point x="1062" y="94"/>
 			<attribute name="name" type="string" value="tr_322"/>
 			<attribute name="condition" type="string" value="default"/>
 		</transition>
