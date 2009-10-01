@@ -1,10 +1,11 @@
 /*
- *  tools.h
+ *  tools_fig.h
  *  
- *  Created by Fabrice Theoleyre on 22/10/08.
- *  Copyright 2008 CNRS / LIG. All rights reserved.
+ *  Created by Fabrice Theoleyre on 29/09/09.
+ *  Copyright 2009 CNRS / LIG. All rights reserved.
  *
  */
+
 
 #ifndef _TOOLS_FIG_H_
 #define _TOOLS_FIG_H_

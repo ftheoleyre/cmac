@@ -83,6 +83,15 @@ double				next_packet_arrival_time;
 	</temporary-variables>
 	<header-block>
 <![CDATA[
+/*
+ *  cmac_source.c
+ *  
+ *  Created by Fabrice Theoleyre on 29/09/09.
+ *  Copyright 2009 CNRS / LIG. All rights reserved.
+ *
+ */
+
+
 /* Include files. */
 #include 	<math.h>
 #include 	"cmac_process.h"

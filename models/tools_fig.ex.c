@@ -1,5 +1,5 @@
 /*
- *  tools.c
+ *  tools_fig.c
  *  
  *  Created by Fabrice Theoleyre on 25/08/09.
  *  Copyright 2009 CNRS / LIG. All rights reserved.

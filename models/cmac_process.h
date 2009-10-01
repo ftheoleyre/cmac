@@ -1,3 +1,12 @@
+/*
+ *  cmac_process.h
+ *  
+ *  Created by Fabrice Theoleyre on 29/09/09.
+ *  Copyright 2009 CNRS / LIG. All rights reserved.
+ *
+ */
+
+
 #ifndef	_CMAC_H_
 #define _CMAC_H_
 

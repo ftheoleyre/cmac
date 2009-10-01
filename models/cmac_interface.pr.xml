@@ -118,6 +118,15 @@ double	\inter_pk_time;
 	</state-variables>
 	<header-block>
 <![CDATA[
+/*
+ *  cmac_interface.c
+ *  
+ *  Created by Fabrice Theoleyre on 29/09/09.
+ *  Copyright 2009 CNRS / LIG. All rights reserved.
+ *
+ */
+
+
 /***** Include Files. *****/
 #include <stdlib.h>
 
@@ -1091,6 +1100,11 @@ if (my_stat_id == 0){
 			<attribute name="name" type="string" value="tr_12"/>
 		</transition>
 	</transitions>
+	<external-sources>
+<![CDATA[
+cmac_tools
+]]>
+	</external-sources>
 	<local-statistics>
 		<statistic name="outstat" group="" dimension="100" capture-mode="normal" display-mode="linear" low-bound="0.0" high-bound="disabled"/>
 	</local-statistics>

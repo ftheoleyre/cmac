@@ -1,3 +1,12 @@
+/*
+ *  cmac_const.h
+ *  
+ *  Created by Fabrice Theoleyre on 29/09/09.
+ *  Copyright 2009 CNRS / LIG. All rights reserved.
+ *
+ */
+
+
 #ifndef _CMAC_TYPES_H__
 
 #define _CMAC_TYPES_H__
