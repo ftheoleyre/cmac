@@ -65,6 +65,9 @@
 #define		MAX_BACKOFF						32
 #define		MAX_EXPO_BACKOFF				1024
 
+//others
+#define		SHORT_INFINITY					255
+
 //Power
 #define		MAX_KTREE_DIST					10
 
@@ -250,14 +253,15 @@
 //hellos
 #define		FIELD_PK_HELLO_DIST_SINK			"DIST_SINK"
 #define		FIELD_PK_HELLO_DIST_KTREE			"DIST_KTREE"
-#define		FIELD_PK_HELLO_SYNC_POWER			"SYNC_POWER"
-#define		FIELD_PK_HELLO_NEXT					"NEXT"
+#define		FIELD_PK_HELLO_NEXT					"NEXT_HELLO"
 #define		FIELD_PK_HELLO_NB_KTREE_CHILDREN	"NB_KTREE_CHILDREN"
 #define		FIELD_PK_HELLO_KTREE_CHILDREN		"KTREE_CHILDREN"
 #define		FIELD_PK_HELLO_PARENT				"PARENT"
+//SYNC power algo
+#define		FIELD_PK_HELLO_SYNC_POWER			"SYNC_POWER"
+//Maxtree algo
+#define		FIELD_PK_HELLO_SINK_SUBTREE_SIZE	"SINK_SUBTREE_SIZE"
 
-//Maximum number of branches in the packet
-#define		PK_HELLO_MAX_NB_BRANCHES			4
 
 //data
 #define		FIELD_PK_DATA_PAYLOAD				"PAYLOAD"

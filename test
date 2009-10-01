@@ -1,3 +1,3 @@
 #!/bin/bash
-#ok
+
 op_runsim -net_name cmac-line -ef cmac-line-DES-1 -noprompt

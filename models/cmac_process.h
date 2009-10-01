@@ -72,7 +72,10 @@ typedef struct{
 
 
 
-
+typedef struct{
+	int		address;
+	short	branch_id;
+} child_struct;
 
 
 
@@ -118,6 +121,16 @@ typedef struct{
 
 
 
+//-----------------------------------------------
+//			TREE OF SHORTEST PATHS TO THE SINK
+//-----------------------------------------------
+
+
+typedef struct{
+	int		parent;
+	short	sink_dist;
+	short	subtree_size;
+} sink_tree_struct;
 
 
 //-----------------------------------------------

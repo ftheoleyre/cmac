@@ -619,6 +619,12 @@ int	\KTREE_ALGO;
 /* the number of branches for the tree of cMAC */
 int	\NB_BRANCHES;
 
+/* Information about the tree rooted at the sink: */
+/* -parent                                        */
+/* -distance to the sink                          */
+/* -size of my subtree (descendant + myself)      */
+sink_tree_struct	\sink_sp_tree_infos;
+
 ]]>
 	</state-variables>
 	<header-block>
@@ -894,13 +900,13 @@ int		*nodeid_to_addr_var = NULL;
 	<function-block>
 <![CDATA[
 
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------
-//---------------------------																										  ---------------------------
-//---------------------------												COMMON													  ---------------------------
-//---------------------------																										  ---------------------------
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------
+//---------------------------								  ---------------------------
+//---------------------------			COMMON			      ---------------------------
+//---------------------------								  ---------------------------
+//---------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------
 
 
 
@@ -2084,7 +2090,7 @@ int get_next_hop(){
 //-----------------------------------------------------------
 
 //Is this node a ktree node ?
-Boolean	get_is_in_ktree(){
+Boolean		get_is_in_ktree(){
 	FIN(get_is_in_ktree());
 	
 	int				i , j;
@@ -2164,9 +2170,9 @@ Boolean update_is_in_ktree(){
 //-----------------------------------------------------------
 
 
-//Distance to the sink to the ktree nodes
-void update_dist(){
-	FIN(update_dist());
+//Updates information about the tree toward the sink
+void routing_update_sink_sp_tree(){
+	FIN(routing_update_sink_sp_tree());
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
@@ -2189,6 +2195,8 @@ void update_dist(){
 	for(i=0 ; i < op_prg_list_size(my_neighborhood_table) ; i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
+		
+		
 		//most stable -> most important
 		if (current_stab + STAB_STEP < compute_stability(neigh_ptr->stability)){
 			current_dist_sink	= neigh_ptr->dist_sink 		+ 1;
@@ -2199,8 +2207,7 @@ void update_dist(){
 		
 		//Else, if stability is too low -> nothing 
 		else if (current_stab > compute_stability(neigh_ptr->stability) + STAB_STEP){
-		}
-		
+		}		
 		
 		//Else, update distances (consider that the stabilities are similar)		
 		else{
@@ -2380,10 +2387,10 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 	neigh_struct	*neigh_ptr;
 	//To store all the power, sorted, in a list
 	List			*max_sync_rx_power;
-	election_struct	*ptr;
+	election_struct	*election_ptr;
 	//Control
-	int				*int_ptr;
-	int				branch_tmp = -1;
+	child_struct	*child_ptr;
+	short			branch_tmp = -1;
 	List			*ll = *ll_ptr;
 	//conditions
 	Boolean			direct_and_new;
@@ -2392,8 +2399,8 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 	
 	//empty the old list
 	while(op_prg_list_size(ll) > 0){
-		int_ptr = op_prg_list_remove(ll , 0);
-		op_prg_mem_free(int_ptr);
+		child_ptr = op_prg_list_remove(ll , 0);
+		op_prg_mem_free(child_ptr);
 	}
 
 	//--------------------------------------------------
@@ -2418,11 +2425,11 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 		
 			//Adds the power if the node is farther from the sink
 			if (neigh_ptr->dist_sink > my_dist_sink){
-				ptr = op_prg_mem_alloc(sizeof(election_struct));
-				ptr->addr 	= neigh_ptr->address;
-				ptr->pow 	= neigh_ptr->sync_rx_power;
-				ptr->stab	= compute_stability(neigh_ptr->stability);
-				op_prg_list_insert_sorted(max_sync_rx_power , ptr , compare_election_struct);
+				election_ptr = op_prg_mem_alloc(sizeof(election_struct));
+				election_ptr->addr 	= neigh_ptr->address;
+				election_ptr->pow 	= neigh_ptr->sync_rx_power;
+				election_ptr->stab	= compute_stability(neigh_ptr->stability);
+				op_prg_list_insert_sorted(max_sync_rx_power , election_ptr , compare_election_struct);
 			}
 		}
 	
@@ -2443,23 +2450,24 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 			
 			//Walks in the sorted list of my neighbors
 			for(i=0 ; i < op_prg_list_size(max_sync_rx_power) ; i++){
-				ptr = op_prg_list_access(max_sync_rx_power , i);
+				election_ptr = op_prg_list_access(max_sync_rx_power , i);
 				
-				debug_print(MAX , DEBUG_CMAC , "	ptr (%d : %d %f) current (%d)\n", ptr->addr , ptr->branch , ptr->pow , branch_tmp);
+				debug_print(MAX , DEBUG_CMAC , "	ptr (%d : %d %f) current (%d)\n", election_ptr->addr , election_ptr->branch , election_ptr->pow , branch_tmp);
 				
 				//Eliminates nodes nearer from the sink than I am
-				direct_and_new		= (is_sync_direct_antenna) && (ptr->branch > branch_tmp);
+				direct_and_new		= (is_sync_direct_antenna) && (election_ptr->branch > branch_tmp);
 				no_direct_and_new	= (!is_sync_direct_antenna) && (i < NB_BRANCHES);
 				
-				if ((ptr->pow != 0) && (direct_and_new || no_direct_and_new)){
-					branch_tmp = ptr->branch;
+				if ((election_ptr->pow != 0) && (direct_and_new || no_direct_and_new)){
+					branch_tmp = election_ptr->branch;
 				
 					//creates a list of current ktree children
-					int_ptr = op_prg_mem_alloc(sizeof(int));
-					*int_ptr = ptr->addr;
-					op_prg_list_insert(ll , int_ptr , OPC_LISTPOS_TAIL);
+					child_ptr = op_prg_mem_alloc(sizeof(child_struct));
+					child_ptr->address 		= election_ptr->addr;
+					child_ptr->branch_id 	= election_ptr->branch;
+					op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_TAIL);
 					
-					debug_print(MAX , DEBUG_CMAC , "	->%d\n", ptr->addr);					
+					debug_print(MAX , DEBUG_CMAC , "	->%d\n", child_ptr->address);					
 				}
 			}
 		}	
@@ -2468,18 +2476,19 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 		//------------------------------------------------------
 		else{
 
-			ptr = op_prg_list_access(max_sync_rx_power , 0);
+			election_ptr = op_prg_list_access(max_sync_rx_power , 0);
 			
-			if ((ptr->pow < my_sync_rx_power) && (ptr->pow != 0)){
-				debug_print(MAX , DEBUG_CMAC , "node %d chosen as ktree children\n", ptr->addr);
+			if ((election_ptr->pow < my_sync_rx_power) && (election_ptr->pow != 0)){
+				debug_print(MAX , DEBUG_CMAC , "node %d chosen as ktree children\n", election_ptr->addr);
 					
 				//creates a list of current ktree nodes
-				int_ptr = op_prg_mem_alloc(sizeof(int));
-				*int_ptr = ptr->addr;
-				op_prg_list_insert(ll , int_ptr , OPC_LISTPOS_TAIL);
+				child_ptr = op_prg_mem_alloc(sizeof(child_struct));
+				child_ptr->address 		= election_ptr->addr;
+				child_ptr->branch_id 	= election_ptr->branch;
+				op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_TAIL);
 			}
 			else
-				debug_print(MAX , DEBUG_CMAC , "no ktree node : %d\n", ptr->pow < my_sync_rx_power , ptr->pow != 0);
+				debug_print(MAX , DEBUG_CMAC , "no ktree node : %d\n", election_ptr->pow < my_sync_rx_power , election_ptr->pow != 0);
 			
 		
 		}
@@ -2489,16 +2498,16 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 		//			release memory
 		//--------------------------------------------------
 		while(op_prg_list_size(max_sync_rx_power) > 0){
-			ptr = op_prg_list_remove(max_sync_rx_power , 0);
-			op_prg_mem_free(ptr);
+			election_ptr = op_prg_list_remove(max_sync_rx_power , 0);
+			op_prg_mem_free(election_ptr);
 		}
 		op_prg_mem_free(max_sync_rx_power);
 	}
 	
 	debug_print(LOW , DEBUG_CMAC , "FINAL_LIST\n");
 	for(i=0 ; i < op_prg_list_size(ll) ; i++){
-		int_ptr = op_prg_list_access(ll , i);
-		debug_print(LOW , DEBUG_CMAC , "  : %d\n", *int_ptr);
+		child_ptr = op_prg_list_access(ll , i);
+		debug_print(LOW , DEBUG_CMAC , "  : %d\n", child_ptr->address);
 	}
 	
 	FOUT;
@@ -2567,16 +2576,16 @@ List *create_my_ktree_children_from_packet(Packet *pk){
 	FIN(create_my_ktree_children_from_packet(Packet *pk));
 	
 	//result
-	List	*ll;
+	List			*ll;
 	//List size and elements
-	int		nb_ktree_children;
-	int		*ptr;
+	int				nb_ktree_children;
+	child_struct	*child_ptr;
 	//Control
-	int		i;
+	int				i;
 	//info
-	int		source;
+	int				source;
 	//list of children
-	int		*list_children_ptr;
+	child_struct	*list_children_ptr;
 	
 	//init
 	ll = op_prg_list_create();
@@ -2588,9 +2597,9 @@ List *create_my_ktree_children_from_packet(Packet *pk){
 
 	//insert each ktree children in the list
 	for(i=0 ; i<nb_ktree_children; i++){
-		ptr 	= op_prg_mem_alloc(sizeof(int));
-		*ptr 	= list_children_ptr[i];
-		op_prg_list_insert(ll , ptr , OPC_LISTPOS_HEAD);
+		child_ptr 	= op_prg_mem_alloc(sizeof(child_struct));
+		*child_ptr 	= list_children_ptr[i];
+		op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_HEAD);
 	}
 	
 	FRET(ll);
@@ -2601,12 +2610,12 @@ List *create_my_ktree_children_from_packet(Packet *pk){
 void fill_ktree_children_fields(Packet *pk){
 	FIN(fill_ktree_children_fields(Packet *pk));
 	
-	int		*int_ptr;
+	child_struct	*child_ptr;
 	//Control
-	int		i;
+	int				i;
 	//list of children
-	int		*list_children_ptr;
-	int		nb_children;
+	child_struct	*list_children_ptr;
+	int				nb_children;
 
 	//Current ktree children
 	compute_current_my_ktree_children(&my_ktree_children);
@@ -2620,8 +2629,8 @@ void fill_ktree_children_fields(Packet *pk){
 		list_children_ptr = op_prg_mem_alloc(sizeof(int) * nb_children);
 	
 		for(i=0; i<nb_children; i++){
-			int_ptr = op_prg_list_access(my_ktree_children, i);
-			list_children_ptr[i] = *int_ptr;			
+			child_ptr = op_prg_list_access(my_ktree_children, i);
+			list_children_ptr[i] = *child_ptr;			
 		}		
 		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_KTREE_CHILDREN, list_children_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(int) * nb_children);
 	}
@@ -2780,7 +2789,7 @@ void delete_timeouted_neighbors(void *ptr , int code){
 			generate_hello(0);
 
 		//Distances
-		update_dist();
+		routing_update_dist_sink_and_ktree();
 	}
 	
 	//Next verification
@@ -2847,8 +2856,7 @@ void update_neighborhood_table(int source , int dist_sink , int dist_ktree, doub
 	//---------------------------
 	if (!neighbor_updated){
 		//We add one entry -> we must schedule the timeout verification
-		if (op_prg_list_size(my_neighborhood_table) == 0)
-			
+		if (op_prg_list_size(my_neighborhood_table) == 0)			
 			op_intrpt_schedule_call(op_sim_time() + HELLO_PK_PERIOD , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
 
 		neigh_ptr = op_prg_mem_alloc(sizeof(neigh_struct));
@@ -2876,10 +2884,11 @@ void update_neighborhood_table(int source , int dist_sink , int dist_ktree, doub
 	if (update_is_in_ktree())
 		hello_required = OPC_TRUE;
 		
+	
 	//---------------------------
 	//		IS KTREE NODE ?
 	//---------------------------
-	update_dist();
+	routing_update_dist_sink_and_ktree();
 	
 	
 	
@@ -2990,10 +2999,30 @@ Packet* create_packet(frame_struct frame){
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_DIST_KTREE ,	my_dist_ktree);
 			op_pk_nfd_set(pk , FIELD_PK_HELLO_NEXT,			frame.next_hello);
 
-			//ktree info
-			if (KTREE_ALGO == KTREE_ALGO_SYNC)
-				op_pk_nfd_set(pk , FIELD_PK_HELLO_SYNC_POWER ,	my_sync_rx_power);
-			fill_ktree_children_fields(pk);
+			//ktree algo info
+			if (op_pk_nfd_is_set(pk , FIELD_PK_HELLO_SYNC_POWER))
+				op_pk_nfd_strip(pk , FIELD_PK_HELLO_SYNC_POWER);
+			if (op_pk_nfd_is_set(pk , FIELD_PK_HELLO_SINK_SUBTREE_SIZE))
+				op_pk_nfd_strip(pk , FIELD_PK_HELLO_SINK_SUBTREE_SIZE);
+			
+			switch (KTREE_ALGO){
+				
+				case KTREE_ALGO_SYNC:
+					op_pk_nfd_set(pk, FIELD_PK_HELLO_SYNC_POWER, my_sync_rx_power);			
+				break;
+		
+				case KTREE_ALGO_MAXTREE:
+					op_pk_nfd_set(pk, FIELD_PK_HELLO_SINK_SUBTREE_SIZE, sink_sp_tree_infos.subtree_size);
+				break;
+				
+				default:
+					op_sim_end("Unknown ktree algo", "", "", "");
+				
+			}
+		
+			
+		
+		fill_ktree_children_fields(pk);
 		break;
 		case RTS_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_rts");
@@ -3012,7 +3041,7 @@ Packet* create_packet(frame_struct frame){
 			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 	op_sim_time() - frame.time_added);
 //			debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
 //TAG
-//			op_pk_nfd_set(pk , "OFFSET" , 		0);
+//			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 		0);
 		
 		break;
 		case CTR_ACK_PK_TYPE:
@@ -4660,9 +4689,10 @@ op_ima_obj_attr_set (op_id_self(), "Address", my_address);
 
 //-----------  IS_KTREE_NODE  --------------
 
-is_in_ktree = OPC_FALSE;
-
-
+is_in_ktree 					= OPC_FALSE;
+sink_sp_tree_infos.subtree_size	= 0;
+sink_sp_tree_infos.parent		= ADDR_INVALID;
+sink_sp_tree_infos.sink_dist	= SHORT_INFINITY;
 
 //--------------  IS_SINK  -----------------
 
@@ -5825,7 +5855,7 @@ if (is_reply_required){
 			</attribute>
 			<attribute name="status" type="toggle" value="1"/>
 		</state>
-		<state id="63" x="1110" y="150">
+		<state id="63" x="990" y="90">
 			<attribute name="name" type="string" value="WAIT_NEXT"/>
 			<attribute name="Exit Execs" type="textlist">
 				<value-text>
@@ -5956,19 +5986,19 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_314"/>
 			<attribute name="condition" type="string" value="!is_tx_busy"/>
 		</transition>
-		<transition source-state-id="62" destination-state-id="63" label-x="954" label-y="126">
+		<transition source-state-id="62" destination-state-id="63" label-x="888" label-y="85">
 			<path-point x="807" y="134"/>
-			<path-point x="1102" y="142"/>
+			<path-point x="982" y="82"/>
 			<attribute name="name" type="string" value="tr_315"/>
 			<attribute name="condition" type="string" value="is_reply_required"/>
 		</transition>
-		<transition source-state-id="63" destination-state-id="62" label-x="986" label-y="187">
-			<path-point x="1107" y="159"/>
+		<transition source-state-id="63" destination-state-id="62" label-x="904" label-y="147">
+			<path-point x="987" y="99"/>
 			<path-point x="827" y="151"/>
 			<attribute name="name" type="string" value="tr_316"/>
 			<attribute name="condition" type="string" value="is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad"/>
 		</transition>
-		<transition source-state-id="62" destination-state-id="41" label-x="662" label-y="81">
+		<transition source-state-id="62" destination-state-id="41" label-x="643" label-y="70">
 			<path-point x="794" y="147"/>
 			<path-point x="444" y="73"/>
 			<attribute name="name" type="string" value="tr_317"/>
@@ -6012,7 +6042,7 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_329"/>
 			<attribute name="condition" type="string" value="default"/>
 		</transition>
-		<transition source-state-id="56" destination-state-id="41" label-x="289" label-y="218">
+		<transition source-state-id="56" destination-state-id="41" label-x="287" label-y="207">
 			<path-point x="497" y="255"/>
 			<path-point x="282" y="224"/>
 			<path-point x="439" y="106"/>
@@ -6027,11 +6057,11 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_337"/>
 			<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
 		</transition>
-		<transition source-state-id="63" destination-state-id="63" label-x="1235" label-y="151">
-			<path-point x="1124" y="138"/>
+		<transition source-state-id="63" destination-state-id="63" label-x="1116" label-y="92">
+			<path-point x="1004" y="78"/>
 			<path-point x="1207" y="130"/>
 			<path-point x="1194" y="184"/>
-			<path-point x="1122" y="154"/>
+			<path-point x="1002" y="94"/>
 			<attribute name="name" type="string" value="tr_322"/>
 			<attribute name="condition" type="string" value="default"/>
 		</transition>
