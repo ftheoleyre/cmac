@@ -260,7 +260,8 @@
 //SYNC power algo
 #define		FIELD_PK_HELLO_SYNC_POWER			"sync_power"
 //Maxtree algo
-#define		FIELD_PK_HELLO_SINK_SUBTREE_SIZE	"sink_subtree_size"
+#define		FIELD_PK_HELLO_SUBTREE_SIZE			"subtree_size"
+#define		FIELD_PK_HELLO_SAVINGS				"savings"
 
 
 //data
