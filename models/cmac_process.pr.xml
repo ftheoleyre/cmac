@@ -458,9 +458,6 @@ List*	\multicast_frame_buffer;
 /* data frame is transmitted.										                            */
 double	\operational_speed;
 
-/* Is this node part of the ktree? */
-Boolean	\is_in_ktree;
-
 /* Has this node the priority to send all its data packets */
 /* (it received a CTR from its parent)                     */
 Boolean	\is_node_privileged;
@@ -588,9 +585,6 @@ double	\slot_privileged_duration;
 
 /* Offset time before I received the CTR from my parent */
 double	\slot_privileged_offset;
-
-/* The list of my children in the ktree */
-List*	\my_ktree_children;
 
 /* BETA interference range */
 int	\BETA;
@@ -735,7 +729,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 
 
 //Is the medium busy ? (transmission / reception / reservation)
-#define		IS_MEDIUM_BUSY					((is_rx_busy) || (is_tx_busy) || (get_nav_main_freq() >= op_sim_time()) || ((is_busy_tone_rx && !busy_tone_rx_ignored && BUSY_TONE_ACTIVATED) && (!is_in_ktree)))
+#define		IS_MEDIUM_BUSY					((is_rx_busy) || (is_tx_busy) || (get_nav_main_freq() >= op_sim_time()) || ((is_busy_tone_rx && !busy_tone_rx_ignored && BUSY_TONE_ACTIVATED) && (!my_sink_tree.is_in_ktree)))
 
 
 //We must defer in any of these conditions: 
@@ -746,7 +740,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 
 
 //We must transmit one packet: our data buffer is not empty OR we have already prepared a frame to send
-#define		IS_DATA_OK						((!strict_privileged_mode) || (is_hello_to_send && !IS_BROADCAST_FORBIDDEN) || !is_in_ktree || is_node_privileged || is_sink)
+#define		IS_DATA_OK						((!strict_privileged_mode) || (is_hello_to_send && !IS_BROADCAST_FORBIDDEN) || !my_sink_tree.is_in_ktree || is_node_privileged || is_sink)
 #define		IS_PK_TO_SEND					((IS_DATA_OK && !is_frame_buffer_empty()) || (next_frame_to_send.type != NO_PK_TYPE))
 
 
@@ -800,7 +794,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 //I can send one BROADCAST frame -> other nodes will receive it
 //Special case: the source is the sink (I can send a packet even if I am not privileged (I am never))
 #define		IS_BROADCAST_FORBIDDEN			0
-//((!is_node_privileged && is_in_ktree && !is_sink && (nb_channels == 1)) || (is_nav_for_other_freq()) || (!is_main_freq_active(STREAM_TO_RADIO)))
+//((!is_node_privileged && my_sink_tree.is_in_ktree && !is_sink && (nb_channels == 1)) || (is_nav_for_other_freq()) || (!is_main_freq_active(STREAM_TO_RADIO)))
 //TAG
 
 
@@ -2101,26 +2095,26 @@ Boolean update_is_in_ktree(){
 	
 	int		old_value;
 
-	old_value = is_in_ktree;
-	is_in_ktree = get_is_in_ktree();
+	old_value = my_sink_tree.is_in_ktree;
+	my_sink_tree.is_in_ktree = get_is_in_ktree();
 	
 	//the value changed !
-	if (is_in_ktree != old_value){
+	if (my_sink_tree.is_in_ktree != old_value){
 		
 		//updates the ktree distance
-		if (is_in_ktree)
+		if (my_sink_tree.is_in_ktree)
 			my_sink_tree.ktree_dist = 0;
 	
 		//debug
-		debug_print(LOW , DEBUG_NODE , "changed the ktree_node status: %d -> %d\n", old_value , is_in_ktree);
+		debug_print(LOW , DEBUG_NODE , "changed the ktree_node status: %d -> %d\n", old_value , my_sink_tree.is_in_ktree);
 		print_neighborhood_table(DEBUG_NODE);
-		printf("%f: %d ktree_node status: %d -> %d\n", op_sim_time(), my_address , old_value , is_in_ktree);
-		debug_print(LOW , DEBUG_CMAC , "changed the ktree_node status: %d -> %d\n", old_value , is_in_ktree);
+		printf("%f: %d ktree_node status: %d -> %d\n", op_sim_time(), my_address , old_value , my_sink_tree.is_in_ktree);
+		debug_print(LOW , DEBUG_CMAC , "changed the ktree_node status: %d -> %d\n", old_value , my_sink_tree.is_in_ktree);
 	}
 	
 	
 	//The value changed (a gratuitous hello is surely required)
-	FRET(old_value != is_in_ktree);
+	FRET(old_value != my_sink_tree.is_in_ktree);
 }
 
 
@@ -2201,7 +2195,7 @@ void update_sink_tree_infos(){
 	}
 	
 	//particular case
-	if (is_in_ktree)
+	if (my_sink_tree.is_in_ktree)
 		best_ktree_dist = 0;
 	
 	//debug
@@ -2238,10 +2232,10 @@ int get_ktree_child(){
 	FIN(get_ktree_child());	
 	int		*int_ptr;
 	
-	if ((!is_in_ktree) || (op_prg_list_size(my_ktree_children) == 0))
+	if ((!my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.children) == 0))
 		FRET(ADDR_BROADCAST);
 	
-	int_ptr = op_prg_list_access(my_ktree_children , 0);
+	int_ptr = op_prg_list_access(my_sink_tree.children , 0);
 	FRET(*int_ptr);
 }
 
@@ -2252,11 +2246,11 @@ int get_ktree_child_from_sink(int current_branch){
 	
 	int		*int_ptr;
 	
-	if ((!is_in_ktree) || (op_prg_list_size(my_ktree_children) == 0))
+	if ((!my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.children) == 0))
 		FRET(ADDR_BROADCAST);
 	
 	
-	int_ptr = op_prg_list_access(my_ktree_children , current_branch);
+	int_ptr = op_prg_list_access(my_sink_tree.children , current_branch);
 	FRET(*int_ptr);
 }
 
@@ -2264,7 +2258,7 @@ int get_ktree_child_from_sink(int current_branch){
 //returns the nb of current branches (number of ktree children)
 int get_nb_branches(){
 	FIN(get_nb_branches());
-	FRET(op_prg_list_size(my_ktree_children));
+	FRET(op_prg_list_size(my_sink_tree.children));
 }
 
 
@@ -2350,8 +2344,6 @@ List *neigh_construct_max_saving_child(){
 	List *ll = op_prg_list_create();
 	
 	
-	printf("%d savings\n", my_address);
-	
 	//for each neighbor, verify that it is a child & adds its savings in the global list
 	for(i=0; i<op_prg_list_size(my_neighborhood_table); i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
@@ -2364,7 +2356,6 @@ List *neigh_construct_max_saving_child(){
 					saving_record = op_prg_mem_alloc(sizeof(saving_comp_struct));
 					saving_record->address 	= neigh_ptr->address;
 					saving_record->saving	= neigh_ptr->savings[j];			
-					printf("%d %d inserted\n", saving_record->address, saving_record->saving);
 					op_prg_list_insert_sorted(ll, saving_record, saving_value_compare); 
 			
 				}	
@@ -2374,9 +2365,8 @@ List *neigh_construct_max_saving_child(){
 }
 
 
-
-
 //returns the list of current ktree chdilren
+//Remark: when I have only x candidates for y branches (x < y), I re=elect the same node several times to be a child
 void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 	FIN(compute_current_my_ktree_children_maxtree(List **ll_ptr));
 	//Control
@@ -2397,9 +2387,32 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 		op_prg_mem_free(child_ptr);
 	}
 
+	//special case: the sink MUST elect its children and chooses the branch id by itself
+	if (is_sink){
+		
+		//creates the list of max savigs children
+		children_sorted_by_savings = neigh_construct_max_saving_child();
+			
+			//elects one node per branch (the same node can be chosen several times)
+		for(i=0; (i<NB_BRANCHES) && (op_prg_list_size(children_sorted_by_savings) > 0); i++){
+					
+			//we get the nb_children^th best child
+			child_saving = op_prg_list_access(children_sorted_by_savings, i % op_prg_list_size(children_sorted_by_savings));
+			
+			//and we insert it in the list
+			child_new = op_prg_mem_alloc(sizeof(child_struct));
+			child_new->address 		= child_saving->address;
+			child_new->branch_id	= i;
+			op_prg_list_insert(ll, child_new, OPC_LISTPOS_TAIL);
+			
+			//debug_print(MAX, DEBUG_KTREE, "The sink is choosing %d for the branch %d\n", child_new->address, child_new->branch_id);
+		}
+	}
+	
+	
 	//searches if I am the children of anyone
 	//Be careful, I can be several times children 
-	for(i=0; i<op_prg_list_size(my_neighborhood_table); i++){
+	for(i=0; (!is_sink) && (i<op_prg_list_size(my_neighborhood_table)); i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
 		
 		if (neigh_ptr->address == my_sink_tree.parent){		
@@ -2408,20 +2421,28 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 			
 				//I have to choose the nb^th max savings value as my child (with the corresponding branch_id) 
 				if (child_ptr->address == my_address){
+				
+					//debug_print(MAX, DEBUG_KTREE, "%d is a child for %d (branch id %d)\n", my_address, neigh_ptr->address, child_ptr->branch_id);
 					
 					//for the first child, we compute the sorted set of candidates
 					if (nb_branch == 0)
 						children_sorted_by_savings = neigh_construct_max_saving_child();
 					
-					//we get the nb_children^th best child
-					child_saving = op_prg_list_access(children_sorted_by_savings, nb_branch++);
+					//We must have at least one candidate before electing it
+					if (op_prg_list_size(children_sorted_by_savings) > 0){
 					
-					//and we insert it in the list
-					child_new = op_prg_mem_alloc(sizeof(child_struct));
-					child_new->address 		= child_saving->address;
-					child_new->branch_id	= child_ptr->branch_id;
-					op_prg_list_insert(ll, child_new, OPC_LISTPOS_TAIL);
-				}				
+						//we get the nb_children^th best child
+						child_saving = op_prg_list_access(children_sorted_by_savings, nb_branch++ % op_prg_list_size(children_sorted_by_savings));
+					
+						//and we insert it in the list
+						child_new = op_prg_mem_alloc(sizeof(child_struct));
+						child_new->address 		= child_saving->address;
+						child_new->branch_id	= child_ptr->branch_id;
+						op_prg_list_insert(ll, child_new, OPC_LISTPOS_TAIL);
+					
+						//debug_print(MAX, DEBUG_KTREE, "node %d was elected child (branch %d, saving %d)\n", child_new->address, child_new->branch_id, child_saving->saving);
+					}
+				}
 			}		
 		}
 	}
@@ -2436,12 +2457,14 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 		op_prg_mem_free(children_sorted_by_savings);
 	}
 	
-	printf("FINAL_CHILDREN_LIST\n");
+	char msg[100], str[100];
+	snprintf(msg, 100, "FINAL_CHILDREN_LIST: <");
 	for(i=0 ; i < op_prg_list_size(ll) ; i++){
 		child_ptr = op_prg_list_access(ll , i);
-		printf("\t: %d (branch %d)\n", child_ptr->address, child_ptr->branch_id);
+		snprintf(str, 100, "%s %d (branch %d) ", msg, child_ptr->address, child_ptr->branch_id);
+		strncpy(msg, str, 100);
 	}
-	printf("end\n");
+	debug_print(MAX, DEBUG_KTREE, "%s\n", msg);
 	
 	FOUT;
 }
@@ -2474,8 +2497,8 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 	//--------------------------------------------------
 	//				NO KTREE NODE
 	//--------------------------------------------------
-	if ((!is_sink) && ((my_sync_rx_power == 0) || (!is_in_ktree) || (my_sink_tree.sink_dist > MAX_BRANCH_LENGTH))){
-		//debug_print(MAX , DEBUG_CMAC , "No ktree node: %d %d %d\n", my_sync_rx_power == 0 , !is_in_ktree , my_sink_dist > MAX_BRANCH_LENGTH);
+	if ((!is_sink) && ((my_sync_rx_power == 0) || (!my_sink_tree.is_in_ktree) || (my_sink_tree.sink_dist > MAX_BRANCH_LENGTH))){
+		//debug_print(MAX , DEBUG_CMAC , "No ktree node: %d %d %d\n", my_sync_rx_power == 0 , !my_sink_tree.is_in_ktree , my_sink_dist > MAX_BRANCH_LENGTH);
 		FOUT;
 	}
 	else{
@@ -2510,7 +2533,7 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 		//		For the sink -> places the N min power
 		//--------------------------------------------------
 		else if (is_sink){
-			debug_print(LOW , DEBUG_CMAC , "Ktree children: \n");
+			debug_print(LOW , DEBUG_KTREE , "Ktree children: \n");
 
 			//Firt branch to deal with
 			branch_tmp = -1;
@@ -2534,7 +2557,7 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 					child_ptr->branch_id 	= election_ptr->branch;
 					op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_TAIL);
 					
-					debug_print(MAX , DEBUG_CMAC , "	->%d\n", child_ptr->address);					
+					debug_print(MAX , DEBUG_KTREE , "	->%d\n", child_ptr->address);					
 				}
 			}
 		}	
@@ -2546,7 +2569,7 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 			election_ptr = op_prg_list_access(max_sync_rx_power , 0);
 			
 			if ((election_ptr->pow < my_sync_rx_power) && (election_ptr->pow != 0)){
-				debug_print(MAX , DEBUG_CMAC , "node %d chosen as ktree children\n", election_ptr->addr);
+				debug_print(MAX , DEBUG_KTREE , "node %d chosen as ktree child\n", election_ptr->addr);
 					
 				//creates a list of current ktree nodes
 				child_ptr = op_prg_mem_alloc(sizeof(child_struct));
@@ -2555,7 +2578,7 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 				op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_TAIL);
 			}
 			else
-				debug_print(MAX , DEBUG_CMAC , "no ktree node : %d\n", election_ptr->pow < my_sync_rx_power , election_ptr->pow != 0);
+				debug_print(MAX , DEBUG_KTREE , "no ktree node : %d\n", election_ptr->pow < my_sync_rx_power , election_ptr->pow != 0);
 			
 		
 		}
@@ -2571,10 +2594,10 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 		op_prg_mem_free(max_sync_rx_power);
 	}
 	
-	debug_print(LOW , DEBUG_CMAC , "FINAL_LIST\n");
+	debug_print(LOW , DEBUG_KTREE , "FINAL_LIST\n");
 	for(i=0 ; i < op_prg_list_size(ll) ; i++){
 		child_ptr = op_prg_list_access(ll , i);
-		debug_print(LOW , DEBUG_CMAC , "  : %d\n", child_ptr->address);
+		debug_print(LOW , DEBUG_KTREE , "  : %d\n", child_ptr->address);
 	}
 	
 	FOUT;
@@ -2666,10 +2689,13 @@ short *create_savings_from_packet(Packet *pk){
 
 	
 	//DEBUG
-	printf("%d: savings from %d: ", my_address, source);
-	for(i=0 ; i<NB_BRANCHES; i++)
-		printf("%d ", savings_ptr[i]);
-	printf("\n");
+	char	msg[100], str[100];
+	snprintf(msg, 100, "Savings in the hello: "); 
+	for(i=0 ; i<NB_BRANCHES; i++){
+		snprintf(str, 100, "%s %d ", msg, savings_ptr[i]);
+		strncpy(msg, str, 100);
+	}
+	debug_print(MEDIUM, DEBUG_KTREE, "%s\n", msg); 
 	
 	FRET(savings_ptr);
 }
@@ -2690,7 +2716,6 @@ void fill_savings_fields(Packet *pk){
 	sav_list = neigh_construct_max_saving_child();
 	
 	//and adds them in the packet
-	printf("%d: computed saving (%d savings in list): ", my_address, op_prg_list_size(sav_list));
 	for(i=0; i<NB_BRANCHES; i++){		
 		
 		//no child case: the single saving is myself
@@ -2711,10 +2736,8 @@ void fill_savings_fields(Packet *pk){
 		else{
 			saving_field[i] = 0;		
 		}
-		printf(" %d", saving_field[i]);
 	}
 	op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_SAVINGS, saving_field, op_prg_mem_copy_create, op_prg_mem_free, sizeof(short) * NB_BRANCHES);
-	printf("\n");	
 	
 	//memory release
 	for(i=op_prg_list_size(sav_list)-1; i>=0; i--){
@@ -2724,7 +2747,7 @@ void fill_savings_fields(Packet *pk){
 	op_prg_mem_free(sav_list);
 	
 	//debug purpose
-	print_neighborhood_table(15);//DEBUG_NODE);
+	print_neighborhood_table(DEBUG_NODE);
 	
 	FOUT;
 }
@@ -2779,8 +2802,8 @@ void fill_ktree_children_fields(Packet *pk){
 	int				nb_children;
 
 	//Current ktree children
-	compute_current_my_ktree_children(&my_ktree_children);
-	nb_children = op_prg_list_size(my_ktree_children);
+	compute_current_my_ktree_children(&my_sink_tree.children);
+	nb_children = op_prg_list_size(my_sink_tree.children);
 	
 	//Nb of ktree children
 	op_pk_nfd_set(pk , FIELD_PK_HELLO_NB_KTREE_CHILDREN , nb_children);
@@ -2790,7 +2813,7 @@ void fill_ktree_children_fields(Packet *pk){
 		list_children_ptr = op_prg_mem_alloc(sizeof(int) * nb_children);
 	
 		for(i=0; i<nb_children; i++){
-			child_ptr = op_prg_list_access(my_ktree_children, i);
+			child_ptr = op_prg_list_access(my_sink_tree.children, i);
 			list_children_ptr[i] = *child_ptr;			
 		}		
 		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_KTREE_CHILDREN, list_children_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(int) * nb_children);
@@ -3068,9 +3091,9 @@ void print_neighborhood_table(int debug_type){
 			debug_print(LOW , debug_type , "%5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, array_of_short_to_str(ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_int_ptr_to_str(ptr->ktree_children, kt_children_str, 50, OPC_FALSE));
 	}
 	if (debug_type > 11)
-		printf("sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, ktCHildren=%s\n", my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, is_in_ktree, convert_double(my_sync_rx_power), list_of_int_ptr_to_str(my_ktree_children, kt_children_str, 50, OPC_FALSE));
+		printf("sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, ktCHildren=%s\n", my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, my_sink_tree.is_in_ktree, convert_double(my_sync_rx_power), list_of_int_ptr_to_str(my_sink_tree.children, kt_children_str, 50, OPC_FALSE));
 	else
-		debug_print(LOW , debug_type , "sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, ktCHildren=%s\n", my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, is_in_ktree, convert_double(my_sync_rx_power), list_of_int_ptr_to_str(my_ktree_children, kt_children_str, 50, OPC_FALSE));
+		debug_print(LOW , debug_type , "sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, ktCHildren=%s\n", my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, my_sink_tree.is_in_ktree, convert_double(my_sync_rx_power), list_of_int_ptr_to_str(my_sink_tree.children, kt_children_str, 50, OPC_FALSE));
 
 	
 	FOUT;
@@ -4067,7 +4090,7 @@ void receive_packet_from_radio(){
 					my_privileged_frequency 	= freq;
 					
 					//Error
-					if (!is_in_ktree)
+					if (!my_sink_tree.is_in_ktree)
 						update_is_in_ktree();
 
 					
@@ -4844,10 +4867,12 @@ op_ima_obj_attr_set (op_id_self(), "Address", my_address);
 
 //-----------  IS_KTREE_NODE  --------------
 
-is_in_ktree 				= OPC_FALSE;
+my_sink_tree.is_in_ktree 	= OPC_FALSE;
 my_sink_tree.subtree_size	= 0;
 my_sink_tree.parent			= ADDR_INVALID;
 my_sink_tree.sink_dist		= SHORT_INFINITY;
+my_sink_tree.children		= op_prg_list_create();
+
 
 //--------------  IS_SINK  -----------------
 
@@ -4856,8 +4881,8 @@ intf_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_PROC, 0);
 if (op_topo_assoc_count(intf_id , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_STRM) > 1)
 	is_sink = OPC_TRUE;
 if (is_sink){
-	is_in_ktree 		= OPC_TRUE;
-	my_sync_rx_power 	= OPC_DBL_INFINITY;
+	my_sink_tree.is_in_ktree 	= OPC_TRUE;
+	my_sync_rx_power 			= OPC_DBL_INFINITY;
 }
 
 
@@ -4870,7 +4895,7 @@ else
 	my_sink_tree.sink_dist = pow (2, 4) - 1;
 
 //dist ktree
-if (is_in_ktree)
+if (my_sink_tree.is_in_ktree)
 	my_sink_tree.ktree_dist = 0;
 else
 	my_sink_tree.ktree_dist = pow (2, 4) - 1;
@@ -4941,7 +4966,6 @@ unicast_frame_buffer		= op_prg_list_create();
 multicast_frame_buffer		= op_prg_list_create();
 my_neighborhood_table		= op_prg_list_create();
 my_frame_id_seen			= op_prg_list_create();
-my_ktree_children			= op_prg_list_create();
 my_nav_list					= op_prg_list_create();
 
 
@@ -5000,6 +5024,7 @@ if (DEBUG > NO){
 		open_debug_file(&debug_files[DEBUG_RADIO] ,		"%s/%d_radio.txt" , 	get_log_dir(), cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_CONTROL] ,	"%s/%d_control.txt" ,	get_log_dir(), cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_CMAC] ,		"%s/%d_cmac.txt" , 		get_log_dir(), cmac_timestamp);
+		open_debug_file(&debug_files[DEBUG_KTREE] ,		"%s/%d_ktree.txt" , 	get_log_dir(), cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_HELLO] ,		"%s/%d_hello.txt" , 	get_log_dir(), cmac_timestamp);
 		open_debug_file(&debug_files[DEBUG_TIMEOUT] ,	"%s/%d_timeout.txt" ,	get_log_dir(), cmac_timestamp);
 	}
@@ -5331,7 +5356,6 @@ if (!is_tx_busy){
 	//debug
 	debug_print(LOW , DEBUG_DATA , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
 
-
 	//Prepares the packet
 	is_tx_busy = OPC_TRUE;
 	frame_pk = create_packet(next_frame_to_send);
@@ -5581,7 +5605,7 @@ if (DEBUG_STATE_MACHINE)
 //------------------------------------------
 
 
-debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, ktree %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg, 100) ,  IS_PK_TO_SEND , is_in_ktree , is_node_privileged);
+debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, ktree %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg, 100) ,  IS_PK_TO_SEND , my_sink_tree.is_in_ktree , is_node_privileged);
 if (is_node_privileged)
 	debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d (medium %d, high %d)\n", time_start_privileged , slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO , time_start_privileged + slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO <= op_sim_time() , PRIVILEGED_END , PRIVILEGED_MEDIUM_LIMIT , PRIVILEGED_HIGH_LIMIT);
 		
@@ -5706,7 +5730,7 @@ if (!IS_MEDIUM_BUSY){
 
 if (DEBUG_STATE_MACHINE){
 	debug_print(LOW , DEBUG_GLOBAL , "EXIT - DEFER1 - %d - timeout %f\n", my_address , next_frame_to_send.ifs *1E6);
-	debug_print(LOW, DEBUG_GLOBAL , "%d : %d %d %d %d %d %d %d\n", IS_MEDIUM_BUSY , is_rx_busy , is_tx_busy , get_nav_main_freq() >= op_sim_time() , is_busy_tone_rx , !busy_tone_rx_ignored , BUSY_TONE_ACTIVATED , !is_in_ktree);
+	debug_print(LOW, DEBUG_GLOBAL , "%d : %d %d %d %d %d %d %d\n", IS_MEDIUM_BUSY , is_rx_busy , is_tx_busy , get_nav_main_freq() >= op_sim_time() , is_busy_tone_rx , !busy_tone_rx_ignored , BUSY_TONE_ACTIVATED , !my_sink_tree.is_in_ktree);
 	print_nav_list(DEBUG_GLOBAL);
 }
 ]]>

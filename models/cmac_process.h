@@ -135,6 +135,8 @@ typedef struct{
 	short	sink_dist;
 	short	ktree_dist;
 	short	subtree_size;
+	List	*children;
+	Boolean	is_in_ktree;
 } sink_tree_struct;
 
 

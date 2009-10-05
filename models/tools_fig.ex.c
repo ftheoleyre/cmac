@@ -181,7 +181,6 @@ void tools_fig_generate(){
 	//control
 	int			i, j;
 	int			nb_nodes = get_nb_nodes();
-	int			*ptr_int;
 	//neigh tables
 	List		**neigh_table_ptr;
 	int			nb_neigh;
@@ -216,12 +215,13 @@ void tools_fig_generate(){
 		op_ima_obj_attr_get_dbl(node_ids[i], "y position", &(positions[i].y));
 
 		//states
-		ptr_int = op_ima_obj_svar_get(mac_ids[i], "is_in_ktree");
-		if (ptr_int == OPC_NIL){
-			printf("The is_in_ktree state variable is not defined, I break the xfig generation\n");
+		sink_tree_struct  *ptr_sink_tree;
+		ptr_sink_tree = op_ima_obj_svar_get(mac_ids[i], "my_sink_tree");
+		if (ptr_sink_tree == OPC_NIL){
+			printf("The my_sink_tree state variable is not defined, I break the xfig generation\n");
 			FOUT;
 		}
-		states[i] = *ptr_int;
+		states[i] = ptr_sink_tree->is_in_ktree;
 	}
 	
 	
