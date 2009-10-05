@@ -2228,19 +2228,25 @@ void update_sink_tree_infos(){
 
 
 //Returns the ktree child (not for the sink, it has several ktree children!)
-int get_ktree_child(){
-	FIN(get_ktree_child());	
+int get_ktree_child(short branch_id){
+	FIN(get_ktree_child(short branch_id));	
 	int		*int_ptr;
 	
-	if ((!my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.children) == 0))
-		FRET(ADDR_BROADCAST);
+	printf("for branch id  %d\n", branch_id);
 	
-	int_ptr = op_prg_list_access(my_sink_tree.children , 0);
+	if ((!my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.children) <= branch_id)){
+		printf("%d => error; no child\n", my_address);
+		FRET(ADDR_BROADCAST);
+	}
+	
+	printf("position %d, size %d\n", branch_id, op_prg_list_size(my_sink_tree.children));
+	int_ptr = op_prg_list_access(my_sink_tree.children , branch_id);
+	printf("node %d\n", *int_ptr);
 	FRET(*int_ptr);
 }
 
 
-//Returns the child of the current branch
+/*//Returns the child of the current branch
 int get_ktree_child_from_sink(int current_branch){
 	FIN(get_ktree_child_from_sink(int current_branch));
 	
@@ -2252,7 +2258,7 @@ int get_ktree_child_from_sink(int current_branch){
 	
 	int_ptr = op_prg_list_access(my_sink_tree.children , current_branch);
 	FRET(*int_ptr);
-}
+}*/
 
 	
 //returns the nb of current branches (number of ktree children)
@@ -2464,7 +2470,7 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 		snprintf(str, 100, "%s %d (branch %d) ", msg, child_ptr->address, child_ptr->branch_id);
 		strncpy(msg, str, 100);
 	}
-	debug_print(MAX, DEBUG_KTREE, "%s\n", msg);
+	debug_print(MAX, DEBUG_KTREE, "%s>\n", msg);
 	
 	FOUT;
 }
@@ -3203,6 +3209,8 @@ Packet* create_packet(frame_struct frame){
 			op_pk_nfd_set(pk , FIELD_PK_CTR_FREQ, 		my_privileged_frequency);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_TSLOT , 	slot_privileged_duration);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 	op_sim_time() - frame.time_added);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_BRANCHID,	ctr_last_branch);
+
 //			debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
 //TAG
 //			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 		0);
@@ -3519,10 +3527,10 @@ void generate_ctr(){
 		
 		if (ctr_last_branch >= get_nb_branches())
 			ctr_last_branch = 0;
-		destination = get_ktree_child_from_sink(ctr_last_branch);	
+		destination = get_ktree_child(ctr_last_branch);	
 	}
 	else
-		destination = get_ktree_child();
+		destination = get_ktree_child(ctr_last_branch);
 	
 	//No more ktree children
 	if (destination == ADDR_BROADCAST){
@@ -3835,6 +3843,7 @@ void receive_packet_from_radio(){
 	double			freq;
 	double			t_slot;
 	double			offset;	
+	short			branch_id;
 	//data frame
 	frame_struct	*frame_ptr;
 	//hellos
@@ -4069,6 +4078,7 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_CTR_FREQ, 	&freq);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_TSLOT, 	&t_slot);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_OFFSET, 	&offset);
+				op_pk_nfd_get(frame , FIELD_PK_CTR_BRANCHID,&branch_id);
 				
 				//Multi-channel -> this ktree node is in privileged mode (using another frequency)
 				if (nb_channels > 1)
@@ -4088,6 +4098,7 @@ void receive_packet_from_radio(){
 					slot_privileged_duration	= t_slot;
 					slot_privileged_offset		= offset;
 					my_privileged_frequency 	= freq;
+					ctr_last_branch				= branch_id;
 					
 					//Error
 					if (!my_sink_tree.is_in_ktree)
@@ -4110,7 +4121,7 @@ void receive_packet_from_radio(){
 					
 					//No data frame -> ack to send (max power)
 					//No ack if I have already finished my slot -> I will send a CTR which will act as a CTR-ACK
-					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_ktree_child()== ADDR_BROADCAST))){
+					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_ktree_child(ctr_last_branch) == ADDR_BROADCAST))){
 						generate_ack(source , frame_id , 0 , 1);
 					}
 					

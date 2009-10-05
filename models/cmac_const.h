@@ -272,6 +272,7 @@
 #define		FIELD_PK_CTR_FREQ					"freq"
 #define		FIELD_PK_CTR_TSLOT					"t_slot"
 #define		FIELD_PK_CTR_OFFSET					"offset"
+#define		FIELD_PK_CTR_BRANCHID				"branch_id"
 
 //sync
 #define		FIELD_PK_SYNC_BRANCH				"branch"
