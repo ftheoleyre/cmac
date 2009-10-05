@@ -67,7 +67,7 @@ typedef struct{
 	int		ktree_dist;
 	List	*ktree_children;	
 	int		parent;
-	List	*savings;
+	short	*savings;
 	short	subtree_size;
 	double	sync_rx_power;
 } neigh_struct;
@@ -79,7 +79,7 @@ typedef struct{
 
 typedef struct{
 	int		address;
-	int		saving;
+	short	saving;
 } saving_comp_struct;
 
 
@@ -213,7 +213,7 @@ frame_struct *get_multicast_frame_buffer(int pos);
 //Hellos
 void 	print_neighborhood_table(int debug_type);
 void  	generate_hello(double next_hello);
-void 	update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, List *savings, int branch , List *my_ktree_children_tmp , double next_hello);
+void 	update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello);
 char* 	print_ktree_cildren(char *msg, int length);
 
 

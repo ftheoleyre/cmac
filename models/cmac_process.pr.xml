@@ -2196,14 +2196,17 @@ void update_sink_tree_infos(){
 		if (best_sink_dist > neigh_ptr->sink_dist + 1){
 			best_sink_dist = neigh_ptr->sink_dist + 1;
 			best_parent		= neigh_ptr->address;
-	}
+		}
 		
-		debug_print(MEDIUM , DEBUG_HELLO , "	-> %d:   %d/%d   d/%d\n", neigh_ptr->address, neigh_ptr->ktree_dist, best_ktree_dist, neigh_ptr->sink_dist, best_sink_dist);
 	}
 	
 	//particular case
 	if (is_in_ktree)
 		best_ktree_dist = 0;
+	
+	//debug
+	if ((my_sink_tree.sink_dist != best_sink_dist) || (my_sink_tree.ktree_dist != best_ktree_dist))
+		debug_print(MEDIUM , DEBUG_HELLO , "Updates the distance to the sink %d (old %d) and to the k=tree %d (old %d)\n", neigh_ptr->address, best_ktree_dist, my_sink_tree.sink_dist, best_sink_dist, my_sink_tree.ktree_dist);
 	
 	//final assignment
 	my_sink_tree.sink_dist 	= best_sink_dist;
@@ -2215,6 +2218,7 @@ void update_sink_tree_infos(){
 	
 	if (DEBUG >= MEDIUM)
 		print_neighborhood_table(DEBUG_HELLO);
+	
 	FOUT;
 }
 
@@ -2340,7 +2344,6 @@ List *neigh_construct_max_saving_child(){
 	FIN(neigh_construct_max_saving_child());
 	int					i, j;
 	neigh_struct		*neigh_ptr;
-	int					*saving_value;
 	saving_comp_struct	*saving_record;
 	
 	//initialization
@@ -2354,19 +2357,17 @@ List *neigh_construct_max_saving_child(){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
 		
 		if (neigh_ptr->parent == my_address)
-			for(j=0; j<op_prg_list_size(neigh_ptr->savings); j++){
-				saving_value = op_prg_list_access(neigh_ptr->savings, j);
-			
+			for(j=0; j<NB_BRANCHES; j++)
+				
 				//only strictly positive savings are valid
-				if (*saving_value > 0){
+				if (neigh_ptr->savings[j] > 0){
 					saving_record = op_prg_mem_alloc(sizeof(saving_comp_struct));
 					saving_record->address 	= neigh_ptr->address;
-					saving_record->saving	= *saving_value;			
+					saving_record->saving	= neigh_ptr->savings[j];			
+					printf("%d %d inserted\n", saving_record->address, saving_record->saving);
 					op_prg_list_insert_sorted(ll, saving_record, saving_value_compare); 
 			
-					printf("%d %d inserted\n", saving_record->address, saving_record->saving);
-				}
-			}	
+				}	
 	}	
 
 	FRET(ll);
@@ -2636,29 +2637,41 @@ void compute_current_my_ktree_children(List **ll){
 //
 //-----------------------------------------------------------
 
+//returns an array with zero values to 'simulate an array of savings 
+//=> no need to change other functions if we do not include it in the packets
+short *create_null_savings(){
+	FIN(create_null_savings());
+	int		i;
+	short	*savings_field = op_prg_mem_alloc(sizeof(short) * NB_BRANCHES);
+
+	for(i=0; i<NB_BRANCHES; i++)
+		savings_field[i] = 0;
+	
+	FRET(savings_field);
+}
+
 //Creates a list of ktree nodes
-List *create_savings_from_packet(Packet *pk){
+short *create_savings_from_packet(Packet *pk){
 	FIN(create_savings_from_packet(Packet *pk));
 	
-	//result
-	List	*ll =op_prg_list_create();
 	//Control
 	int		i;
-	//list of children
-	int		*list_savings_ptr;
-	int		*saving_ptr;
+	//list of savings
+	short	*savings_ptr;
 			
 	//nb ktree nodes
-	op_pk_nfd_get_ptr(pk, 	FIELD_PK_HELLO_SAVINGS,		(void**)&list_savings_ptr);
+	int source;
+	op_pk_nfd_get_int32(pk, FIELD_PK_SOURCE,		&source);
+	op_pk_nfd_get_ptr(pk, 	FIELD_PK_HELLO_SAVINGS,	(void**)&savings_ptr);
 
-	//insert each ktree children in the list
-	for(i=0 ; i<NB_BRANCHES; i++){
-		saving_ptr 	= op_prg_mem_alloc(sizeof(int));
-		*saving_ptr = list_savings_ptr[i];
-		op_prg_list_insert(ll , saving_ptr , OPC_LISTPOS_HEAD);
-	}
 	
-	FRET(ll);
+	//DEBUG
+	printf("%d: savings from %d: ", my_address, source);
+	for(i=0 ; i<NB_BRANCHES; i++)
+		printf("%d ", savings_ptr[i]);
+	printf("\n");
+	
+	FRET(savings_ptr);
 }
 
 
@@ -2669,7 +2682,7 @@ void fill_savings_fields(Packet *pk){
 	//to manage the savnigs value in the neighborhood
 	List				*sav_list;
 	saving_comp_struct	*sav_ptr;
-	int					*saving_field = op_prg_mem_alloc(sizeof(int) * NB_BRANCHES);
+	short				*saving_field = op_prg_mem_alloc(sizeof(short) * NB_BRANCHES);
 	//control
 	int		i;
 		
@@ -2677,7 +2690,7 @@ void fill_savings_fields(Packet *pk){
 	sav_list = neigh_construct_max_saving_child();
 	
 	//and adds them in the packet
-	printf("%d: saving (%d savings in list): ", my_address, op_prg_list_size(sav_list));
+	printf("%d: computed saving (%d savings in list): ", my_address, op_prg_list_size(sav_list));
 	for(i=0; i<NB_BRANCHES; i++){		
 		
 		//no child case: the single saving is myself
@@ -2700,7 +2713,7 @@ void fill_savings_fields(Packet *pk){
 		}
 		printf(" %d", saving_field[i]);
 	}
-	op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_SAVINGS, saving_field, op_prg_mem_copy_create, op_prg_mem_free, sizeof(int) * NB_BRANCHES);
+	op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_SAVINGS, saving_field, op_prg_mem_copy_create, op_prg_mem_free, sizeof(short) * NB_BRANCHES);
 	printf("\n");	
 	
 	//memory release
@@ -2802,7 +2815,7 @@ void fill_ktree_children_fields(Packet *pk){
 //-----------------------------------------------------------
 
 //Generates an hello (next frame to send !)
-void  generate_hello(double next_hello){ 
+void generate_hello(double next_hello){ 
 	FIN(generate_hello(double next_hello));
 	
 	//Packet to send
@@ -2892,8 +2905,8 @@ void delete_timeouted_neighbors(void *ptr , int code){
 
 
 //updates the neighborhood table with one new entry !
-void update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, List *savings, int branch , List *my_ktree_children_tmp , double next_hello){
-	FIN(update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short_subtree_size, List *savings, int branch , List *my_ktree_children_tmp , double next_hello));
+void update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello){
+	FIN(update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short_subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello));
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
@@ -2978,6 +2991,27 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 }
 
 //converts a list of int* in a string
+char *array_of_short_to_str(short* tab, short nb_elem, char *msg, int length, Boolean padding){
+
+	FIN(array_of_short_to_str(short* tab, short nb_elem, char *msg, int length, Boolean padding));
+	
+	int		i;
+
+	strncpy(msg, "", length);
+	for(i=0; i < nb_elem ; i++){
+		snprintf(msg , length, "%s %d", msg , tab[i]);
+	}
+		
+	//printf("str:\n");
+	if(padding)
+		for(i=strlen(msg); i<length; i++)
+			strncat(msg, " ", length);
+	
+	FRET(msg);
+}
+
+
+//converts a list of int* in a string
 char *list_of_int_ptr_to_str(List* ll, char *msg, int length, Boolean padding){
 
 	FIN(list_of_int_ptr_to_str(List* ll, char *msg, int length, Boolean padding));
@@ -2995,7 +3029,6 @@ char *list_of_int_ptr_to_str(List* ll, char *msg, int length, Boolean padding){
 	if(padding)
 		for(i=strlen(msg); i<length; i++)
 			strncat(msg, " ", length);
-	//printf("|%s|\n", msg);
 	
 	FRET(msg);
 }
@@ -3015,14 +3048,14 @@ void print_neighborhood_table(int debug_type){
 		printf("	NEIGHBORHOOD TABLE (%f)\n", op_sim_time());
 		printf("---------------------------------------\n");
 		printf("\n");
-		printf("addr |sinkDist|ktDist| Timeout |Parent| STreeSize  |my_ktree_children\n");
+		printf("addr |sinkDist|ktDist| Timeout |Parent|STreeSize|  Savings  |my_ktree_children\n");
 	}
 	else{
 		debug_print(LOW , debug_type , "---------------------------------------\n");
 		debug_print(LOW , debug_type , "	NEIGHBORHOOD TABLE (%f)\n", op_sim_time());
 		debug_print(LOW , debug_type , "---------------------------------------\n");
 		debug_print(LOW , debug_type , "\n");
-		debug_print(LOW , debug_type , "addr |sinkDist|ktDist| Timeout |Parent| STreeSize  |  Savings  |my_ktree_children\n");
+		debug_print(LOW , debug_type , "addr |sinkDist|ktDist| Timeout |Parent|STreeSize|  Savings  |my_ktree_children\n");
 	}
 	
 	for (i=0 ; i< op_prg_list_size(my_neighborhood_table) ; i++){
@@ -3030,9 +3063,9 @@ void print_neighborhood_table(int debug_type){
 		
 		//the whole info
 		if (debug_type > 11)
-			printf("%5d|%8d|%6d|%7f|%6d|%6d|%s|%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, list_of_int_ptr_to_str(ptr->savings, savings_str, 12, OPC_TRUE), list_of_int_ptr_to_str(ptr->ktree_children, kt_children_str, 50, OPC_FALSE));
+			printf("%5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, array_of_short_to_str(ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_int_ptr_to_str(ptr->ktree_children, kt_children_str, 50, OPC_FALSE));
 		else
-			debug_print(LOW , debug_type , "%5d|%8d|%6d|%7f|%6d|%6d|%s|%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, list_of_int_ptr_to_str(ptr->savings, savings_str, 12, OPC_TRUE), list_of_int_ptr_to_str(ptr->ktree_children, kt_children_str, 50, OPC_FALSE));
+			debug_print(LOW , debug_type , "%5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, array_of_short_to_str(ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_int_ptr_to_str(ptr->ktree_children, kt_children_str, 50, OPC_FALSE));
 	}
 	if (debug_type > 11)
 		printf("sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, ktCHildren=%s\n", my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, is_in_ktree, convert_double(my_sync_rx_power), list_of_int_ptr_to_str(my_ktree_children, kt_children_str, 50, OPC_FALSE));
@@ -3787,7 +3820,7 @@ void receive_packet_from_radio(){
 	double			sync_power;
 	int				parent;
 	short			subtree_size;
-	List			*savings_tmp;
+	short			*savings_tmp;
 	//RTS / CTS / DATA / ACK for nav
 	int				duration;
 	//transmission time for the flow
@@ -4104,7 +4137,7 @@ void receive_packet_from_radio(){
 				if (op_pk_nfd_is_set(frame , FIELD_PK_HELLO_SAVINGS))
 					savings_tmp = create_savings_from_packet(frame);
 				else
-					savings_tmp = op_prg_list_create();
+					savings_tmp = create_null_savings();
 				
 				update_neighborhood_table(source , sink_dist , ktree_dist , sync_power , parent, subtree_size, savings_tmp, branch , my_ktree_children_tmp , next_hello);
 			
