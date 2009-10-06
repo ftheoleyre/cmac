@@ -632,6 +632,20 @@ sink_tree_struct	\my_sink_tree;
 
 
 
+/*-------------------------------------------------------
+
+NOTES:
+
+* cmac_tree and ktree are identical (the ktree is the structure used by 
+cmac to define the branches that 'collect' the traffic to the sink)
+
+* 
+
+
+
+-------------------------------------------------------*/
+
+
 //-----------------------------------------------
 //				SPECIAL DEBUG
 //-----------------------------------------------
@@ -2052,18 +2066,17 @@ Boolean	get_is_in_ktree(){
 	neigh_struct	*neigh_ptr;
 	int				*addr_ptr;
 	
-	//The sink is always a ktree node !
+	//The sink is always a cmac selected node !
 	if (is_sink)
-		FRET(OPC_TRUE);
-	
+		FRET(OPC_TRUE);	
 		
 	//Walks in the list
 	for(i=op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
 		//I am in its list of ktree children
-		for(j=0 ; j < op_prg_list_size(neigh_ptr->ktree_children) ; j++){
-			addr_ptr = op_prg_list_access(neigh_ptr->ktree_children , j);
+		for(j=0 ; j < op_prg_list_size(neigh_ptr->cmac_children) ; j++){
+			addr_ptr = op_prg_list_access(neigh_ptr->cmac_children , j);
 			
 			//It is one parent -> save its stability
 			if (*addr_ptr == my_address)
@@ -2076,8 +2089,7 @@ Boolean	get_is_in_ktree(){
 
 //empty a list (memory release of all elements)
 void empty_list(List *ll){
-	FIN(empty_list(List *ll));
-	
+	FIN(empty_list(List *ll));	
 	void	*ptr;
 	
 	while(op_prg_list_size(ll) != 0){
@@ -2106,7 +2118,7 @@ Boolean update_is_in_ktree(){
 			my_sink_tree.ktree_dist = 0;
 	
 		//debug
-		debug_print(LOW , DEBUG_NODE , "changed the ktree_node status: %d -> %d\n", old_value , my_sink_tree.is_in_ktree);
+		debug_print(LOW , DEBUG_NODE , "changed the cmac_tree_node status: %d -> %d\n", old_value , my_sink_tree.is_in_ktree);
 		print_neighborhood_table(DEBUG_NODE);
 		printf("%f: %d ktree_node status: %d -> %d\n", op_sim_time(), my_address , old_value , my_sink_tree.is_in_ktree);
 		debug_print(LOW , DEBUG_CMAC , "changed the ktree_node status: %d -> %d\n", old_value , my_sink_tree.is_in_ktree);
@@ -2190,8 +2202,7 @@ void update_sink_tree_infos(){
 		if (best_sink_dist > neigh_ptr->sink_dist + 1){
 			best_sink_dist = neigh_ptr->sink_dist + 1;
 			best_parent		= neigh_ptr->address;
-		}
-		
+		}		
 	}
 	
 	//particular case
@@ -2227,44 +2238,24 @@ void update_sink_tree_infos(){
 
 
 
-//Returns the ktree child (not for the sink, it has several ktree children!)
-int get_ktree_child(short branch_id){
-	FIN(get_ktree_child(short branch_id));	
+//Returns the CMAC child
+int get_cmac_child(short branch_id){
+	FIN(get_cmac_child(short branch_id));	
 	int		*int_ptr;
-	
-	printf("for branch id  %d\n", branch_id);
-	
-	if ((!my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.children) <= branch_id)){
-		printf("%d => error; no child\n", my_address);
+		
+	if ((!my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.cmac_children) <= branch_id)){
+		//debug_print(MAC, DEBUG_CMAC, "no child for branch %d\n", branch_id);
 		FRET(ADDR_BROADCAST);
 	}
-	
-	printf("position %d, size %d\n", branch_id, op_prg_list_size(my_sink_tree.children));
-	int_ptr = op_prg_list_access(my_sink_tree.children , branch_id);
-	printf("node %d\n", *int_ptr);
+	int_ptr = op_prg_list_access(my_sink_tree.cmac_children , branch_id);
 	FRET(*int_ptr);
 }
 
 
-/*//Returns the child of the current branch
-int get_ktree_child_from_sink(int current_branch){
-	FIN(get_ktree_child_from_sink(int current_branch));
-	
-	int		*int_ptr;
-	
-	if ((!my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.children) == 0))
-		FRET(ADDR_BROADCAST);
-	
-	
-	int_ptr = op_prg_list_access(my_sink_tree.children , current_branch);
-	FRET(*int_ptr);
-}*/
-
-	
 //returns the nb of current branches (number of ktree children)
 int get_nb_branches(){
 	FIN(get_nb_branches());
-	FRET(op_prg_list_size(my_sink_tree.children));
+	FRET(op_prg_list_size(my_sink_tree.cmac_children));
 }
 
 
@@ -2371,14 +2362,13 @@ List *neigh_construct_max_saving_child(){
 }
 
 
-//returns the list of current ktree chdilren
+//returns the list of current ktree children
 //Remark: when I have only x candidates for y branches (x < y), I re=elect the same node several times to be a child
-void compute_current_my_ktree_children_maxtree(List **ll_ptr){
-	FIN(compute_current_my_ktree_children_maxtree(List **ll_ptr));
+void update_current_cmac_children_maxtree(){
+	FIN(update_current_cmac_children_maxtree());
 	//Control
 	neigh_struct		*neigh_ptr;
 	int					i , j;
-	List				*ll = *ll_ptr;
 	//children
 	child_struct		*child_ptr;
 	short				nb_branch = 0;
@@ -2386,10 +2376,9 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 	saving_comp_struct	*child_saving;
 	List				*children_sorted_by_savings;
 	
-	
 	//empty the old list
-	while(op_prg_list_size(ll) > 0){
-		child_ptr = op_prg_list_remove(ll , 0);
+	while(op_prg_list_size(my_sink_tree.cmac_children) > 0){
+		child_ptr = op_prg_list_remove(my_sink_tree.cmac_children , 0);
 		op_prg_mem_free(child_ptr);
 	}
 
@@ -2399,7 +2388,7 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 		//creates the list of max savigs children
 		children_sorted_by_savings = neigh_construct_max_saving_child();
 			
-			//elects one node per branch (the same node can be chosen several times)
+		//elects one node per branch (the same node can be chosen several times)
 		for(i=0; (i<NB_BRANCHES) && (op_prg_list_size(children_sorted_by_savings) > 0); i++){
 					
 			//we get the nb_children^th best child
@@ -2409,7 +2398,7 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 			child_new = op_prg_mem_alloc(sizeof(child_struct));
 			child_new->address 		= child_saving->address;
 			child_new->branch_id	= i;
-			op_prg_list_insert(ll, child_new, OPC_LISTPOS_TAIL);
+			op_prg_list_insert(my_sink_tree.cmac_children, child_new, OPC_LISTPOS_TAIL);
 			
 			//debug_print(MAX, DEBUG_KTREE, "The sink is choosing %d for the branch %d\n", child_new->address, child_new->branch_id);
 		}
@@ -2422,13 +2411,12 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
 		
 		if (neigh_ptr->address == my_sink_tree.parent){		
-			for(j=0; j<op_prg_list_size(neigh_ptr->ktree_children); j++){
-				child_ptr = op_prg_list_access(neigh_ptr->ktree_children, j);
+			for(j=0; j<op_prg_list_size(neigh_ptr->cmac_children); j++){
+				child_ptr = op_prg_list_access(neigh_ptr->cmac_children, j);
 			
 				//I have to choose the nb^th max savings value as my child (with the corresponding branch_id) 
 				if (child_ptr->address == my_address){
-				
-					//debug_print(MAX, DEBUG_KTREE, "%d is a child for %d (branch id %d)\n", my_address, neigh_ptr->address, child_ptr->branch_id);
+					//debug_print(MAX, DEBUG_KTREE, "I am a child for %d (branch id %d)\n", neigh_ptr->address, child_ptr->branch_id);
 					
 					//for the first child, we compute the sorted set of candidates
 					if (nb_branch == 0)
@@ -2444,7 +2432,7 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 						child_new = op_prg_mem_alloc(sizeof(child_struct));
 						child_new->address 		= child_saving->address;
 						child_new->branch_id	= child_ptr->branch_id;
-						op_prg_list_insert(ll, child_new, OPC_LISTPOS_TAIL);
+						op_prg_list_insert(my_sink_tree.cmac_children, child_new, OPC_LISTPOS_TAIL);
 					
 						//debug_print(MAX, DEBUG_KTREE, "node %d was elected child (branch %d, saving %d)\n", child_new->address, child_new->branch_id, child_saving->saving);
 					}
@@ -2465,20 +2453,23 @@ void compute_current_my_ktree_children_maxtree(List **ll_ptr){
 	
 	char msg[100], str[100];
 	snprintf(msg, 100, "FINAL_CHILDREN_LIST: <");
-	for(i=0 ; i < op_prg_list_size(ll) ; i++){
-		child_ptr = op_prg_list_access(ll , i);
+	for(i=0 ; i < op_prg_list_size(my_sink_tree.cmac_children) ; i++){
+		child_ptr = op_prg_list_access(my_sink_tree.cmac_children , i);
 		snprintf(str, 100, "%s %d (branch %d) ", msg, child_ptr->address, child_ptr->branch_id);
 		strncpy(msg, str, 100);
 	}
 	debug_print(MAX, DEBUG_KTREE, "%s>\n", msg);
+	
+	
+	//print_neighborhood_table(DEBUG_PRINTF);
 	
 	FOUT;
 }
 
 
 //returns the list of current ktree chdilren
-void compute_current_my_ktree_children_sync(List **ll_ptr){
-	FIN(compute_current_my_ktree_children_sync(List **ll_ptr));
+void update_current_cmac_children_sync(){
+	FIN(update_current_cmac_children_sync());
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
@@ -2488,15 +2479,14 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 	//Control
 	child_struct	*child_ptr;
 	short			branch_tmp = -1;
-	List			*ll = *ll_ptr;
 	//conditions
 	Boolean			direct_and_new;
 	Boolean			no_direct_and_new;
 
 	
 	//empty the old list
-	while(op_prg_list_size(ll) > 0){
-		child_ptr = op_prg_list_remove(ll , 0);
+	while(op_prg_list_size(my_sink_tree.cmac_children) > 0){
+		child_ptr = op_prg_list_remove(my_sink_tree.cmac_children , 0);
 		op_prg_mem_free(child_ptr);
 	}
 
@@ -2561,7 +2551,7 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 					child_ptr = op_prg_mem_alloc(sizeof(child_struct));
 					child_ptr->address 		= election_ptr->addr;
 					child_ptr->branch_id 	= election_ptr->branch;
-					op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_TAIL);
+					op_prg_list_insert(my_sink_tree.cmac_children , child_ptr , OPC_LISTPOS_TAIL);
 					
 					debug_print(MAX , DEBUG_KTREE , "	->%d\n", child_ptr->address);					
 				}
@@ -2581,7 +2571,7 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 				child_ptr = op_prg_mem_alloc(sizeof(child_struct));
 				child_ptr->address 		= election_ptr->addr;
 				child_ptr->branch_id 	= election_ptr->branch;
-				op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_TAIL);
+				op_prg_list_insert(my_sink_tree.cmac_children , child_ptr , OPC_LISTPOS_TAIL);
 			}
 			else
 				debug_print(MAX , DEBUG_KTREE , "no ktree node : %d\n", election_ptr->pow < my_sync_rx_power , election_ptr->pow != 0);
@@ -2601,24 +2591,13 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 	}
 	
 	debug_print(LOW , DEBUG_KTREE , "FINAL_LIST\n");
-	for(i=0 ; i < op_prg_list_size(ll) ; i++){
-		child_ptr = op_prg_list_access(ll , i);
+	for(i=0 ; i < op_prg_list_size(my_sink_tree.cmac_children) ; i++){
+		child_ptr = op_prg_list_access(my_sink_tree.cmac_children , i);
 		debug_print(LOW , DEBUG_KTREE , "  : %d\n", child_ptr->address);
 	}
 	
 	FOUT;
 }
-
-
-
-
-//-----------------------------------------------------------
-//					SYNC ALGO
-//-----------------------------------------------------------
-
-
-
-
 
 
 
@@ -2628,8 +2607,8 @@ void compute_current_my_ktree_children_sync(List **ll_ptr){
 
 	
 //returns the list of current ktree chdilren
-void compute_current_my_ktree_children(List **ll){
-	FIN(compute_current_my_ktree_children(List **ll));
+void update_current_cmac_children(){
+	FIN(update_current_cmac_children());
 	
 	//only for cmac!
 	if (MAC_LAYER != CMAC)
@@ -2639,12 +2618,12 @@ void compute_current_my_ktree_children(List **ll){
 	switch(KTREE_ALGO){
 	
 		case KTREE_ALGO_SYNC :
-			compute_current_my_ktree_children_sync(ll);
+			update_current_cmac_children_sync();
 			FOUT;
 		break;
 		
 		case KTREE_ALGO_MAXTREE :
-			compute_current_my_ktree_children_maxtree(ll);
+			update_current_cmac_children_maxtree();
 			FOUT;
 		break;
 		
@@ -2759,16 +2738,14 @@ void fill_savings_fields(Packet *pk){
 }
 
 
-
-
-//Creates a list of ktree nodes
-List *create_my_ktree_children_from_packet(Packet *pk){
-	FIN(create_my_ktree_children_from_packet(Packet *pk));
+//Creates a list of sinktree nodes
+List *create_my_cmac_children_from_packet(Packet *pk){
+	FIN(create_my_cmac_children_from_packet(Packet *pk));
 	
 	//result
 	List			*ll;
 	//List size and elements
-	int				nb_ktree_children;
+	int				nb_cmac_children;
 	child_struct	*child_ptr;
 	//Control
 	int				i;
@@ -2781,55 +2758,58 @@ List *create_my_ktree_children_from_packet(Packet *pk){
 	ll = op_prg_list_create();
 		
 	//nb ktree nodes
-	op_pk_nfd_get(pk,		FIELD_PK_HELLO_NB_KTREE_CHILDREN, 	&nb_ktree_children);
+	op_pk_nfd_get(pk,		FIELD_PK_HELLO_NB_CMAC_CHILDREN, 	&nb_cmac_children);
 	op_pk_nfd_get_int32(pk, FIELD_PK_SOURCE, 					&source);
-	op_pk_nfd_get_ptr(pk, 	FIELD_PK_HELLO_KTREE_CHILDREN,		(void**)&list_children_ptr);
+	op_pk_nfd_get_ptr(pk, 	FIELD_PK_HELLO_CMAC_CHILDREN,		(void**)&list_children_ptr);
 
 	//insert each ktree children in the list
-	for(i=0 ; i<nb_ktree_children; i++){
+	for(i=0 ; i<nb_cmac_children; i++){
 		child_ptr 	= op_prg_mem_alloc(sizeof(child_struct));
 		*child_ptr 	= list_children_ptr[i];
 		op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_HEAD);
 	}
 	
+	//memory release for the packet field itself
+	if (nb_cmac_children != 0)
+		op_prg_mem_free(list_children_ptr);
+	
 	FRET(ll);
 }
 
 
-//fills the packet with the list of my ktree children
-void fill_ktree_children_fields(Packet *pk){
-	FIN(fill_ktree_children_fields(Packet *pk));
+//fills the packet with the list of my cmac-tree children
+void fill_cmac_children_fields(Packet *pk){
+	FIN(fill_cmac_children_fields(Packet *pk));
 	
 	child_struct	*child_ptr;
 	//Control
 	int				i;
 	//list of children
 	child_struct	*list_children_ptr;
-	int				nb_children;
+	int				nb_cmac_children = op_prg_list_size(my_sink_tree.cmac_children);
+	
+	debug_print(MAX, DEBUG_HELLO, "%d children to announce in my hellos\n", nb_cmac_children);
+	
+	//updates my list of cmac chdilren (just before transmitting the hello)
+	update_current_cmac_children();
+	
+	//nb of children
+	op_pk_nfd_set(pk, FIELD_PK_HELLO_NB_CMAC_CHILDREN, nb_cmac_children);
 
-	//Current ktree children
-	compute_current_my_ktree_children(&my_sink_tree.children);
-	nb_children = op_prg_list_size(my_sink_tree.children);
-	
-	//Nb of ktree children
-	op_pk_nfd_set(pk , FIELD_PK_HELLO_NB_KTREE_CHILDREN , nb_children);
-		
 	//Fills ktree children fields
-	if (nb_children != 0){
-		list_children_ptr = op_prg_mem_alloc(sizeof(int) * nb_children);
+	if (nb_cmac_children != 0){
+		list_children_ptr = op_prg_mem_alloc(sizeof(child_struct) * nb_cmac_children);
 	
-		for(i=0; i<nb_children; i++){
-			child_ptr = op_prg_list_access(my_sink_tree.children, i);
+		for(i=0; i<nb_cmac_children; i++){
+			child_ptr = op_prg_list_access(my_sink_tree.cmac_children, i);
 			list_children_ptr[i] = *child_ptr;			
 		}		
-		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_KTREE_CHILDREN, list_children_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(int) * nb_children);
+		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_CMAC_CHILDREN, list_children_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(child_struct) * nb_cmac_children);
 	}
 	
 	print_neighborhood_table(DEBUG_NODE);
 	FOUT;
 }
-
-
 
 
 
@@ -2901,8 +2881,8 @@ void delete_timeouted_neighbors(void *ptr , int code){
 			debug_print(LOW , DEBUG_HELLO , "neighbor %d timeouted after a null stability\n", neigh_ptr->address);
 			debug_print(LOW , DEBUG_NODE , "neighbor %d timeouted after a null stability\n",  neigh_ptr->address);
 
-			empty_list(neigh_ptr->ktree_children);
-			op_prg_mem_free(neigh_ptr->ktree_children);
+			empty_list(neigh_ptr->cmac_children);
+			op_prg_mem_free(neigh_ptr->cmac_children);
 			op_prg_mem_free(neigh_ptr);
 			neigh_ptr = NULL;
 
@@ -2934,8 +2914,8 @@ void delete_timeouted_neighbors(void *ptr , int code){
 
 
 //updates the neighborhood table with one new entry !
-void update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello){
-	FIN(update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short_subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello));
+void update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *my_cmac_children_tmp , double next_hello){
+	FIN(update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short_subtree_size, short *savings, int branch , List *my_cmac_children_tmp , double next_hello));
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
@@ -2949,14 +2929,14 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 	
 		if (neigh_ptr->address == source){
-			op_prg_mem_free(neigh_ptr->ktree_children);
+			op_prg_mem_free(neigh_ptr->cmac_children);
 			op_prg_mem_free(neigh_ptr->savings);
 			
 			neigh_ptr->sink_dist			= sink_dist;
 			neigh_ptr->ktree_dist			= ktree_dist;
 			neigh_ptr->sync_rx_power		= sync_rx_power;
 			neigh_ptr->parent				= parent;
-			neigh_ptr->ktree_children		= my_ktree_children_tmp;
+			neigh_ptr->cmac_children		= my_cmac_children_tmp;
 			neigh_ptr->subtree_size			= subtree_size;
 			neigh_ptr->savings				= savings;
 			neighbor_updated 				= OPC_TRUE;
@@ -2986,7 +2966,7 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 		neigh_ptr->parent				= parent;
 		neigh_ptr->subtree_size			= subtree_size;
 		neigh_ptr->savings				= savings;
-		neigh_ptr->ktree_children		= my_ktree_children_tmp;
+		neigh_ptr->cmac_children		= my_cmac_children_tmp;
 		neigh_ptr->timeout				= op_sim_time() + next_hello * HELLO_PK_TIMEOUT + 0.1;			
 		op_prg_list_insert(my_neighborhood_table , neigh_ptr , OPC_LISTPOS_TAIL);	  
 		
@@ -3062,6 +3042,32 @@ char *list_of_int_ptr_to_str(List* ll, char *msg, int length, Boolean padding){
 	FRET(msg);
 }
 
+
+//converts a list of int* in a string
+char *list_of_children_to_str(List* ll, char *msg, int length, Boolean padding){
+	FIN(list_of_chiildren_to_str(List* ll, char *msg, int length, Boolean padding));
+	
+	int				i;
+	child_struct	*child_ptr;
+	char			str[100];
+
+	
+	strncpy(msg, "", length);
+	for(i=0 ; i < op_prg_list_size(my_sink_tree.cmac_children) ; i++){
+		child_ptr = op_prg_list_access(my_sink_tree.cmac_children , i);
+		snprintf(str, 100, "%s %d (%d) ", msg, child_ptr->address, child_ptr->branch_id);
+		strncpy(msg, str, length);
+	}
+	
+	//adds "space" chars
+	if(padding)
+		for(i=strlen(msg); i<length; i++)
+			strncat(msg, " ", length);
+
+	FRET(msg);
+}
+
+
 //Prints in my debug_file the neighborhood table
 void print_neighborhood_table(int debug_type){
 	FIN(print_neighborhood_table(int debug_type));
@@ -3069,37 +3075,37 @@ void print_neighborhood_table(int debug_type){
 	int				i;
 	neigh_struct	*ptr;
 	char			savings_str[13];
-	char			kt_children_str[50];
+	char			cmac_children_str[50];
 
 	
-	if (debug_type > 11){
+	if (debug_type >= DEBUG_PRINTF){
 		printf("---------------------------------------\n");
-		printf("	NEIGHBORHOOD TABLE (%f)\n", op_sim_time());
+		printf("	NEIGHBORHOOD TABLE (%d-%f)\n", my_address, op_sim_time());
 		printf("---------------------------------------\n");
 		printf("\n");
-		printf("addr |sinkDist|ktDist| Timeout |Parent|STreeSize|  Savings  |my_ktree_children\n");
+		printf("%d> addr |sinkDist|ktDist| Timeout |Parent|STreeSize|  Savings  |Cmac Children\n", my_address);
 	}
 	else{
 		debug_print(LOW , debug_type , "---------------------------------------\n");
 		debug_print(LOW , debug_type , "	NEIGHBORHOOD TABLE (%f)\n", op_sim_time());
 		debug_print(LOW , debug_type , "---------------------------------------\n");
 		debug_print(LOW , debug_type , "\n");
-		debug_print(LOW , debug_type , "addr |sinkDist|ktDist| Timeout |Parent|STreeSize|  Savings  |my_ktree_children\n");
+		debug_print(LOW , debug_type , "addr |sinkDist|ktDist| Timeout |Parent|STreeSize|  Savings  |Cmac Children\n");
 	}
 	
 	for (i=0 ; i< op_prg_list_size(my_neighborhood_table) ; i++){
 	ptr = op_prg_list_access(my_neighborhood_table , i);
 		
 		//the whole info
-		if (debug_type > 11)
-			printf("%5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, array_of_short_to_str(ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_int_ptr_to_str(ptr->ktree_children, kt_children_str, 50, OPC_FALSE));
+		if (debug_type >= DEBUG_PRINTF)
+			printf("%d> %5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", my_address, ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, array_of_short_to_str(ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
 		else
-			debug_print(LOW , debug_type , "%5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, array_of_short_to_str(ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_int_ptr_to_str(ptr->ktree_children, kt_children_str, 50, OPC_FALSE));
+			debug_print(LOW , debug_type , "%5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", ptr->address , convert_int(ptr->sink_dist) , convert_int(ptr->ktree_dist) , ptr->timeout , ptr->parent, ptr->subtree_size, array_of_short_to_str(ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
 	}
-	if (debug_type > 11)
-		printf("sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, ktCHildren=%s\n", my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, my_sink_tree.is_in_ktree, convert_double(my_sync_rx_power), list_of_int_ptr_to_str(my_sink_tree.children, kt_children_str, 50, OPC_FALSE));
+	if (debug_type >= DEBUG_PRINTF)
+		printf("%d> sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, cmacChildren=%s\n", my_address, my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, my_sink_tree.is_in_ktree, convert_double(my_sync_rx_power), list_of_children_to_str(my_sink_tree.cmac_children, cmac_children_str, 50, OPC_FALSE));
 	else
-		debug_print(LOW , debug_type , "sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, ktCHildren=%s\n", my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, my_sink_tree.is_in_ktree, convert_double(my_sync_rx_power), list_of_int_ptr_to_str(my_sink_tree.children, kt_children_str, 50, OPC_FALSE));
+		debug_print(LOW , debug_type , "sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, cmacChildren=%s\n", my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, my_sink_tree.is_in_ktree, convert_double(my_sync_rx_power), list_of_children_to_str(my_sink_tree.cmac_children, cmac_children_str, 50, OPC_FALSE));
 
 	
 	FOUT;
@@ -3192,7 +3198,7 @@ Packet* create_packet(frame_struct frame){
 					op_sim_end("Unknown ktree algo", "", "", "");
 			}
 		
-			fill_ktree_children_fields(pk);
+			fill_cmac_children_fields(pk);
 		break;
 		case RTS_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_rts");
@@ -3527,10 +3533,10 @@ void generate_ctr(){
 		
 		if (ctr_last_branch >= get_nb_branches())
 			ctr_last_branch = 0;
-		destination = get_ktree_child(ctr_last_branch);	
+		destination = get_cmac_child(ctr_last_branch);	
 	}
 	else
-		destination = get_ktree_child(ctr_last_branch);
+		destination = get_cmac_child(ctr_last_branch);
 	
 	//No more ktree children
 	if (destination == ADDR_BROADCAST){
@@ -3848,7 +3854,7 @@ void receive_packet_from_radio(){
 	frame_struct	*frame_ptr;
 	//hellos
 	int				sink_dist , ktree_dist , branch;
-	List			*my_ktree_children_tmp;
+	List			*my_cmac_children_tmp;
 	double			sync_power;
 	int				parent;
 	short			subtree_size;
@@ -4121,7 +4127,7 @@ void receive_packet_from_radio(){
 					
 					//No data frame -> ack to send (max power)
 					//No ack if I have already finished my slot -> I will send a CTR which will act as a CTR-ACK
-					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_ktree_child(ctr_last_branch) == ADDR_BROADCAST))){
+					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_cmac_child(ctr_last_branch) == ADDR_BROADCAST))){
 						generate_ack(source , frame_id , 0 , 1);
 					}
 					
@@ -4162,7 +4168,7 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_KTREE_DIST, 	&ktree_dist);
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_SYNC_POWER, 	&sync_power);
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_PARENT, 		&parent);
-				my_ktree_children_tmp = create_my_ktree_children_from_packet(frame);
+				my_cmac_children_tmp = create_my_cmac_children_from_packet(frame);
 				
 				if (op_pk_nfd_is_set(frame , FIELD_PK_HELLO_SUBTREE_SIZE))
 					op_pk_nfd_get(frame , FIELD_PK_HELLO_SUBTREE_SIZE, 	&subtree_size);
@@ -4173,7 +4179,7 @@ void receive_packet_from_radio(){
 				else
 					savings_tmp = create_null_savings();
 				
-				update_neighborhood_table(source , sink_dist , ktree_dist , sync_power , parent, subtree_size, savings_tmp, branch , my_ktree_children_tmp , next_hello);
+				update_neighborhood_table(source , sink_dist , ktree_dist , sync_power , parent, subtree_size, savings_tmp, branch , my_cmac_children_tmp , next_hello);
 			
 			break;
 				
@@ -4882,7 +4888,7 @@ my_sink_tree.is_in_ktree 	= OPC_FALSE;
 my_sink_tree.subtree_size	= 0;
 my_sink_tree.parent			= ADDR_INVALID;
 my_sink_tree.sink_dist		= SHORT_INFINITY;
-my_sink_tree.children		= op_prg_list_create();
+my_sink_tree.cmac_children	= op_prg_list_create();
 
 
 //--------------  IS_SINK  -----------------

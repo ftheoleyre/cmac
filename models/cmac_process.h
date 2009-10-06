@@ -65,7 +65,7 @@ typedef struct{
 	double	timeout;
 	int		sink_dist;
 	int		ktree_dist;
-	List	*ktree_children;	
+	List	*cmac_children;			//children in the k-tree core
 	int		parent;
 	short	*savings;
 	short	subtree_size;
@@ -81,6 +81,23 @@ typedef struct{
 	int		address;
 	short	saving;
 } saving_comp_struct;
+
+
+
+//-----------------------------------------------
+//			TREE OF SHORTEST PATHS TO THE SINK
+//-----------------------------------------------
+
+
+typedef struct{
+	int		parent;
+	short	sink_dist;
+	short	ktree_dist;
+	short	subtree_size;
+	List	*cmac_children;
+	Boolean	is_in_ktree;
+} sink_tree_struct;
+
 
 
 //-----------------------------------------------
@@ -125,19 +142,6 @@ typedef struct{
 
 
 
-//-----------------------------------------------
-//			TREE OF SHORTEST PATHS TO THE SINK
-//-----------------------------------------------
-
-
-typedef struct{
-	int		parent;
-	short	sink_dist;
-	short	ktree_dist;
-	short	subtree_size;
-	List	*children;
-	Boolean	is_in_ktree;
-} sink_tree_struct;
 
 
 //-----------------------------------------------

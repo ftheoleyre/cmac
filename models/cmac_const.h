@@ -208,6 +208,7 @@
 
 #define		DEBUG_NODE						9
 
+#define		DEBUG_PRINTF					10
 
 
 //-----------------------------------------------
@@ -255,9 +256,11 @@
 #define		FIELD_PK_HELLO_SINK_DIST			"sink_dist"
 #define		FIELD_PK_HELLO_KTREE_DIST			"ktree_dist"
 #define		FIELD_PK_HELLO_NEXT					"next_hello"
-#define		FIELD_PK_HELLO_NB_KTREE_CHILDREN	"nb_ktree_children"
-#define		FIELD_PK_HELLO_KTREE_CHILDREN		"ktree_children"
+//#define		FIELD_PK_HELLO_NB_SINKTREE_CHILDREN	"nb_sinktree_children"
+//#define		FIELD_PK_HELLO_SINKTREE_CHILDREN	"sinktree_children"
 #define		FIELD_PK_HELLO_PARENT				"parent"
+#define		FIELD_PK_HELLO_NB_CMAC_CHILDREN		"nb_cmac_children"
+#define		FIELD_PK_HELLO_CMAC_CHILDREN		"cmac_children"
 //SYNC power algo
 #define		FIELD_PK_HELLO_SYNC_POWER			"sync_power"
 //Maxtree algo
