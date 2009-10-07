@@ -200,15 +200,14 @@
 #define		DEBUG_RADIO						3
 
 #define		DEBUG_CONTROL					4
-#define		DEBUG_CMAC						5
-#define		DEBUG_KTREE						6
-#define		DEBUG_HELLO						7
+#define		DEBUG_KTREE						5
+#define		DEBUG_HELLO						6
 
-#define		DEBUG_TIMEOUT					8
+#define		DEBUG_TIMEOUT					7
 
-#define		DEBUG_NODE						9
+#define		DEBUG_NODE						8
 
-#define		DEBUG_PRINTF					10
+#define		DEBUG_PRINTF					9
 
 
 //-----------------------------------------------
