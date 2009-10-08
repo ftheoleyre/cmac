@@ -897,6 +897,9 @@ int		global_frame_id 	= 0;
 int		MAX_BRANCH_LENGTH 	= 0;
 double 	TIME_MAX_PRIVILEGED;
 int		*nodeid_to_addr_var = NULL;
+Boolean	connectivity_verification = OPC_FALSE;
+
+
 ]]>
 	</header-block>
 	<function-block>
@@ -2087,6 +2090,25 @@ Boolean	get_is_in_ktree(){
 }
 
 
+//Am I one child of this node?
+Boolean is_cmac_child_of(neigh_struct *neigh_ptr, int my_address_tmp){
+	FIN(is_cmac_child_of(neigh_struct *neigh_ptr, int my_address_tmp));
+	int				i;
+	child_struct	*child_ptr;
+	
+	//Walks in the list
+	for(i=0 ; i < op_prg_list_size(neigh_ptr->cmac_children) ; i++){
+		child_ptr = op_prg_list_access(neigh_ptr->cmac_children , i);
+			
+		//It is one parent -> save its stability
+		if (child_ptr->address == my_address_tmp)
+			FRET(OPC_TRUE);
+	}	
+
+	FRET(OPC_FALSE);
+}
+
+
 //empty a list (memory release of all elements)
 void empty_list(List **ll_ptr){
 	FIN(empty_list(List **ll_ptr));	
@@ -2120,7 +2142,7 @@ Boolean update_is_in_ktree(){
 	
 		//debug
 		debug_print(LOW , DEBUG_NODE , "changed the cmac_tree_node status: %d -> %d\n", old_value , my_sink_tree.is_in_ktree);
-		print_neighborhood_table(DEBUG_NODE);
+		print_neighborhood_table(DEBUG_KTREE);
 		printf("%f: %d ktree_node status: %d -> %d\n", op_sim_time(), my_address , old_value , my_sink_tree.is_in_ktree);
 		debug_print(LOW , DEBUG_KTREE , "changed the ktree_node status: %d -> %d\n", old_value , my_sink_tree.is_in_ktree);
 	}
@@ -2177,13 +2199,18 @@ void update_sink_tree_infos(){
 		FOUT;
 	}
 	
+	//data already started
+	if ((op_sim_time() > TIME_START_DATA) && (BLOCK_KTREE_AFTER_START_DATA))
+		FOUT;	
+	
 	//initial best values
 	best_ktree_dist	= SHORT_INFINITY;
 	best_sink_dist	= SHORT_INFINITY;
+	best_parent		= ADDR_INVALID;
 	for(i=0 ; i<op_prg_list_size(my_neighborhood_table); i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
 		
-		if (neigh_ptr->address == my_sink_tree.parent){
+		if 	((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->address == my_sink_tree.parent)){
 			best_sink_dist	= neigh_ptr->sink_dist + 1;
 			best_parent		= neigh_ptr->address;
 		}
@@ -2193,18 +2220,24 @@ void update_sink_tree_infos(){
 	for(i=0 ; i < op_prg_list_size(my_neighborhood_table) ; i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
-		//Distance to the ktree
-		if (best_ktree_dist > neigh_ptr->ktree_dist + 1){
-			best_ktree_dist = neigh_ptr->ktree_dist + 1;
-		}
+		if (stability_get(neigh_ptr) > STAB_MIN){
+			//Distance to the ktree
+			if (best_ktree_dist > neigh_ptr->ktree_dist + 1){
+				best_ktree_dist = neigh_ptr->ktree_dist + 1;
+			}
 			
-		//Distance to the sink (the parent is the next hop toward the sink)
-		//NB: tree of shortest paths toward the sink (and I try to maintain the same parent)
-		if (best_sink_dist > neigh_ptr->sink_dist + 1){
-			best_sink_dist = neigh_ptr->sink_dist + 1;
-			best_parent		= neigh_ptr->address;
+			//Distance to the sink (the parent is the next hop toward the sink)
+			//NB: tree of shortest paths toward the sink (and I try to maintain the same parent)
+			if (best_sink_dist > neigh_ptr->sink_dist + 1){
+				best_sink_dist = neigh_ptr->sink_dist + 1;
+				best_parent		= neigh_ptr->address;
+			}
 		}		
 	}
+	
+	//no parent -> exit
+	if (best_parent == ADDR_INVALID)
+		FOUT;
 	
 	//particular case
 	if (my_sink_tree.is_in_ktree)
@@ -2213,6 +2246,11 @@ void update_sink_tree_infos(){
 	//debug
 	if ((my_sink_tree.sink_dist != best_sink_dist) || (my_sink_tree.ktree_dist != best_ktree_dist))
 		debug_print(MEDIUM , DEBUG_HELLO , "Updates the distance to the sink %d (old %d) and to the k=tree %d (old %d)\n", neigh_ptr->address, best_ktree_dist, my_sink_tree.sink_dist, best_sink_dist, my_sink_tree.ktree_dist);
+	
+	if (my_sink_tree.parent	!= best_parent){
+		printf("%d: parent %d -> %d \n", my_address, my_sink_tree.parent, best_parent);
+		debug_print(MAX, DEBUG_HELLO, "parent %d -> %d \n", my_sink_tree.parent, best_parent);
+	}
 	
 	//final assignment
 	my_sink_tree.sink_dist 	= best_sink_dist;
@@ -2504,19 +2542,19 @@ void update_current_cmac_children_sync(){
 	}
 	else{
 		//initialization
-		max_sync_rx_power = op_prg_list_create();
-	
+		max_sync_rx_power = op_prg_list_create();	
 		
 		
 		//--------------------------------------------------
 		//	Stores all the power of my neighbors (sorted)
+		//  They must have a sufficient stability metric
 		//--------------------------------------------------
 		for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 			
 			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
 			//Adds the power if the node is farther from the sink
-			if (neigh_ptr->sink_dist > my_sink_tree.sink_dist){
+			if ((neigh_ptr->sink_dist > my_sink_tree.sink_dist) && (stability_get(neigh_ptr) > STAB_MIN)){
 				election_ptr = op_prg_mem_alloc(sizeof(election_struct));
 				election_ptr->addr 	= neigh_ptr->address;
 				election_ptr->pow 	= neigh_ptr->sync_rx_power;
@@ -2616,7 +2654,11 @@ void update_current_cmac_children(){
 	FIN(update_current_cmac_children());
 	
 	//only for cmac!
-	if (MAC_LAYER != CMAC)
+	if (MAC_LAYER != CMAC) 
+		FOUT;
+	
+	//stable after data started
+	if ((op_sim_time() > TIME_START_DATA) && (BLOCK_KTREE_AFTER_START_DATA))
 		FOUT;
 	
 	//elects the children, depdends on the ktree creation algo
@@ -2737,7 +2779,7 @@ void fill_savings_fields(Packet *pk){
 	op_prg_mem_free(sav_list);
 	
 	//debug purpose
-	print_neighborhood_table(DEBUG_NODE);
+	print_neighborhood_table(DEBUG_HELLO);
 	
 	FOUT;
 }
@@ -2751,9 +2793,9 @@ List *create_my_cmac_children_from_packet(Packet *pk){
 	List			*ll;
 	//List size and elements
 	int				nb_cmac_children;
-	//child_struct	*child_ptr;
+	child_struct	*child_ptr;
 	//Control
-	//int				i;
+	int				i;
 	//info
 	int				source;
 	//list of children
@@ -2768,15 +2810,15 @@ List *create_my_cmac_children_from_packet(Packet *pk){
 	op_pk_nfd_get_ptr(pk, 	FIELD_PK_HELLO_CMAC_CHILDREN,		(void**)&list_children_ptr);
 
 	//insert each ktree children in the list
-	/*debug_print(MAX, DEBUG_HELLO, "Hello extraction - cmac children:\n");
+	//debug_print(MAX, DEBUG_HELLO, "Hello extraction - cmac children:\n");
 	for(i=0 ; i<nb_cmac_children; i++){
 		child_ptr 	= op_prg_mem_alloc(sizeof(child_struct));
 		child_ptr->address 		= list_children_ptr[i].address;
 		child_ptr->branch_id 	= list_children_ptr[i].branch_id;
 		op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_HEAD);
-		debug_print(MAX, DEBUG_HELLO, "\t%d (branch %d)\n", child_ptr->address, child_ptr->branch_id);
+		//debug_print(MAX, DEBUG_HELLO, "\t%d (branch %d)\n", child_ptr->address, child_ptr->branch_id);
 	}
-	*/
+	
 	//memory release for the packet field itself
 	if (nb_cmac_children != 0)
 		op_prg_mem_free(list_children_ptr);
@@ -2796,11 +2838,10 @@ void fill_cmac_children_fields(Packet *pk){
 	child_struct	*list_children_ptr;
 	int				nb_cmac_children;
 	
-	debug_print(MAX, DEBUG_HELLO, "%d children to announce in my hellos\n", nb_cmac_children);
-	
 	//updates my list of cmac chdilren (just before transmitting the hello)
 	update_current_cmac_children();
 	nb_cmac_children = op_prg_list_size(my_sink_tree.cmac_children);
+	debug_print(MAX, DEBUG_HELLO, "%d children to announce in my hellos\n", nb_cmac_children);
 	
 	//nb of children
 	op_pk_nfd_set(pk, FIELD_PK_HELLO_NB_CMAC_CHILDREN, nb_cmac_children);
@@ -2818,7 +2859,7 @@ void fill_cmac_children_fields(Packet *pk){
 		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_CMAC_CHILDREN, list_children_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(child_struct) * nb_cmac_children);
 	}
 	
-	print_neighborhood_table(DEBUG_NODE);
+	print_neighborhood_table(DEBUG_HELLO);
 	FOUT;
 }
 
@@ -2826,6 +2867,46 @@ void fill_cmac_children_fields(Packet *pk){
 
 
 
+
+//-----------------------------------------------------------
+//
+//						STABILITY
+//
+//-----------------------------------------------------------
+
+
+//updates the stability metric
+void stability_update(neigh_struct *neigh_ptr, Boolean received){
+	FIN(stability_update(neigh_struct *neigh_ptr, Boolean received));
+	
+	(neigh_ptr->stability)[neigh_ptr->stability_ptr] = received;
+	neigh_ptr->stability_ptr	= (neigh_ptr->stability_ptr + 1) % STAB_NB;
+	
+	FOUT;
+}
+
+//intializes the stability metric
+void stability_init(neigh_struct *neigh_ptr){
+	FIN(stability_init(neigh_struct *neigh_ptr));
+	
+	
+	neigh_ptr->stability = op_prg_mem_alloc(sizeof(Boolean) * STAB_NB);
+	neigh_ptr->stability_ptr = 0;	
+	
+	FOUT;
+}
+
+//computes the stability associated to this array of booleans
+double stability_get(neigh_struct *neigh_ptr){
+	FIN(stability_get(neigh_struct *neigh_ptr));
+	short	res = 0;
+	int		i;
+	
+	for(i=0; i<STAB_NB; i++)
+		res += neigh_ptr->stability[i];
+		
+	FRET((double)res / STAB_NB);
+}
 
 
 //-----------------------------------------------------------
@@ -2871,7 +2952,6 @@ void generate_hello(double next_hello){
 }
 
 
-
 //Deletes the neighbors which did not send an HELLO for a long time (timeout)
 void delete_timeouted_neighbors(void *ptr , int code){
 	FIN(delete_timeouted_neighbors(void *ptr , int code));
@@ -2887,17 +2967,27 @@ void delete_timeouted_neighbors(void *ptr , int code){
 		
 		//The entry is timeouted -> stability --
 		if (neigh_ptr->timeout <= op_sim_time()){
-			neigh_ptr = op_prg_list_remove(my_neighborhood_table , i);
+			stability_update(neigh_ptr, OPC_FALSE);
+			neigh_ptr->timeout 	+= HELLO_PK_PERIOD + HELLO_PK_PERIOD / 10;
+			if (my_address == 707)
+				debug_print(MAX, DEBUG_HELLO,"timeouted for neigh %d\n", neigh_ptr->address);
 			
-			debug_print(LOW , DEBUG_HELLO , "neighbor %d timeouted after a null stability\n", neigh_ptr->address);
-			debug_print(LOW , DEBUG_NODE , "neighbor %d timeouted after a null stability\n",  neigh_ptr->address);
+			//the PDR is 0 -> we just remove this neighbor
+			if (stability_get(neigh_ptr) == 0){
+				neigh_ptr = op_prg_list_remove(my_neighborhood_table , i);
+			
+				debug_print(LOW , DEBUG_HELLO , "neighbor %d timeouted after a null stability\n", neigh_ptr->address);
 
-			empty_list(&(neigh_ptr->cmac_children));
-			op_prg_mem_free(neigh_ptr->cmac_children);
-			op_prg_mem_free(neigh_ptr);
-			neigh_ptr = NULL;
+				empty_list(&(neigh_ptr->cmac_children));
+				op_prg_mem_free(neigh_ptr->cmac_children);
+				op_prg_mem_free(neigh_ptr->stability);
+				op_prg_mem_free(neigh_ptr);
+				neigh_ptr = NULL;
 
-			is_modif_required = OPC_TRUE;
+				is_modif_required = OPC_TRUE;
+			}
+			else if (stability_get(neigh_ptr) < STAB_MIN)
+				is_modif_required = OPC_TRUE;
 		}
 		
 		//when must be done the next verification ?
@@ -2913,7 +3003,8 @@ void delete_timeouted_neighbors(void *ptr , int code){
 			generate_hello(0);
 
 		//Distances
-		update_sink_tree_infos();
+		update_sink_tree_infos();		
+		print_neighborhood_table(DEBUG_HELLO);
 	}
 	
 	//Next verification
@@ -2946,17 +3037,18 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 			op_prg_mem_free(neigh_ptr->cmac_children);
 			op_prg_mem_free(neigh_ptr->savings);
 			
-			neigh_ptr->sink_dist			= sink_dist;
-			neigh_ptr->ktree_dist			= ktree_dist;
-			neigh_ptr->sync_rx_power		= sync_rx_power;
-			neigh_ptr->parent				= parent;
-			neigh_ptr->cmac_children		= cmac_children_tmp;
-			neigh_ptr->subtree_size			= subtree_size;
-			neigh_ptr->savings				= savings;
-			neighbor_updated 				= OPC_TRUE;
+			neigh_ptr->sink_dist		= sink_dist;
+			neigh_ptr->ktree_dist		= ktree_dist;
+			neigh_ptr->sync_rx_power	= sync_rx_power;
+			neigh_ptr->parent			= parent;
+			neigh_ptr->cmac_children	= cmac_children_tmp;
+			neigh_ptr->subtree_size		= subtree_size;
+			neigh_ptr->savings			= savings;
+			stability_update(neigh_ptr, OPC_TRUE);
+			neighbor_updated 			= OPC_TRUE;
 			
 			if (next_hello != 0)
-				neigh_ptr->timeout			= op_sim_time() + next_hello * HELLO_PK_TIMEOUT + 0.1;			
+				neigh_ptr->timeout		= op_sim_time() + next_hello + next_hello / 10;			
 					
 			debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d updated (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);
 
@@ -2973,20 +3065,21 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 			op_intrpt_schedule_call(op_sim_time() + HELLO_PK_PERIOD , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
 
 		neigh_ptr = op_prg_mem_alloc(sizeof(neigh_struct));
-		neigh_ptr->address				= source;
-		neigh_ptr->sink_dist			= sink_dist;
-		neigh_ptr->ktree_dist			= ktree_dist;
-		neigh_ptr->sync_rx_power		= sync_rx_power;
-		neigh_ptr->parent				= parent;
-		neigh_ptr->subtree_size			= subtree_size;
-		neigh_ptr->savings				= savings;
-		neigh_ptr->cmac_children		= cmac_children_tmp;
-		neigh_ptr->timeout				= op_sim_time() + next_hello * HELLO_PK_TIMEOUT + 0.1;			
+		stability_init(neigh_ptr);
+		neigh_ptr->address			= source;
+		neigh_ptr->sink_dist		= sink_dist;
+		neigh_ptr->ktree_dist		= ktree_dist;
+		neigh_ptr->sync_rx_power	= sync_rx_power;
+		neigh_ptr->parent			= parent;
+		neigh_ptr->subtree_size		= subtree_size;
+		neigh_ptr->savings			= savings;
+		neigh_ptr->cmac_children	= cmac_children_tmp;
+		neigh_ptr->timeout			= op_sim_time() + next_hello + next_hello / 10;			
+		stability_update(neigh_ptr, OPC_TRUE);
 		op_prg_list_insert(my_neighborhood_table , neigh_ptr , OPC_LISTPOS_TAIL);	  
 		
 	
 		debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d added (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);
-		debug_print(MEDIUM , DEBUG_NODE, "neighbor %d added (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);
 	}
 	
 	//---------------------------
@@ -3005,8 +3098,10 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 	update_sink_tree_infos();
 	
 	//I changed by ktree node status or my distance to sink / ktree
-	if (hello_required)
+	if (hello_required){
+		print_neighborhood_table(DEBUG_HELLO);
 		generate_hello(0);
+	}
 	
 	FOUT;
 }
@@ -3017,13 +3112,13 @@ char *array_of_short_to_str(short* tab, short nb_elem, char *msg, int length, Bo
 	FIN(array_of_short_to_str(short* tab, short nb_elem, char *msg, int length, Boolean padding));
 	
 	int		i;
+	char	str[100];
 
 	strncpy(msg, "", length);
 	for(i=0; i < nb_elem ; i++){
-		snprintf(msg , length, "%s %d", msg , tab[i]);
+		snprintf(str , 100, "%s %d", msg , tab[i]);
+		strncpy(msg, str, length);
 	}
-		
-	//printf("str:\n");
 	if(padding)
 		for(i=strlen(msg); i<length; i++)
 			strncat(msg, " ", length);
@@ -3039,14 +3134,14 @@ char *list_of_int_ptr_to_str(List* ll, char *msg, int length, Boolean padding){
 	
 	int		i;
 	int		*int_ptr;
+	char	str[100];
 
 	strncpy(msg, "", length);
 	for(i=0; i < op_prg_list_size(ll) ; i++){
 		int_ptr = op_prg_list_access(ll , i);
-		snprintf(msg , length, "%s %d", msg , *int_ptr);
-	}
-		
-	//printf("str:\n");
+		snprintf(str , 100, "%s %d", msg , *int_ptr);
+		strncpy(msg, str, length);
+	}		
 	if(padding)
 		for(i=strlen(msg); i<length; i++)
 			strncat(msg, " ", length);
@@ -3095,14 +3190,14 @@ void print_neighborhood_table(int debug_type){
 		printf("	NEIGHBORHOOD TABLE (%d-%f)\n", my_address, op_sim_time());
 		printf("---------------------------------------\n");
 		printf("\n");
-		printf("%d> addr |sinkDist|ktDist| Timeout |Parent|STreeSize|  Savings  |Cmac Children\n", my_address);
+		printf("%d> addr |sinkDist|ktDist| Timeout |Parent|Stab|STreeSize|  Savings  |Cmac Children\n", my_address);
 	}
 	else{
 		debug_print(LOW , debug_type , "---------------------------------------\n");
 		debug_print(LOW , debug_type , "	NEIGHBORHOOD TABLE (%f)\n", op_sim_time());
 		debug_print(LOW , debug_type , "---------------------------------------\n");
 		debug_print(LOW , debug_type , "\n");
-		debug_print(LOW , debug_type , "addr |sinkDist|ktDist| Timeout |Parent|STreeSize|  Savings  |Cmac Children\n");
+		debug_print(LOW , debug_type , "addr |sinkDist|ktDist| Timeout |Parent|Stab|STreeSize|  Savings  |Cmac Children\n");
 	}
 	
 	for (i=0 ; i< op_prg_list_size(my_neighborhood_table) ; i++){
@@ -3110,9 +3205,9 @@ void print_neighborhood_table(int debug_type){
 		
 		//the whole info
 		if (debug_type >= DEBUG_PRINTF)
-			printf("%d> %5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", my_address, neigh_ptr->address , convert_int(neigh_ptr->sink_dist) , convert_int(neigh_ptr->ktree_dist) , neigh_ptr->timeout , neigh_ptr->parent, neigh_ptr->subtree_size, array_of_short_to_str(neigh_ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(neigh_ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
+			printf("%d> %5d|%8d|%6d|%7f|%6d|%4.2f|%7d  |%s|%s\n", my_address, neigh_ptr->address , convert_int(neigh_ptr->sink_dist) , convert_int(neigh_ptr->ktree_dist) , neigh_ptr->timeout , neigh_ptr->parent, stability_get(neigh_ptr), neigh_ptr->subtree_size, array_of_short_to_str(neigh_ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(neigh_ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
 		else
-			debug_print(LOW , debug_type , "%5d|%8d|%6d|%7f|%6d|%7d  |%s|%s\n", neigh_ptr->address , convert_int(neigh_ptr->sink_dist) , convert_int(neigh_ptr->ktree_dist) , neigh_ptr->timeout , neigh_ptr->parent, neigh_ptr->subtree_size, array_of_short_to_str(neigh_ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(neigh_ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
+			debug_print(LOW , debug_type , "%5d|%8d|%6d|%7f|%6d|%4.2f|%7d  |%s|%s\n", neigh_ptr->address , convert_int(neigh_ptr->sink_dist) , convert_int(neigh_ptr->ktree_dist) , neigh_ptr->timeout , neigh_ptr->parent, stability_get(neigh_ptr), neigh_ptr->subtree_size, array_of_short_to_str(neigh_ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(neigh_ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
 	}
 	if (debug_type >= DEBUG_PRINTF)
 		printf("%d> sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, cmacChildren=%s\n", my_address, my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, my_sink_tree.is_in_ktree, convert_double(my_sync_rx_power), list_of_children_to_str(my_sink_tree.cmac_children, cmac_children_str, 50, OPC_FALSE));
@@ -3122,7 +3217,6 @@ void print_neighborhood_table(int debug_type){
 	
 	FOUT;
 }
-
 
 
 
@@ -4282,6 +4376,14 @@ void interrupt_process(){
 	if (DEBUG_STATE_MACHINE)
 		debug_print(MAX , DEBUG_GLOBAL, "type %d (self %d, stat %d , pk %d)\n", op_intrpt_type() , OPC_INTRPT_SELF , OPC_INTRPT_STAT , OPC_INTRPT_STRM);
 
+	//verify that the graph is connected just before sending data packets
+	if ((!connectivity_verification) && (op_sim_time() > TIME_START_DATA)){
+		connectivity_verification = OPC_TRUE;
+		
+		if (!cmac_tools_graph_is_connected())
+			op_sim_end("The graph is not connected", "I stop here the simulation process", "", "");
+	}	
+	
 	switch (op_intrpt_type()){
 	
 		//A PACKET WAS RECEIVED !
@@ -4792,7 +4894,7 @@ void end_sim(){
 	if (DEBUG > NO){
 		
 		//Debug message
-		print_neighborhood_table(DEBUG_NODE);
+		print_neighborhood_table(DEBUG_HELLO);
 		print_frame_buffer(DEBUG_NODE);
 
 		//write a xfig file
@@ -6249,14 +6351,14 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_329"/>
 			<attribute name="condition" type="string" value="default"/>
 		</transition>
-		<transition source-state-id="56" destination-state-id="41" label-x="287" label-y="207">
+		<transition source-state-id="56" destination-state-id="41" label-x="307" label-y="205">
 			<path-point x="497" y="255"/>
 			<path-point x="282" y="224"/>
 			<path-point x="439" y="106"/>
 			<attribute name="name" type="string" value="tr_332"/>
 			<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
 		</transition>
-		<transition source-state-id="58" destination-state-id="41" label-x="112" label-y="277">
+		<transition source-state-id="58" destination-state-id="41" label-x="91" label-y="251">
 			<path-point x="261" y="501"/>
 			<path-point x="105" y="262"/>
 			<path-point x="205" y="155"/>

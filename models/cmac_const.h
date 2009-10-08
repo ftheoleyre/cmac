@@ -39,8 +39,10 @@
 #define		IEEE80211						2
 
 //some specific time values
-#define		TIME_BEFORE_HELLO_CONVERGENCE	5.0 + HELLO_PK_PERIOD * 1.1
+#define		TIME_BEFORE_HELLO_CONVERGENCE	5.0 + HELLO_PK_PERIOD * 5.1
 #define		TIME_START_DATA					60.0
+#define		BLOCK_KTREE_AFTER_START_DATA	OPC_TRUE
+
 
 //debug
 #define		LOG_SUFFIX_NODES				"nodes"
@@ -105,14 +107,14 @@
 //-----------------------------------------------
 
 //time between 2 hellos
-#define		HELLO_PK_PERIOD					1.0
-#define		HELLO_PK_TIMEOUT				3
+#define		HELLO_PK_PERIOD		3.0
+#define		HELLO_PK_TIMEOUT	3
 
-//The maximum number of stabilities to store
-//#define		MAX_STAB						10
+//the stability metric is averaged over the last MAX_NB hellos
+#define		STAB_NB				8
 
-//Two stabilities with STAB_STEP difference are considered equal
-//#define		STAB_STEP						2
+//The minimum acceptable stability for one radio link
+#define		STAB_MIN			0.9
 
 
 

@@ -70,6 +70,8 @@ typedef struct{
 	short	*savings;
 	short	subtree_size;
 	double	sync_rx_power;
+	Boolean	*stability;
+	short	stability_ptr;
 } neigh_struct;
 
 typedef struct{
@@ -173,17 +175,6 @@ typedef struct{
 
 
 
-//-----------------------------------------------
-//			geo POSITION
-//-----------------------------------------------
-
-
-typedef struct{
-	double	x;
-	double	y;
-}pos_struct;
-
-
 
 
 //-----------------------------------------------
@@ -194,6 +185,11 @@ typedef struct{
 int		get_nb_nodes();
 int 	nodeid_to_addr(int nodeid);
 int 	addr_to_nodeid(int addr);
+
+
+//interface
+Boolean	get_is_in_ktree();
+Boolean is_cmac_child_of(neigh_struct *neigh_ptr, int my_address_tmp);
 
 
 //debug
@@ -217,16 +213,14 @@ frame_struct *get_multicast_frame_buffer(int pos);
 
 
 //Hellos
+void 	stability_update(neigh_struct *neigh_ptr, Boolean received);
+void 	stability_init(neigh_struct *neigh_ptr);
+double 	stability_get(neigh_struct *neigh_ptr);
+
 void 	print_neighborhood_table(int debug_type);
 void  	generate_hello(double next_hello);
 void 	update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello);
 char* 	print_ktree_cildren(char *msg, int length);
-
-
-//Stability
-int 	compute_stability(int stab[]);
-void 	update_stability(int stab[], short value);
-void 	init_stability(int stab[], short value);
 
 
 //To compute duration for NAV

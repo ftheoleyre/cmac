@@ -17,7 +17,6 @@
 //						TOOLS FUNCTIONS
 //-----------------------------------------------------------------------------
 
-
 //returns the maximum x-coordinate
 double tools_fig_get_x_max(pos_struct *positions){
 	FIN(tools_fig_get_x_max(pos_struct *positions));
@@ -59,8 +58,8 @@ int tools_fig_set_color(int color){
 //-----------------------------------------------------------------------------
 
 //generates the .fig file
-void tools_fig_write_xfig_file(short **graph, pos_struct *positions, int *states){
-	FIN(tools_fig_write_xfig_file(short **graph, pos_struct *positions, int *states));
+void tools_fig_write_xfig_file(graph_struct **graph, pos_struct *positions, int *states){
+	FIN(tools_fig_write_xfig_file(graph_struct **graph, pos_struct *positions, int *states));
 
 	short		color , color2, thickness, depth, linestyle, degree=0;
 	int			radius;
@@ -137,7 +136,7 @@ void tools_fig_write_xfig_file(short **graph, pos_struct *positions, int *states
 	fprintf(pfile,"#LINKS\n");
 	for(i=0 ; i < nb_nodes ; i++)
 		for(j=0 ; j < nb_nodes ; j++)
-			if (graph[i][j] >= GRAPH_LINK_NO){
+			if (graph[i][j].link> GRAPH_LINK_NO){
 				degree++;
 
 				//Coordinates of the source and destination of link
@@ -148,11 +147,13 @@ void tools_fig_write_xfig_file(short **graph, pos_struct *positions, int *states
 				y2 = (int)(positions[j].y / MAX_Y * GRAPHIC_YMAX);
 				
 				depth		= 4;
-				color		= GRAY;
-				linestyle	= DASHED;
-				thickness	= 1;
+				thickness	= graph[i][j].thickness;
+				if (thickness >= 2)
+					linestyle = SOLID;
+				else
+					linestyle = DASHED;
 						
-				fprintf(pfile, "#%d-%d (type %d)\n3 2 %d %d %d 0 %d -1 -1 1.0 0 0 0 2\n			%d %d %d %d\n			0.000 0.000\n", i , j , depth , linestyle , thickness,  color , depth , x1 , y1 , x2 , y2);
+				fprintf(pfile, "#%d-%d (type %d)\n3 2 %d %d %d 0 %d -1 -1 1.0 0 0 0 2\n			%d %d %d %d\n			0.000 0.000\n", i , j , depth , linestyle , thickness,  graph[i][j].color , depth + graph[i][j].color , x1 , y1 , x2 , y2);
 			}
 
 	
@@ -173,84 +174,18 @@ void tools_fig_generate(){
 	FIN(tools_fig_generate());
 
 	//infos
-	int			*states;
-	pos_struct	*positions;
-	Objid		*mac_ids;
-	Objid		*node_ids;
-	short		**graph;
-	//control
-	int			i, j;
-	int			nb_nodes = get_nb_nodes();
-	//neigh tables
-	List		**neigh_table_ptr;
-	int			nb_neigh;
-	neigh_struct *neigh_ptr;
-	int			neigh_id;
+	int				*states;
+	pos_struct		*positions;
+	graph_struct 	**graph;
+	//object identification
+	Objid			*node_ids;
+	Objid			*mac_ids;
 	
 	//initialization
-	states	 	= op_prg_mem_alloc(sizeof(int) * nb_nodes);
-	mac_ids 	= op_prg_mem_alloc(sizeof(Objid) * nb_nodes);
-	node_ids 	= op_prg_mem_alloc(sizeof(Objid) * nb_nodes);
-	positions 	= op_prg_mem_alloc(sizeof(pos_struct) * nb_nodes);
-	for(i=0; i<nb_nodes; i++){
-		positions[i].x = 0;
-		positions[i].y = 0;
-	}
+	cmac_tools_vars_get(&states, &node_ids, &mac_ids, &positions);	
 	
-	//reads the topology
-	if (op_topo_object_count (OPC_OBJTYPE_NDMOB) > nb_nodes){
-		printf("Some mobile nodes are not cmac nodes. I will not be able to plot xfig file\n");
-		FOUT;
-	}
-	for(i=0; i<op_topo_object_count (OPC_OBJTYPE_NDMOB) ; i++){
-		node_ids[i] = op_topo_object(OPC_OBJTYPE_NDMOB, i);
-		mac_ids[i]	= op_id_from_name(node_ids[i], OPC_OBJTYPE_PROC, "mac"); 
-		if (mac_ids[i] == OPC_OBJID_INVALID){
-			printf("I am unable to find the id for the MAC layer, I will not be able to plot the xfig file\n");
-			FOUT;
-		}
-		
-		//geo positions
-		op_ima_obj_attr_get_dbl(node_ids[i], "x position", &(positions[i].x));
-		op_ima_obj_attr_get_dbl(node_ids[i], "y position", &(positions[i].y));
-
-		//states
-		sink_tree_struct  *ptr_sink_tree;
-		ptr_sink_tree = op_ima_obj_svar_get(mac_ids[i], "my_sink_tree");
-		if (ptr_sink_tree == OPC_NIL){
-			printf("The my_sink_tree state variable is not defined, I break the xfig generation\n");
-			FOUT;
-		}
-		states[i] = ptr_sink_tree->is_in_ktree;
-	}
-	
-	
-	//constructs the associated graph
-	graph = op_prg_mem_alloc(sizeof(short*) * nb_nodes);
-	for(i=0;i<nb_nodes; i++){
-		graph[i] = op_prg_mem_alloc(sizeof(short) * nb_nodes);
-		for(j=0; j<nb_nodes; j++)
-			graph[i][j] = GRAPH_LINK_NO;
-	}
-	
-	//walk in the neighborhood of each node
-	for(i=0;i<nb_nodes; i++){
-		neigh_table_ptr = op_ima_obj_svar_get(mac_ids[i], "my_neighborhood_table");
-		
-		nb_neigh = op_prg_list_size(*neigh_table_ptr);
-		for(j=0; j<nb_neigh; j++){
-			neigh_ptr = op_prg_list_access(*neigh_table_ptr, j);
-						
-			neigh_id = addr_to_nodeid(neigh_ptr->address);	
-			if (neigh_id == ADDR_INVALID){
-				printf("invalid neighid, cannot plot xfig\n");
-				FOUT;
-			}
-			
-			graph[i][neigh_id] = GRAPH_LINK_RADIO;
-			graph[neigh_id][i] = GRAPH_LINK_RADIO;		
-		}		
-	}
+	//graph
+	graph = cmac_tools_graph_construct(graph, mac_ids);
 	
 	//now,plot it!
 	tools_fig_write_xfig_file(graph, positions, states);

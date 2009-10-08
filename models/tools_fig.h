@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include <opnet.h>
-
+#include "cmac_tools.h"
 
 
 
@@ -43,9 +43,6 @@ void tools_fig_generate();
 #define		SOLID						0
 #define		DASHED						1
 
-//constants for the graph
-#define		GRAPH_LINK_NO				0
-#define		GRAPH_LINK_RADIO			1
 
 
 #endif
