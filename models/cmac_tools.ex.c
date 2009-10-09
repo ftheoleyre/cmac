@@ -59,7 +59,7 @@ graph_struct **cmac_tools_graph_construct(graph_struct **graph, Objid *mac_ids){
 			if (neigh_id == ADDR_INVALID){
 				printf("invalid neighid, cannot plot xfig\n");
 				FRET(NULL);
-			}
+			}		
 			
 			//tree link
 			if ((neigh_ptr->address == ptr_sink_tree->parent) && (graph[neigh_id][i].thickness < 2)){
@@ -82,8 +82,7 @@ graph_struct **cmac_tools_graph_construct(graph_struct **graph, Objid *mac_ids){
 			else{
 				graph[i][neigh_id].color = RED;
 				graph[neigh_id][i].color = RED;
-			}
-				
+			}				
 		}		
 	}
 	FRET(graph);
@@ -92,15 +91,14 @@ graph_struct **cmac_tools_graph_construct(graph_struct **graph, Objid *mac_ids){
 //gets some useful variables
 void cmac_tools_vars_get(int **states_ptr, Objid **nodes_ids_ptr, Objid **mac_ids_ptr, pos_struct **positions_ptr){
 	FIN(cmac_tools_vars_get(int **states_ptr, Objid **nodes_ids_ptr, Objid **mac_ids_ptr, pos_struct **positions_ptr));
-	int		i;
-	int		nb_nodes = get_nb_nodes();
+	int			i;
+	int			nb_nodes = get_nb_nodes();
 	//results
 	int			*states		= *states_ptr;
 	Objid		*node_ids	= *nodes_ids_ptr;
 	Objid		*mac_ids	= *mac_ids_ptr;
 	pos_struct 	*positions	= *positions_ptr;
 
-	
 	//initialization
 	states	 	= op_prg_mem_alloc(sizeof(int) * nb_nodes);
 	mac_ids 	= op_prg_mem_alloc(sizeof(Objid) * nb_nodes);
@@ -116,6 +114,7 @@ void cmac_tools_vars_get(int **states_ptr, Objid **nodes_ids_ptr, Objid **mac_id
 		printf("Some mobile nodes are not cmac nodes. I will not be able to plot xfig file\n");
 		FOUT;
 	}
+
 	for(i=0; i<op_topo_object_count (OPC_OBJTYPE_NDMOB) ; i++){
 		node_ids[i] = op_topo_object(OPC_OBJTYPE_NDMOB, i);
 		mac_ids[i]	= op_id_from_name(node_ids[i], OPC_OBJTYPE_PROC, "mac"); 
@@ -138,20 +137,25 @@ void cmac_tools_vars_get(int **states_ptr, Objid **nodes_ids_ptr, Objid **mac_id
 		states[i] = ptr_sink_tree->is_in_ktree;
 	}
 	
+	//the correct values for resulting arguments
+	*states_ptr		= states;
+	*nodes_ids_ptr	= node_ids;
+	*mac_ids_ptr	= mac_ids;
+	*positions_ptr	= positions;
 	
 	FOUT;
 }
 
 //walk in the graph, marking neighbors 1 by 1
-void cmac_tools_graph_is_connected_walk(graph_struct **graph, Objid *mac_ids, int id, Boolean *connectivity){
-	FIN(cmac_tools_graph_is_connected_walk(graph_struct **graph, Objid *mac_ids, int id, Boolean *connectivity));
+void cmac_tools_graph_is_connected_walk(Objid *mac_ids, int id, Boolean *connectivity){
+	FIN(cmac_tools_graph_is_connected_walk(Objid *mac_ids, int id, Boolean *connectivity));
 	//neigh tables
 	List			**neigh_table_ptr;
 	int				nb_neigh;
 	neigh_struct 	*neigh_ptr;
 	//control
 	int				i;
-
+	
 	//get the neighborhood table
 	neigh_table_ptr = op_ima_obj_svar_get(mac_ids[id], "my_neighborhood_table");
 	
@@ -161,9 +165,9 @@ void cmac_tools_graph_is_connected_walk(graph_struct **graph, Objid *mac_ids, in
 		neigh_ptr = op_prg_list_access(*neigh_table_ptr, i);
 		
 		//this node is part of the largest connected component
-		if (!connectivity[addr_to_nodeid(neigh_ptr->address)]){
+		if ((!connectivity[addr_to_nodeid(neigh_ptr->address)]) && (stability_get(neigh_ptr) > STAB_MIN)){
 			connectivity[addr_to_nodeid(neigh_ptr->address)] = OPC_TRUE;
-			cmac_tools_graph_is_connected_walk(graph, mac_ids, addr_to_nodeid(neigh_ptr->address), connectivity);
+			cmac_tools_graph_is_connected_walk(mac_ids, addr_to_nodeid(neigh_ptr->address), connectivity);
 		}
 	}
 
@@ -181,17 +185,13 @@ Boolean cmac_tools_graph_is_connected(){
 	Boolean		*connectivity;
 	Boolean		res;
 	//object identification
-	graph_struct**graph;
 	Objid		*node_ids;
 	Objid		*mac_ids;
 	int			*states;
 	pos_struct	*positions;
-	
+
 	//initialization
 	cmac_tools_vars_get(&states, &node_ids, &mac_ids, &positions);	
-	
-	//graph
-	graph = cmac_tools_graph_construct(graph, mac_ids);
 	
 	//initialization
 	connectivity = op_prg_mem_alloc(sizeof(Boolean) * nb_nodes);
@@ -200,7 +200,7 @@ Boolean cmac_tools_graph_is_connected(){
 	connectivity[0] = OPC_TRUE;
 		
 	//walk in the graph using radio links
-	cmac_tools_graph_is_connected_walk(graph, mac_ids, 0, connectivity);
+	cmac_tools_graph_is_connected_walk(mac_ids, 0, connectivity);
 		
 	//none can be disconnected
 	res = OPC_TRUE;

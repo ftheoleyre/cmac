@@ -166,13 +166,12 @@ void tools_fig_write_xfig_file(graph_struct **graph, pos_struct *positions, int 
 	FOUT;
 }
 
-
-
-
 //generates a xfig figure
 void tools_fig_generate(){
 	FIN(tools_fig_generate());
 
+	int				i;
+	int				nb_nodes = get_nb_nodes();
 	//infos
 	int				*states;
 	pos_struct		*positions;
@@ -195,6 +194,9 @@ void tools_fig_generate(){
 	op_prg_mem_free(states);
 	op_prg_mem_free(node_ids);
 	op_prg_mem_free(positions);
+	for(i=0; i<nb_nodes; i++)
+		op_prg_mem_free(graph[i]);
+	op_prg_mem_free(graph);
 
 	FOUT;
 }
