@@ -3118,7 +3118,6 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 	Boolean			neighbor_updated 	= OPC_FALSE;
 	Boolean			hello_required 		= OPC_FALSE;
 			
-	
 	//---------------------------
 	//		LIST UPDATE
 	//---------------------------
@@ -3139,12 +3138,13 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 			neigh_ptr->cmac_children	= cmac_children_tmp;
 			neigh_ptr->subtree_size		= subtree_size;
 			neigh_ptr->savings			= savings;
-			stability_update(neigh_ptr, OPC_TRUE);
 			neighbor_updated 			= OPC_TRUE;
 			
-			if (next_hello != 0)
+			//one gratuitous hello
+			if (next_hello != 0){
 				neigh_ptr->timeout		= op_sim_time() + next_hello + next_hello / 10;			
-					
+				stability_update(neigh_ptr, OPC_TRUE);
+			}	
 			debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d updated (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);
 
 		}	
@@ -4393,9 +4393,24 @@ void receive_packet_from_radio(){
 				//detection of unidirectional links
 				bidirect = is_bidirect_from_packet(frame);
 				
-				//change the values in the neighborhood table
+				//previous ktree values
+				Boolean prev_is_ktree_node 	= get_is_in_ktree();
+				int		prev_nb_children 	= op_prg_list_size(my_sink_tree.cmac_children);
+				
+				//changes the values in the neighborhood table
 				update_neighborhood_table(source , bidirect, sink_dist , ktree_dist , sync_power , parent, subtree_size, savings_tmp, branch , cmac_children_tmp , next_hello);
 			
+				//a changed occured eventually in the ktree
+				if (source == my_sink_tree.parent){
+					update_current_cmac_children();
+					update_is_in_ktree();
+				}
+				
+				//triggers immediately one hello (changes are important)
+				if ((prev_is_ktree_node != get_is_in_ktree()) || (op_prg_list_size(my_sink_tree.cmac_children) != prev_nb_children)){
+					printf("special hello %d %f\n", my_address, op_sim_time()); 
+					generate_hello(0);
+				}	
 			break;
 				
 			//Reception of a sync frame from the sink 
