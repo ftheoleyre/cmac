@@ -41,7 +41,7 @@
 //some specific time values
 #define		TIME_BEFORE_HELLO_CONVERGENCE	5.0 + HELLO_PK_PERIOD * 5.1
 #define		TIME_START_DATA					60.0
-#define		BLOCK_KTREE_AFTER_START_DATA	OPC_TRUE
+#define		BLOCK_KTREE_AFTER_START_DATA	OPC_FALSE
 
 
 //debug
@@ -107,14 +107,15 @@
 //-----------------------------------------------
 
 //time between 2 hellos
-#define		HELLO_PK_PERIOD		3.0
-#define		HELLO_PK_TIMEOUT	3
+#define		HELLO_PK_PERIOD					5.0
+#define		HELLO_PK_PERIOD_BEFORE_DATA		2.0
+#define		HELLO_PK_TIMEOUT				3
 
 //the stability metric is averaged over the last MAX_NB hellos
-#define		STAB_NB				8
+#define		STAB_NB							8
 
 //The minimum acceptable stability for one radio link
-#define		STAB_MIN			0.9
+#define		STAB_MIN						0.9
 
 
 
@@ -238,6 +239,8 @@
 #define		SINK_DIST_SIZE					4
 #define		KTREE_DIST_SIZE					4
 
+//this corresponds to an 'infinite' distance
+#define		DIST_SINK_MAX					15	
 
 //MTU in bits
 #define		MTU_MAX								2400.0
@@ -257,11 +260,11 @@
 #define		FIELD_PK_HELLO_SINK_DIST			"sink_dist"
 #define		FIELD_PK_HELLO_KTREE_DIST			"ktree_dist"
 #define		FIELD_PK_HELLO_NEXT					"next_hello"
-//#define		FIELD_PK_HELLO_NB_SINKTREE_CHILDREN	"nb_sinktree_children"
-//#define		FIELD_PK_HELLO_SINKTREE_CHILDREN	"sinktree_children"
 #define		FIELD_PK_HELLO_PARENT				"parent"
 #define		FIELD_PK_HELLO_NB_CMAC_CHILDREN		"nb_cmac_children"
 #define		FIELD_PK_HELLO_CMAC_CHILDREN		"cmac_children"
+#define		FIELD_PK_HELLO_NEIGH_TABLE			"neigh_table"
+#define		FIELD_PK_HELLO_NEIGH_TABLE_SIZE		"neigh_table_size"
 //SYNC power algo
 #define		FIELD_PK_HELLO_SYNC_POWER			"sync_power"
 //Maxtree algo

@@ -36,51 +36,10 @@ char	\pid_string [64];
 /* Determines whether the simulation is in debug mode */
 Boolean	\debug_mode;
 
-/* Statistic handle to the "Packet Generation Status" statistic */
-Stathandle	\pksize_stathandle;
-
-/* Interarrival time distribution handle */
-Distribution *	\intarrvl_time_dist_handle;
-
-/* Packet size distribution handle */
-Distribution *	\packet_size_dist_handle;
-
-Stathandle	\bits_sent_stathandle;
-
-Stathandle	\bitssec_sent_stathandle;
-
-Stathandle	\pkts_sent_stathandle;
-
-Stathandle	\pktssec_sent_stathandle;
-
-Stathandle	\bits_sent_gstathandle;
-
-Stathandle	\bitssec_sent_gstathandle;
-
-Stathandle	\pkts_sent_gstathandle;
-
-Stathandle	\pktssec_sent_gstathandle;
-
 double	\inter_pk_time;
 
 ]]>
 	</state-variables>
-	<temporary-variables>
-<![CDATA[
-int					intrpt_type;
-int					intrpt_code;
-
-Packet*				pkptr;
-SimT_Pk_Size		pksize;
-//double				dval0 = 0.0;
-//double				dval1 = 0.0;
-//char				pdf_name [256];
-//char				pdf_args [256];
-//double				on_period;
-//double				off_period;
-double				next_packet_arrival_time;
-]]>
-	</temporary-variables>
 	<header-block>
 <![CDATA[
 /*
@@ -96,99 +55,20 @@ double				next_packet_arrival_time;
 #include 	<math.h>
 #include 	"cmac_process.h"
 
-
-#define		PACKET_TIME_DISTRIBUTION		"constant"
-#define		PACKET_TIME_ARG2				0
-#define		PACKET_SIZE_DISTRIBUTION		"constant"
-#define		PACKET_SIZE_ARG1				128.0
-#define		PACKET_SIZE_ARG2				0
+//packet size in bytes
+#define		PACKET_SIZE				128.0
 
 
 
-
-
-/* Function Declarations.	*/
-static void			bursty_source_sv_init ();
 
 ]]>
 	</header-block>
-	<function-block>
-<![CDATA[
-static void
-bursty_source_sv_init ()
-	{
-//	Prohandle			my_prohandle;
-//	int					my_pro_id;
-//	Objid				my_id;
-//	Objid				traf_gen_comp_attr_objid, traf_conf_objid;
-//	Objid				pkt_gen_comp_attr_objid, pkt_gen_args_objid;
-//	char				on_state_string [128], off_state_string [128];
-//	char				intarrvl_rate_string [128], packet_size_string [128];
-//	char				start_time_string [128];
-//	OmsT_Dist_Handle	start_time_dist_handle;
-//	char				distrib_pk_time[400];
-//	double				arg1_pk_time , arg2_pk_time;
-
-	/**	Initializes state variables associated with		**/
-	/**	this process model.								**/
-	FIN (bursty_source_sv_init ());
-
-	/*	Determine the prohandle of this process as well as	*/
-	/*	the object IDs of the containing module and node.*/
-//	my_prohandle = op_pro_self ();
-//	my_pro_id = op_pro_id (my_prohandle);
-//	my_id = op_id_self ();
-
-	/*	Determine the process ID display string.	*/
-//	sprintf (pid_string, "bursty_source PID (%d)", my_pro_id);
-
-	/*	Determine whether or not the simulation is in debug	*/
-	/*	mode.  Trace statement are only enabled when the	*/
-	/*	simulation is in debug mode.						*/
-	debug_mode = op_sim_debug ();
-
-	//Inter-arrival pk distribution
-//	op_ima_sim_attr_get (OPC_IMA_STRING, 	"Packet Interarrival Distribution" , 	distrib_pk_time);
-//	op_ima_obj_attr_get (op_id_self(), 		"Packet Interarrival Arg1", 			&arg1_pk_time);
-//	op_ima_sim_attr_get (OPC_IMA_DOUBLE, 	"Packet Interarrival Arg2", 			&arg2_pk_time);
-//	intarrvl_time_dist_handle = op_dist_load (distrib_pk_time , arg1_pk_time , arg2_pk_time);
-//	inter_pk_time = arg1_pk_time;
-
-	//Inter-arrival pk distribution
-	packet_size_dist_handle = op_dist_load (PACKET_SIZE_DISTRIBUTION , PACKET_SIZE_ARG1 , PACKET_SIZE_ARG2);
-
-	
-	/*	Initilaize the packet generation status statistic	*/
-	/*	to indicate that currently there are no packets 	*/
-	/*	being generated.									*/
-	pksize_stathandle = op_stat_reg ("Traffic Source.Packet Generation Status", OPC_STAT_INDEX_NONE, OPC_STAT_LOCAL);
-	op_stat_write (pksize_stathandle, (double) OPC_FALSE);
-		
-	/* Initilaize the statistic handles to keep	*/
-	/* track of traffic Sourceed by this process.	*/
-	bits_sent_stathandle 		= op_stat_reg ("Traffic Source.Traffic Sent (bits)",		OPC_STAT_INDEX_NONE, OPC_STAT_LOCAL);
-	bitssec_sent_stathandle 	= op_stat_reg ("Traffic Source.Traffic Sent (bits/sec)",	OPC_STAT_INDEX_NONE, OPC_STAT_LOCAL);
-	pkts_sent_stathandle 		= op_stat_reg ("Traffic Source.Traffic Sent (packets)",		OPC_STAT_INDEX_NONE, OPC_STAT_LOCAL);
-	pktssec_sent_stathandle 	= op_stat_reg ("Traffic Source.Traffic Sent (packets/sec)",	OPC_STAT_INDEX_NONE, OPC_STAT_LOCAL);
-	bits_sent_gstathandle 		= op_stat_reg ("Traffic Source.Traffic Sent (bits)",		OPC_STAT_INDEX_NONE, OPC_STAT_GLOBAL);
-	bitssec_sent_gstathandle 	= op_stat_reg ("Traffic Source.Traffic Sent (bits/sec)",	OPC_STAT_INDEX_NONE, OPC_STAT_GLOBAL);
-	pkts_sent_gstathandle 		= op_stat_reg ("Traffic Source.Traffic Sent (packets)",		OPC_STAT_INDEX_NONE, OPC_STAT_GLOBAL);
-	pktssec_sent_gstathandle 	= op_stat_reg ("Traffic Source.Traffic Sent (packets/sec)",	OPC_STAT_INDEX_NONE, OPC_STAT_GLOBAL);
-		
-	
-	
-FOUT;
-}
-]]>
-	</function-block>
 	<states initial-state-id="0">
 		<state id="0" x="90" y="90">
 			<attribute name="name" type="string" value="init"/>
 			<attribute name="Enter Execs" type="textlist">
 				<value-text>
 <![CDATA[
-/* Initialize the traffic generation parameters.	*/
-bursty_source_sv_init ();
 
 /* Schedule the first OFF-period scheduling by setting	*/
 /* a self-interrupt for the start time. If the start	*/
@@ -198,10 +78,7 @@ bursty_source_sv_init ();
 //The mac_interface or mac processes are badly conceived, they require a synchronization
 
 op_ima_sim_attr_get (OPC_IMA_DOUBLE, "interpacket_time" , &inter_pk_time);
-op_intrpt_schedule_self (op_sim_time () + 0.01 + op_dist_uniform(inter_pk_time) , 0);
-
-//the distribution for inter=packet times
-intarrvl_time_dist_handle = op_dist_load (PACKET_TIME_DISTRIBUTION , 	inter_pk_time , PACKET_TIME_ARG2);
+op_intrpt_schedule_self (op_sim_time () + op_dist_uniform(inter_pk_time) , 0);
 
 ]]>
 				</value-text>
@@ -212,59 +89,27 @@ intarrvl_time_dist_handle = op_dist_load (PACKET_TIME_DISTRIBUTION , 	inter_pk_t
 			<attribute name="Enter Execs" type="textlist">
 				<value-text>
 <![CDATA[
+Packet*		pkptr;
+double		next_packet_arrival_time;
+
 //next packet
-next_packet_arrival_time = op_sim_time () + op_dist_outcome (intarrvl_time_dist_handle);
+next_packet_arrival_time = op_sim_time() + op_dist_exponential(inter_pk_time);
+op_intrpt_schedule_self (next_packet_arrival_time, 0);
 
 //only if start is over-passed (One interarrival pk has surely changed)
 if (op_sim_time() > TIME_START_DATA){
 
 	//PK creation
-	pksize = floor ((SimT_Pk_Size) op_dist_outcome (packet_size_dist_handle));
-	pksize *= 8;
-	pkptr  = op_pk_create (pksize);
+	pkptr  = op_pk_create (PACKET_SIZE * 8);
 
-	//A pk was generated
-	op_stat_write (pksize_stathandle, (double) OPC_TRUE);
-
-	// Local stats
-	op_stat_write (bits_sent_stathandle, 		pksize);
-	op_stat_write (pkts_sent_stathandle, 		1.0);
-
-	op_stat_write (bitssec_sent_stathandle, 	pksize);
-	op_stat_write (bitssec_sent_stathandle, 	0.0);
-	op_stat_write (pktssec_sent_stathandle, 	1.0);
-	op_stat_write (pktssec_sent_stathandle, 	0.0);
-	
-	// Gobal stats
-	op_stat_write (bits_sent_gstathandle, 		pksize);
-	op_stat_write (pkts_sent_gstathandle, 		1.0);
-
-	op_stat_write (bitssec_sent_gstathandle, 	pksize);
-	op_stat_write (bitssec_sent_gstathandle, 	0.0);
-	op_stat_write (pktssec_sent_gstathandle, 	1.0);
-	op_stat_write (pktssec_sent_gstathandle, 	0.0);
-	
 	// Pk transmission
 	op_pk_send (pkptr, 0);
 }
 
-//	Schedule the next packet arrival
-if (next_packet_arrival_time)
-	op_intrpt_schedule_self (next_packet_arrival_time, 0);
-  
 ]]>
 				</value-text>
 			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
-<![CDATA[
-/* Determine the type of interrupt.		*/
-intrpt_type = op_intrpt_type ();
-intrpt_code = op_intrpt_code ();
-
-]]>
-				</value-text>
-			</attribute>
+			<attribute name="Exit Execs" type="textlist"/>
 		</state>
 	</states>
 	<transitions>
@@ -281,75 +126,6 @@ intrpt_code = op_intrpt_code ();
 			<attribute name="name" type="string" value="tr_10"/>
 		</transition>
 	</transitions>
-	<local-statistics>
-		<statistic name="Packet Generation Status" group="Traffic Source" dimension="0" capture-mode="normal" display-mode="discrete" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-This statistic represents the times at 
-which a packet is generated while the 
-source is in the ON (active) state.
-]]>
-			</description>
-		</statistic>
-		<statistic name="Traffic Sent (bits)" group="Traffic Source" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-Traffic sent (in bits) by the traffic source in this node.
-]]>
-			</description>
-		</statistic>
-		<statistic name="Traffic Sent (bits/sec)" group="Traffic Source" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-Traffic sent (in bits/sec) by the traffic source in this node.
-]]>
-			</description>
-		</statistic>
-		<statistic name="Traffic Sent (packets)" group="Traffic Source" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-Traffic sent (in packets) by the traffic source in this node.
-]]>
-			</description>
-		</statistic>
-		<statistic name="Traffic Sent (packets/sec)" group="Traffic Source" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-Traffic sent (in packets/sec) by the traffic source in this node.
-]]>
-			</description>
-		</statistic>
-	</local-statistics>
-	<global-statistics>
-		<statistic name="Traffic Sent (bits)" group="Traffic Source" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-Traffic sent (in bits) by the traffic sources across all nodes.
-]]>
-			</description>
-		</statistic>
-		<statistic name="Traffic Sent (bits/sec)" group="Traffic Source" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-Traffic sent (in bits/sec) by the traffic sources across all nodes.
-]]>
-			</description>
-		</statistic>
-		<statistic name="Traffic Sent (packets)" group="Traffic Source" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-Traffic sent (in packets) by the traffic sources across all nodes.
-]]>
-			</description>
-		</statistic>
-		<statistic name="Traffic Sent (packets/sec)" group="Traffic Source" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
-<![CDATA[
-Traffic sent (in packets/sec) by the traffic sources across all nodes.
-]]>
-			</description>
-		</statistic>
-	</global-statistics>
 	<comments>
 <![CDATA[
 General Process Description                                         

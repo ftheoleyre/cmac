@@ -1994,11 +1994,11 @@ void print_frame_buffer(int debug_type){
 int get_next_hop(){
 	FIN(get_next_hop());
 	
-	int				i;
-	neigh_struct	*neigh_ptr;
+//	int				i;
+//	neigh_struct	*neigh_ptr;
 	compar_struct 	next;
 	
-	debug_print(LOW , DEBUG_DATA , "Routing computation toward the sink. Candidates are:\n");
+	debug_print(LOW , DEBUG_DATA , "Route computation toward the sink. Candidates are:\n");
 	
 	//Initialization
 	next.addr 		= ADDR_BROADCAST;
@@ -2012,30 +2012,46 @@ int get_next_hop(){
 		//since all nodes have a null distance to the ktree, equivalent to the shortest paths to the sink
 		case ROUTING_MAC_SHORT:
 		
+			print_neighborhood_table(DEBUG_DATA);
+		
+			//I am a k-tree core member ->to my parent!
+//			if (my_sink_tree.is_in_ktree){
+				next.addr		= my_sink_tree.parent;
+				next.ktree_dist	= my_sink_tree.ktree_dist;
+				next.sink_dist	= my_sink_tree.sink_dist - 1;
+			
+				debug_print(MAX , DEBUG_DATA , "parent node to the sink: node %d\n", next.addr);
+/*			}
 			//Walks in the list
-			for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-				neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-				//Closer to the ktree core
-				if (neigh_ptr->ktree_dist < next.ktree_dist){
-					next.addr		= neigh_ptr->address;
-					next.ktree_dist	= neigh_ptr->ktree_dist;
-					next.sink_dist	= neigh_ptr->sink_dist;
+			else
+				for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
+					neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+				
+					//we only choose a next hop that has a sufficient stability
+					if (stability_get(neigh_ptr) > STAB_MIN){
+						
+						//Closer to the ktree core
+						if (neigh_ptr->ktree_dist < next.ktree_dist){
+							next.addr		= neigh_ptr->address;
+							next.ktree_dist	= neigh_ptr->ktree_dist;
+							next.sink_dist	= neigh_ptr->sink_dist;
 					
-					debug_print(MAX , DEBUG_DATA , "case 1\n");
-				}
+							debug_print(MAX , DEBUG_DATA , "closer to the ktree core: node %d\n", next.addr);
+						}
 				   
-				//Closer to the sink (but not farther from the k-tree core)	   
-				else if ((neigh_ptr->ktree_dist == next.ktree_dist) && (neigh_ptr->sink_dist < next.sink_dist)){
-					next.addr		= neigh_ptr->address;
-					next.ktree_dist	= neigh_ptr->ktree_dist;
-					next.sink_dist	= neigh_ptr->sink_dist;
+						//Closer to the sink (but not farther from the k-tree core)	   
+						else if ((neigh_ptr->ktree_dist == next.ktree_dist) && (neigh_ptr->sink_dist < next.sink_dist)){
+							next.addr		= neigh_ptr->address;
+							next.ktree_dist	= neigh_ptr->ktree_dist;
+							next.sink_dist	= neigh_ptr->sink_dist;
 					
-					debug_print(MAX , DEBUG_DATA , "case 2\n");
+							debug_print(MAX , DEBUG_DATA , "closer to the sink: node %d\n", next.addr);
+						}
+						debug_print(MAX , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d)\n",  neigh_ptr->address, neigh_ptr->ktree_dist, neigh_ptr->sink_dist);
+					}
+
 				}
-				debug_print(MAX , DEBUG_DATA , "	->%d (dist_kt %d, distSink %d)\n",  neigh_ptr->address, neigh_ptr->ktree_dist, neigh_ptr->sink_dist);
-			}
-		
+	*/	
 		break;
 		case ROUTING_MAC_NO:
 			op_sim_end("I am not allowed to route packets" , "But I try to find one next hop" , "Please correct the corresponding bug" , "");
@@ -2204,13 +2220,13 @@ void update_sink_tree_infos(){
 		FOUT;	
 	
 	//initial best values
-	best_ktree_dist	= SHORT_INFINITY;
-	best_sink_dist	= SHORT_INFINITY;
+	best_ktree_dist	= DIST_SINK_MAX;
+	best_sink_dist	= DIST_SINK_MAX;
 	best_parent		= ADDR_INVALID;
 	for(i=0 ; i<op_prg_list_size(my_neighborhood_table); i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
 		
-		if 	((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->address == my_sink_tree.parent)){
+		if 	((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->bidirect) && (neigh_ptr->address == my_sink_tree.parent)){
 			best_sink_dist	= neigh_ptr->sink_dist + 1;
 			best_parent		= neigh_ptr->address;
 		}
@@ -2220,7 +2236,7 @@ void update_sink_tree_infos(){
 	for(i=0 ; i < op_prg_list_size(my_neighborhood_table) ; i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
-		if (stability_get(neigh_ptr) > STAB_MIN){
+		if ((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->bidirect) && (neigh_ptr->sink_dist < DIST_SINK_MAX)){
 			//Distance to the ktree
 			if (best_ktree_dist > neigh_ptr->ktree_dist + 1){
 				best_ktree_dist = neigh_ptr->ktree_dist + 1;
@@ -2248,8 +2264,8 @@ void update_sink_tree_infos(){
 		debug_print(MEDIUM , DEBUG_HELLO , "Updates the distance to the sink %d (old %d) and to the k=tree %d (old %d)\n", neigh_ptr->address, best_ktree_dist, my_sink_tree.sink_dist, best_sink_dist, my_sink_tree.ktree_dist);
 	
 	if (my_sink_tree.parent	!= best_parent){
-		printf("%d: parent %d -> %d \n", my_address, my_sink_tree.parent, best_parent);
-		debug_print(MAX, DEBUG_HELLO, "parent %d -> %d \n", my_sink_tree.parent, best_parent);
+		printf("%d: parent changed %d -> %d \n", my_address, my_sink_tree.parent, best_parent);
+		debug_print(MAX, DEBUG_HELLO, "parent changed %d -> %d \n", my_sink_tree.parent, best_parent);
 	}
 	
 	//final assignment
@@ -2281,13 +2297,20 @@ void update_sink_tree_infos(){
 int get_cmac_child(short branch_id){
 	FIN(get_cmac_child(short branch_id));	
 	child_struct	*child_ptr;
+	int				i;
+	
+	for(i=0; i<op_prg_list_size(my_sink_tree.cmac_children); i++){
+		child_ptr = op_prg_list_access(my_sink_tree.cmac_children , i);
 		
-	if ((!my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.cmac_children) <= branch_id)){
-		//debug_print(MAC, DEBUG_KTREE, "no child for branch %d\n", branch_id);
-		FRET(ADDR_BROADCAST);
+		if (child_ptr->branch_id == branch_id){
+			debug_print(MAX, DEBUG_CONTROL, "the child for branch %d is %d\n", branch_id, child_ptr->address);
+			print_neighborhood_table(DEBUG_CONTROL);
+			FRET(child_ptr->address);		
+		}
 	}
-	child_ptr = op_prg_list_access(my_sink_tree.cmac_children , branch_id);
-	FRET(child_ptr->address);
+	
+	debug_print(MAX, DEBUG_CONTROL, "no child for branch %d\n", branch_id);
+	FRET(ADDR_BROADCAST);
 }
 
 
@@ -2387,7 +2410,8 @@ List *neigh_construct_max_saving_child(){
 	for(i=0; i<op_prg_list_size(my_neighborhood_table); i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
 		
-		if (neigh_ptr->parent == my_address)
+		//a node must be a bidirect neighbor with a minimal stability
+		if ((neigh_ptr->parent == my_address) && (neigh_ptr->bidirect) && (stability_get(neigh_ptr) >= STAB_MIN))
 			for(j=0; j<NB_BRANCHES; j++)
 				
 				//only strictly positive savings are valid
@@ -2397,7 +2421,6 @@ List *neigh_construct_max_saving_child(){
 					saving_record->saving	= neigh_ptr->savings[j];		
 					debug_print(MAX, DEBUG_KTREE, "saving %d %d to insert\n", saving_record->address, saving_record->saving);
 					op_prg_list_insert_sorted(ll, saving_record, saving_value_compare); 
-			
 				}	
 	}	
 
@@ -2504,7 +2527,7 @@ void update_current_cmac_children_maxtree(){
 	debug_print(MAX, DEBUG_KTREE, "%s>\n", msg);
 	
 	
-	//print_neighborhood_table(DEBUG_PRINTF);
+	print_neighborhood_table(DEBUG_KTREE);
 	
 	FOUT;
 }
@@ -2554,7 +2577,7 @@ void update_current_cmac_children_sync(){
 			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
 			//Adds the power if the node is farther from the sink
-			if ((neigh_ptr->sink_dist > my_sink_tree.sink_dist) && (stability_get(neigh_ptr) > STAB_MIN)){
+			if ((neigh_ptr->sink_dist > my_sink_tree.sink_dist) && (stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->bidirect)){
 				election_ptr = op_prg_mem_alloc(sizeof(election_struct));
 				election_ptr->addr 	= neigh_ptr->address;
 				election_ptr->pow 	= neigh_ptr->sync_rx_power;
@@ -2658,8 +2681,8 @@ void update_current_cmac_children(){
 		FOUT;
 	
 	//stable after data started
-	if ((op_sim_time() > TIME_START_DATA) && (BLOCK_KTREE_AFTER_START_DATA))
-		FOUT;
+//	if ((op_sim_time() > TIME_START_DATA) && (BLOCK_KTREE_AFTER_START_DATA))
+//		FOUT;
 	
 	//elects the children, depdends on the ktree creation algo
 	switch(KTREE_ALGO){
@@ -2915,6 +2938,77 @@ double stability_get(neigh_struct *neigh_ptr){
 //
 //-----------------------------------------------------------
 
+//Does the source receive correctly my own hello packets 
+Boolean is_bidirect_from_packet(Packet *pk){
+	FIN(is_bidirect_from_packet(Packet *pk));
+	int		*list_neighs_ptr;
+	int		nb_neighs;
+	int		i;
+	
+	//the fields in the packet
+	op_pk_nfd_get(pk, FIELD_PK_HELLO_NEIGH_TABLE_SIZE, &nb_neighs);	
+	if (nb_neighs == 0)
+		FRET(OPC_FALSE);
+	op_pk_nfd_get_ptr(pk, FIELD_PK_HELLO_NEIGH_TABLE, (void**)&list_neighs_ptr);
+
+	//am in the list of its neighbors?
+	for(i=0; i<nb_neighs; i++)
+		if (list_neighs_ptr[i] == my_address)
+			FRET(OPC_TRUE);
+	op_prg_mem_free(list_neighs_ptr);
+	
+	FRET(OPC_FALSE);
+}
+
+
+//fills the packet with the list of my cmac-tree children
+void fill_neigh_table_fields(Packet *pk){
+	FIN(fill_neigh_table_fields(Packet *pk));
+	
+	int				*list_neighs_ptr;
+	int				i, ptr;
+	neigh_struct	*neigh_ptr;
+	
+	//the number of neighbors to include
+	int	nb_neighs = 0;
+	for(i=0; i<op_prg_list_size(my_neighborhood_table); i++){
+		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+	
+		if (stability_get(neigh_ptr) > STAB_MIN)
+			nb_neighs++;		
+	}
+	op_pk_nfd_set(pk, FIELD_PK_HELLO_NEIGH_TABLE_SIZE, nb_neighs);	
+	
+	//Fills the list of children children fields
+	if (nb_neighs != 0){
+	
+		//memory allocation
+		list_neighs_ptr = op_prg_mem_alloc(sizeof(int) * nb_neighs);
+		ptr = 0;
+	
+		//fill it
+		for(i=0; i<op_prg_list_size(my_neighborhood_table); i++){
+			neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+	
+			if (ptr > nb_neighs)
+				op_sim_end("Memory error", "Your array is not sufficiently large to store all your neighbors", "Bug in the implementation", "");
+				
+			if (stability_get(neigh_ptr) > STAB_MIN)
+				list_neighs_ptr[ptr++] = neigh_ptr->address;		
+		}		
+		
+		//and finally assign this value to the packet
+		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_NEIGH_TABLE, (void*)list_neighs_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(int) * nb_neighs);
+	}	
+	
+	FOUT;
+}
+
+
+
+
+
+
 //Generates an hello (next frame to send !)
 void generate_hello(double next_hello){ 
 	FIN(generate_hello(double next_hello));
@@ -3016,8 +3110,8 @@ void delete_timeouted_neighbors(void *ptr , int code){
 
 
 //updates the neighborhood table with one new entry !
-void update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *cmac_children_tmp , double next_hello){
-	FIN(update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short_subtree_size, short *savings, int branch , List *cmac_children_tmp , double next_hello));
+void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *cmac_children_tmp , double next_hello){
+	FIN(update_neighborhood_table(int source , Boolean bidirect, int sink_dist , int ktree_dist, double sync_rx_power, int parent, short_subtree_size, short *savings, int branch , List *cmac_children_tmp , double next_hello));
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
@@ -3037,6 +3131,7 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 			op_prg_mem_free(neigh_ptr->cmac_children);
 			op_prg_mem_free(neigh_ptr->savings);
 			
+			neigh_ptr->bidirect			= bidirect;
 			neigh_ptr->sink_dist		= sink_dist;
 			neigh_ptr->ktree_dist		= ktree_dist;
 			neigh_ptr->sync_rx_power	= sync_rx_power;
@@ -3067,6 +3162,7 @@ void update_neighborhood_table(int source , int sink_dist , int ktree_dist, doub
 		neigh_ptr = op_prg_mem_alloc(sizeof(neigh_struct));
 		stability_init(neigh_ptr);
 		neigh_ptr->address			= source;
+		neigh_ptr->bidirect			= bidirect;
 		neigh_ptr->sink_dist		= sink_dist;
 		neigh_ptr->ktree_dist		= ktree_dist;
 		neigh_ptr->sync_rx_power	= sync_rx_power;
@@ -3190,14 +3286,14 @@ void print_neighborhood_table(int debug_type){
 		printf("	NEIGHBORHOOD TABLE (%d-%f)\n", my_address, op_sim_time());
 		printf("---------------------------------------\n");
 		printf("\n");
-		printf("%d> addr |sinkDist|ktDist| Timeout |Parent|Stab|STreeSize|  Savings  |Cmac Children\n", my_address);
+		printf("%d> addr(bidir)|sinkDist|ktDist| Timeout |Parent|Stab|STreeSize|  Savings  |Cmac Children\n", my_address);
 	}
 	else{
 		debug_print(LOW , debug_type , "---------------------------------------\n");
 		debug_print(LOW , debug_type , "	NEIGHBORHOOD TABLE (%f)\n", op_sim_time());
 		debug_print(LOW , debug_type , "---------------------------------------\n");
 		debug_print(LOW , debug_type , "\n");
-		debug_print(LOW , debug_type , "addr |sinkDist|ktDist| Timeout |Parent|Stab|STreeSize|  Savings  |Cmac Children\n");
+		debug_print(LOW , debug_type , "addr(bidir)|sinkDist|ktDist| Timeout |Parent|Stab|STreeSize|  Savings  |Cmac Children\n");
 	}
 	
 	for (i=0 ; i< op_prg_list_size(my_neighborhood_table) ; i++){
@@ -3205,9 +3301,9 @@ void print_neighborhood_table(int debug_type){
 		
 		//the whole info
 		if (debug_type >= DEBUG_PRINTF)
-			printf("%d> %5d|%8d|%6d|%7f|%6d|%4.2f|%7d  |%s|%s\n", my_address, neigh_ptr->address , convert_int(neigh_ptr->sink_dist) , convert_int(neigh_ptr->ktree_dist) , neigh_ptr->timeout , neigh_ptr->parent, stability_get(neigh_ptr), neigh_ptr->subtree_size, array_of_short_to_str(neigh_ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(neigh_ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
+			printf("%d> %5d (%1d)  |%8d|%6d|%7f|%6d|%4.2f|%7d  |%s|%s\n", my_address, neigh_ptr->address , neigh_ptr->bidirect, convert_int(neigh_ptr->sink_dist) , convert_int(neigh_ptr->ktree_dist) , neigh_ptr->timeout , neigh_ptr->parent, stability_get(neigh_ptr), neigh_ptr->subtree_size, array_of_short_to_str(neigh_ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(neigh_ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
 		else
-			debug_print(LOW , debug_type , "%5d|%8d|%6d|%7f|%6d|%4.2f|%7d  |%s|%s\n", neigh_ptr->address , convert_int(neigh_ptr->sink_dist) , convert_int(neigh_ptr->ktree_dist) , neigh_ptr->timeout , neigh_ptr->parent, stability_get(neigh_ptr), neigh_ptr->subtree_size, array_of_short_to_str(neigh_ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(neigh_ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
+			debug_print(LOW , debug_type , "%5d (%1d)  |%8d|%6d|%7f|%6d|%4.2f|%7d  |%s|%s\n", neigh_ptr->address , neigh_ptr->bidirect, convert_int(neigh_ptr->sink_dist) , convert_int(neigh_ptr->ktree_dist) , neigh_ptr->timeout , neigh_ptr->parent, stability_get(neigh_ptr), neigh_ptr->subtree_size, array_of_short_to_str(neigh_ptr->savings, NB_BRANCHES, savings_str, 11, OPC_TRUE), list_of_children_to_str(neigh_ptr->cmac_children, cmac_children_str, 50, OPC_FALSE));
 	}
 	if (debug_type >= DEBUG_PRINTF)
 		printf("%d> sinkDist=%d, ktDist=%d, parent=%d, STreeSize=%d, isBN=%d, syncPw=%f, cmacChildren=%s\n", my_address, my_sink_tree.sink_dist , my_sink_tree.ktree_dist, my_sink_tree.parent, my_sink_tree.subtree_size, my_sink_tree.is_in_ktree, convert_double(my_sync_rx_power), list_of_children_to_str(my_sink_tree.cmac_children, cmac_children_str, 50, OPC_FALSE));
@@ -3302,9 +3398,12 @@ Packet* create_packet(frame_struct frame){
 				
 				default:
 					op_sim_end("Unknown ktree algo", "", "", "");
-			}
-		
+			}	
 			fill_cmac_children_fields(pk);
+			
+			//include my neighborhood table to detect unidirectional links
+			fill_neigh_table_fields(pk);
+			
 		break;
 		case RTS_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_rts");
@@ -3367,9 +3466,9 @@ Packet* create_packet(frame_struct frame){
 void set_next_frame_null(){
 	FIN(set_next_frame_null());
 	
-	char	msg[100];
+//	char	msg[100];
 
-	debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) canceled / deleted / in_progress\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg, 100));
+	//debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) canceled / deleted / in_progress\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg, 100));
 	
 	next_frame_to_send.type = NO_PK_TYPE;
 	
@@ -3381,10 +3480,10 @@ void set_next_frame_null(){
 void change_next_frame(frame_struct new_frame){
 	FIN(change_next_frame(frame_struct new_frame));
 	
-	char	msg1[100];
-	char	msg2[100];
+//	char	msg1[100];
+//	char	msg2[100];
 
-	debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
+	//debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
 	
 	next_frame_to_send = new_frame;
 	
@@ -3741,14 +3840,14 @@ void generate_ctr_ack(int destination, int frame_id , int duration_unavailable){
 
 //Prepares a data frame (headers, queue...)
 void prepare_data_frame(Packet	*payload , int frame_id , int next_hop , double power_ratio){
-	FIN(generate_ctr_ack(int destination, int frame_id , int duration_unavailable));
+	FIN(prepare_data_frame(Packet	*payload , int frame_id , int next_hop , double power_ratio));
 	
 	//Packet to send
 	frame_struct	frame;
 	
 	if (DEBUG >= MAX)
 		print_neighborhood_table(DEBUG_NODE);
-	debug_print(MAX , DEBUG_NODE , "NEXT HOP to the sink is %d\n", my_address , next_hop); 
+	debug_print(MAX , DEBUG_NODE , "NEXT HOP to the sink is %d\n", next_hop); 
 	
 	//Fields
 	frame.source				= my_address;
@@ -3803,7 +3902,7 @@ void receive_packet_from_up(){
 	if (next_hop != -1)
 		prepare_data_frame(payload , frame_id , next_hop , power_ratio);
 
-	debug_print(LOW , DEBUG_DATA , "DATA frame sent by %d to %d (frameid %d, dataid %d)\n", my_address , next_hop , frame_id, data_id);
+	debug_print(LOW , DEBUG_DATA , "DATA to send to %d (frameid %d, dataid %d)\n", next_hop , frame_id, data_id);
 	
 	FOUT;
 }
@@ -3951,6 +4050,7 @@ void receive_packet_from_radio(){
 	int				frame_id;
 	int				next_hop;
 	double			power_ratio;
+	Boolean			bidirect;
 	//CTR
 	double			freq;
 	double			t_slot;
@@ -4082,8 +4182,12 @@ void receive_packet_from_radio(){
 					//Forwarding (max power, since we have no info)
 					else if (!is_frame_id_seen(frame_id)){
 						next_hop = get_next_hop();
-						if (next_hop != ADDR_BROADCAST)
-							prepare_data_frame(payload , frame_id , next_hop , 1);					
+						if (next_hop != ADDR_BROADCAST){
+							int	data_id;
+							op_pk_fd_get(payload, FIELD_PAYLOAD_ID, &data_id);
+							debug_print(LOW, DEBUG_DATA, "Data frame to forward (dataid %d)\n", data_id); 
+							prepare_data_frame(payload , frame_id , next_hop , 1);
+						}
 					}
 					
 					else 
@@ -4276,6 +4380,7 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_PARENT, 		&parent);
 				cmac_children_tmp = create_my_cmac_children_from_packet(frame);
 				
+				//k-tree construction
 				if (op_pk_nfd_is_set(frame , FIELD_PK_HELLO_SUBTREE_SIZE))
 					op_pk_nfd_get(frame , FIELD_PK_HELLO_SUBTREE_SIZE, 	&subtree_size);
 				else
@@ -4285,7 +4390,11 @@ void receive_packet_from_radio(){
 				else
 					savings_tmp = create_null_savings();
 				
-				update_neighborhood_table(source , sink_dist , ktree_dist , sync_power , parent, subtree_size, savings_tmp, branch , cmac_children_tmp , next_hello);
+				//detection of unidirectional links
+				bidirect = is_bidirect_from_packet(frame);
+				
+				//change the values in the neighborhood table
+				update_neighborhood_table(source , bidirect, sink_dist , ktree_dist , sync_power , parent, subtree_size, savings_tmp, branch , cmac_children_tmp , next_hello);
 			
 			break;
 				
@@ -4485,8 +4594,11 @@ void interrupt_process(){
 			if (op_intrpt_code() == HELLO_PK_CODE){
 				
 				//The next HELLO
-				next_hello = HELLO_PK_PERIOD - op_dist_uniform(HELLO_PK_PERIOD / 10);
-				
+				if (op_sim_time() > TIME_START_DATA - 3 * HELLO_PK_PERIOD)
+					next_hello = HELLO_PK_PERIOD - op_dist_uniform(HELLO_PK_PERIOD / 10);
+				else
+					next_hello = HELLO_PK_PERIOD_BEFORE_DATA - op_dist_uniform(HELLO_PK_PERIOD_BEFORE_DATA / 10);
+					
 				//prepares the packet
 				generate_hello(next_hello);
 				
@@ -4496,7 +4608,8 @@ void interrupt_process(){
 			
 			
 			//privileged END !
-			if (op_intrpt_code() == PRIVILEGED_MAX_CODE){
+			//min code -> we should have no data frame to send before ending the privileged mode
+			if (((op_intrpt_code() == PRIVILEGED_MIN_CODE) && (is_frame_buffer_empty())) || (op_intrpt_code() == PRIVILEGED_MAX_CODE)){
 			
 				//End interruption (we have also a min_time interruption)
 				if ((is_node_privileged) && (time_start_privileged + slot_privileged_duration <= op_sim_time()))
@@ -5001,7 +5114,6 @@ op_ima_obj_attr_set (op_id_self(), "Address", my_address);
 my_sink_tree.is_in_ktree 	= OPC_FALSE;
 my_sink_tree.subtree_size	= 0;
 my_sink_tree.parent			= ADDR_INVALID;
-my_sink_tree.sink_dist		= SHORT_INFINITY;
 my_sink_tree.cmac_children	= op_prg_list_create();
 
 
@@ -5020,16 +5132,14 @@ if (is_sink){
 
 //---------  DISTANCES / ROUTING  ------------
 
-if (is_sink)
-	my_sink_tree.sink_dist = 0;
-else
-	my_sink_tree.sink_dist = pow (2, 4) - 1;
-
-//dist ktree
-if (my_sink_tree.is_in_ktree)
+if (is_sink){
+	my_sink_tree.sink_dist 	= 0;
 	my_sink_tree.ktree_dist = 0;
-else
-	my_sink_tree.ktree_dist = pow (2, 4) - 1;
+}
+else{
+	my_sink_tree.sink_dist 	= DIST_SINK_MAX;
+	my_sink_tree.ktree_dist = DIST_SINK_MAX;
+}
 
 
 
@@ -5484,7 +5594,7 @@ if (DEBUG_STATE_MACHINE)
 if (!is_tx_busy){
 
 	//debug
-	debug_print(LOW , DEBUG_DATA , "sends a packet to %d (type %s, id %d, my_nav %f, busy %d, power_ratio %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , get_nav_main_freq() , IS_MEDIUM_BUSY , next_frame_to_send.power_ratio);
+	debug_print(LOW , DEBUG_DATA , "sends a packet to %d (type %s, id %d, my_nav %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , get_nav_main_freq());
 
 	//Prepares the packet
 	is_tx_busy = OPC_TRUE;
@@ -5723,7 +5833,7 @@ frame_struct	next_data_frame;
 double			time_for_first_data;
 double			time_for_second_data;
 //Control
-char			msg[100];
+//char			msg[100];
 
 
 if (DEBUG_STATE_MACHINE)
@@ -5735,9 +5845,9 @@ if (DEBUG_STATE_MACHINE)
 //------------------------------------------
 
 
-debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, ktree %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg, 100) ,  IS_PK_TO_SEND , my_sink_tree.is_in_ktree , is_node_privileged);
-if (is_node_privileged)
-	debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d (medium %d, high %d)\n", time_start_privileged , slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO , time_start_privileged + slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO <= op_sim_time() , PRIVILEGED_END , PRIVILEGED_MEDIUM_LIMIT , PRIVILEGED_HIGH_LIMIT);
+//debug_print(MAX , DEBUG_CONTROL , "STATE_DEFER: data_buffer_empty %d, frame_to_send %d (type %s), IS_PK_TO_SEND %d, ktree %d, priviledged %d\n", is_frame_buffer_empty() , next_frame_to_send.type != NO_PK_TYPE , pk_type_to_str(next_frame_to_send.type , msg, 100) ,  IS_PK_TO_SEND , my_sink_tree.is_in_ktree , is_node_privileged);
+//if (is_node_privileged)
+//	debug_print(MAX , DEBUG_CONTROL , "start_priviledged %f, time_min %f, CAN_SLOT_BE_ENDED %d, PRIVILEDGE_END %d (medium %d, high %d)\n", time_start_privileged , slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO , time_start_privileged + slot_privileged_duration * PRIVILEGED_MIN_TIME_RATIO <= op_sim_time() , PRIVILEGED_END , PRIVILEGED_MEDIUM_LIMIT , PRIVILEGED_HIGH_LIMIT);
 		
 
 //We have no frame which is scheduled to be transmitted
@@ -5828,7 +5938,7 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 
 
 //debug
-debug_print(MEDIUM , DEBUG_DATA , "has a packet to send to %d (type %s, id %d, nb_retry %d)\n", next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , next_frame_to_send.nb_retry);
+//debug_print(MEDIUM , DEBUG_DATA , "has a packet to send to %d (type %s, id %d, nb_retry %d)\n", next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , next_frame_to_send.nb_retry);
 
 
 

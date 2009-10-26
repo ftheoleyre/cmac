@@ -62,6 +62,7 @@ typedef struct{
 
 typedef struct{
 	int		address;
+	Boolean	bidirect;
 	double	timeout;
 	int		sink_dist;
 	int		ktree_dist;
@@ -71,7 +72,7 @@ typedef struct{
 	short	subtree_size;
 	double	sync_rx_power;
 	Boolean	*stability;
-	short	stability_ptr;
+	short	stability_ptr;			//the current pointer for the stability metric (cell in the array)
 } neigh_struct;
 
 typedef struct{
@@ -219,7 +220,7 @@ double 	stability_get(neigh_struct *neigh_ptr);
 
 void 	print_neighborhood_table(int debug_type);
 void  	generate_hello(double next_hello);
-void 	update_neighborhood_table(int source , int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello);
+void 	update_neighborhood_table(int source , Boolean bidirect, int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello);
 char* 	print_ktree_cildren(char *msg, int length);
 
 
