@@ -348,6 +348,7 @@ number of channels
 				<symbol-map>
 					<symbol name="SYNC" value="1"/>
 					<symbol name="MTree" value="2"/>
+					<symbol name="Static" value="3"/>
 				</symbol-map>
 				<comments>
 <![CDATA[
@@ -899,7 +900,8 @@ double 	TIME_MAX_PRIVILEGED;
 int		*nodeid_to_addr_var = NULL;
 Boolean	connectivity_verification = OPC_FALSE;
 
-
+//the position of the sink in the grid
+int		y_sink_int = 0, x_sink_int = 0;
 ]]>
 	</header-block>
 	<function-block>
@@ -2198,27 +2200,15 @@ void update_sink_subtree_size(){
 	FOUT;
 }
 
-//Updates information about the tree toward the sink
-//NB: I try to maintain the same parent as previously if it is still valid
-void update_sink_tree_infos(){
-	FIN(update_sink_tree_infos());
-	
+//for all dynamic algos, create dynamically the tree
+void update_sink_tree_infos_dynamic(){
+	FIN(update_sink_tree_infos_dynamic());
+
 	int				i;
 	neigh_struct	*neigh_ptr;
 	short			best_ktree_dist , best_sink_dist;
 	int				best_parent;
-	
-	//particular case for the sink
-	if (is_sink){
-		my_sink_tree.sink_dist 	= 0;
-		my_sink_tree.ktree_dist	= 0;
-		FOUT;
-	}
-	
-	//data already started
-	if ((op_sim_time() > TIME_START_DATA) && (BLOCK_KTREE_AFTER_START_DATA))
-		FOUT;	
-	
+
 	//initial best values
 	best_ktree_dist	= DIST_SINK_MAX;
 	best_sink_dist	= DIST_SINK_MAX;
@@ -2279,6 +2269,77 @@ void update_sink_tree_infos(){
 	if (DEBUG >= MEDIUM)
 		print_neighborhood_table(DEBUG_HELLO);
 	
+	FOUT;
+}
+
+//static case -> tree along the grid
+void update_sink_tree_infos_static(){
+	FIN(update_sink_tree_infos_static());
+	short	direction;
+	
+	//position in the grid (x,y)
+	int	y_int = my_address /  100;
+	int	x_int = my_address - y_int * 100;
+
+	if ((x_int == x_sink_int) && (y_int == y_sink_int))
+		op_sim_end("ERROR: the sink has no parent", "", "","");
+
+	//x axis is closer	
+	if (((pow(x_int - x_sink_int, 2) < pow(y_int - y_sink_int, 2)) && (x_int != x_sink_int)) || (y_int == y_sink_int)){
+		if (x_int < x_sink_int)
+			direction = 1;
+		else
+			direction = -1;	
+		my_sink_tree.parent 	= y_int * 100 + x_int + direction;
+		my_sink_tree.ktree_dist = fabs(x_sink_int - x_int);
+	}
+	else{
+		if (y_int < y_sink_int)
+			direction = 1;
+		else
+			direction = -1;	
+		my_sink_tree.parent 	= y_int * 100 + x_int + 100 * direction;
+		my_sink_tree.ktree_dist = fabs(y_sink_int - y_int);
+	}		
+	
+	//distances to the sink and the ktree
+	my_sink_tree.sink_dist 	= fabs(x_sink_int - x_int) + fabs(y_sink_int - y_int);
+	if ((x_int == x_sink_int) || (y_int == y_sink_int))
+		my_sink_tree.ktree_dist = 0;
+	
+	debug_print(MAX, DEBUG_CONTROL, "parent %d, sink dist %d, ktree dist %d\n", my_sink_tree.parent, my_sink_tree.sink_dist, my_sink_tree.ktree_dist);
+	
+	FOUT;
+}
+
+
+//Updates information about the tree toward the sink
+//NB: I try to maintain the same parent as previously if it is still valid
+void update_sink_tree_infos(){
+	FIN(update_sink_tree_infos());
+		
+	//particular case for the sink
+	if (is_sink){
+		y_sink_int = my_address /  100;
+		x_sink_int = my_address - y_sink_int * 100;
+
+		my_sink_tree.sink_dist 	= 0;
+		my_sink_tree.ktree_dist	= 0;
+		FOUT;
+	}
+	
+	//data already started
+	if ((op_sim_time() > TIME_START_DATA) && (BLOCK_KTREE_AFTER_START_DATA))
+		FOUT;	
+	
+	//dynamic algo
+	if (KTREE_ALGO != KTREE_ALGO_STATIC)
+		update_sink_tree_infos_dynamic();
+
+	//constructs the tree following the grid
+	else
+		update_sink_tree_infos_static();
+
 	FOUT;
 }
 
@@ -3007,8 +3068,6 @@ void fill_neigh_table_fields(Packet *pk){
 
 
 
-
-
 //Generates an hello (next frame to send !)
 void generate_hello(double next_hello){ 
 	FIN(generate_hello(double next_hello));
@@ -3105,6 +3164,44 @@ void delete_timeouted_neighbors(void *ptr , int code){
 	if (op_prg_list_size(my_neighborhood_table) != 0)
 		op_intrpt_schedule_call(older_entry , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
 	FOUT;	
+}
+
+
+//replaces the corresponding child for the source
+Boolean neighborhood_table_cmac_children_replace_for_node(int source, short branch_id, int child){
+	FIN(neighborhood_table_cmac_children_replace_for_node(int source, short branch_id, int child));
+	int				i, j;
+	neigh_struct	*neigh_ptr;
+	child_struct	*child_ptr;
+	
+	for(i=0; i<op_prg_list_size(my_neighborhood_table) ; i++){
+		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+	
+		if (neigh_ptr->address == source){
+		
+			//replaces an existing child for this branch_id
+			for(j=0; j<op_prg_list_size(neigh_ptr->cmac_children); j++){
+				child_ptr = op_prg_list_access(neigh_ptr->cmac_children, j);
+				if (child_ptr->branch_id == branch_id){
+				debug_print(LOW, DEBUG_CONTROL, "I modified the child %d -> %d (branch_id %d) for node %d\n", child, child_ptr->address, branch_id, source);
+					child_ptr->address = child;
+					FRET(OPC_TRUE);
+				}
+			}
+			
+			//adds a child for this node (none exists for this branch_id)
+			child_ptr = op_prg_mem_alloc(sizeof(child_struct));
+			child_ptr->branch_id 	= branch_id;
+			child_ptr->address		= child;
+			op_prg_list_insert(neigh_ptr->cmac_children, child_ptr, OPC_LISTPOS_HEAD);
+			debug_print(LOW, DEBUG_CONTROL, "I added the child %d (branch_id %d) for node %d\n", child, branch_id, source);
+			FRET(OPC_TRUE);
+		}
+	}
+	
+	debug_print(LOW, DEBUG_CONTROL, "I cannot modify the children list for node %d since it is not present in the neighborhood table\n", source);
+	
+	FRET(OPC_FALSE);
 }
 
 
@@ -4125,8 +4222,10 @@ void receive_packet_from_radio(){
 			
 			case CTR_PK_TYPE:
 				//ANY data frame -> ack since a ktree node is allowed to send a frame only when it becomes privileged
-				if (((frame_type == DATA_UNICAST_PK_TYPE) || (frame_type == DATA_MULTICAST_PK_TYPE) || (frame_type == HELLO_PK_TYPE))  && (source == last_frame_sent.destination))
+				if (((frame_type == DATA_UNICAST_PK_TYPE) || (frame_type == DATA_MULTICAST_PK_TYPE) || (frame_type == HELLO_PK_TYPE))  && (source == last_frame_sent.destination)){
+					debug_print(MEDIUM, DEBUG_CONTROL, "This data frame acknowledges the last CTR\n");
 					is_reply_received = OPC_TRUE;
+				}
 				else if ((frame_type == CTR_PK_TYPE) && (source == last_frame_sent.destination))
 					is_reply_received = OPC_TRUE;
 				else if ((frame_type == CTR_ACK_PK_TYPE) && (source == last_frame_sent.destination))
@@ -4317,8 +4416,15 @@ void receive_packet_from_radio(){
 					ctr_last_branch				= branch_id;
 					
 					//Error
-					if (!my_sink_tree.is_in_ktree)
+					if (!my_sink_tree.is_in_ktree){
+						if (!neighborhood_table_cmac_children_replace_for_node(source, branch_id, my_address))
+							debug_print(LOW, DEBUG_CONTROL, "ERROR: we cannot update the list of children for the source of CTR\n");
 						update_is_in_ktree();
+					}
+					if (!my_sink_tree.is_in_ktree){
+						print_neighborhood_table(DEBUG_CONTROL);
+						op_sim_end("Error: I receive a CTR although I am not in the k-tree", "", "", "");
+					}
 
 					
 					//Schedules the end of the privileged mode
@@ -4326,9 +4432,11 @@ void receive_packet_from_radio(){
 						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - slot_privileged_offset) * PRIVILEGED_MIN_TIME_RATIO , 	PRIVILEGED_MIN_CODE);
 						op_intrpt_schedule_self(op_sim_time() + (slot_privileged_duration - slot_privileged_offset), 								PRIVILEGED_MAX_CODE);
 					}
-					else
+					else{
 						op_intrpt_schedule_self(op_sim_time() , PRIVILEGED_MAX_CODE);
-					//debug_print(LOW , DEBUG_NODE , "duration : %f/%f -> min %f max %f\n",  slot_privileged_duration , slot_privileged_offset  , (slot_privileged_duration - offset) * PRIV_MIN_RATIO , (slot_privileged_duration - offset) );
+						debug_print(LOW, DEBUG_CONTROL, "The CTR is late, we have to forward it immediately\n");
+					}
+					debug_print(LOW, DEBUG_CONTROL, "I become privileged for the duration: %f (offset %f) -> min %f max %f\n",  slot_privileged_duration , slot_privileged_offset  , (slot_privileged_duration - offset) * PRIVILEGED_MIN_TIME_RATIO , (slot_privileged_duration - offset) );
 					
 					
 					//Multi channel case (CTR_ACK -> in F1+F2 if no data)
@@ -4340,6 +4448,8 @@ void receive_packet_from_radio(){
 					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_cmac_child(ctr_last_branch) == ADDR_BROADCAST))){
 						generate_ack(source , frame_id , 0 , 1);
 					}
+					else if (!is_frame_buffer_empty())
+						debug_print(MEDIUM, DEBUG_CONTROL, "I will send a data frame to acknoeldge passively this CTR\n");
 					
 				}
 				
@@ -4626,8 +4736,10 @@ void interrupt_process(){
 			//min code -> we should have no data frame to send before ending the privileged mode
 			if (((op_intrpt_code() == PRIVILEGED_MIN_CODE) && (is_frame_buffer_empty())) || (op_intrpt_code() == PRIVILEGED_MAX_CODE)){
 			
+				debug_print(LOW, DEBUG_CONTROL, "We have to forward the CTR now (ctr scheduled %d, is_priv %d, correct time %d (%f + %f < %f)\n", next_frame_to_send.type == CTR_PK_TYPE, (is_node_privileged) , (time_start_privileged + slot_privileged_duration >= op_sim_time()), time_start_privileged , slot_privileged_duration , op_sim_time());
+				
 				//End interruption (we have also a min_time interruption)
-				if ((is_node_privileged) && (time_start_privileged + slot_privileged_duration <= op_sim_time()))
+				if ((is_node_privileged) && (next_frame_to_send.type != CTR_PK_TYPE) && (time_start_privileged + slot_privileged_duration >= op_sim_time()))
 					generate_ctr();
 			}
 			

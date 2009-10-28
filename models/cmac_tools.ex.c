@@ -75,7 +75,7 @@ graph_struct **cmac_tools_graph_construct(graph_struct **graph, Objid *mac_ids){
 			//color different according to the stability metric value
 			graph[i][neigh_id].link 	= GRAPH_LINK_RADIO;
 			graph[neigh_id][i].link 	= GRAPH_LINK_RADIO;	
-			if(stability_get(neigh_ptr) > STAB_MIN){
+			if ((stability_get(neigh_ptr) > STAB_MIN) && (graph[neigh_id][i].color != RED)){
 				graph[neigh_id][i].color = GRAY;
 				graph[i][neigh_id].color = GRAY;
 			}

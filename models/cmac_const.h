@@ -51,6 +51,7 @@
 #define		KTREE_ALGO_SYNC					1
 #define		KTREE_ALGO_MAXTREE				2
 #define		KTREE_ALGO_NONE					0
+#define		KTREE_ALGO_STATIC				3
 
 
 
@@ -115,7 +116,7 @@
 #define		STAB_NB							8
 
 //The minimum acceptable stability for one radio link
-#define		STAB_MIN						0.9
+#define		STAB_MIN						0.8
 
 
 
