@@ -893,15 +893,19 @@ int		nb_mac_nodes = 0;
 //-----------------------------------------------
 //					SHARED VARIABLES
 //-----------------------------------------------
+//int		MAX_BRANCH_LENGTH 	= 0;
 
 int		global_frame_id 	= 0;
-int		MAX_BRANCH_LENGTH 	= 0;
 double 	TIME_MAX_PRIVILEGED;
 int		*nodeid_to_addr_var = NULL;
 Boolean	connectivity_verification = OPC_FALSE;
 
 //the position of the sink in the grid
 int		y_sink_int = 0, x_sink_int = 0;
+//directions (deduce the nb of branches)
+Boolean	is_node_present_for_direction[4] = {0,0,0,0};	
+short	direction_to_branch_id[4] = {-1,-1,-1,-1};	
+Boolean	*ktree_static_ok;
 ]]>
 	</header-block>
 	<function-block>
@@ -2072,6 +2076,26 @@ int get_next_hop(){
 
 
 
+//-----------------------------------------------------------
+//
+//					GRID POSITION
+//
+//-----------------------------------------------------------
+
+
+
+//returns the y-coordinate in the grid
+int get_y_coord_in_grid(int addr){
+	FIN(get_y_coord_in_grid(int addr));
+	FRET(addr /  100);
+}
+//returns the x-coordinate in the grid
+int get_x_coord_in_grid(int addr){
+	FIN(get_x_coord_in_grid(int addr));
+	FRET(addr - ((int) (addr /  100)) * 100);
+}
+
+
 
 //-----------------------------------------------------------
 //
@@ -2079,33 +2103,6 @@ int get_next_hop(){
 //
 //-----------------------------------------------------------
 
-//Is this node a ktree node ?
-Boolean	get_is_in_ktree(){
-	FIN(get_is_in_ktree());
-	
-	int				i , j;
-	neigh_struct	*neigh_ptr;
-	child_struct	*child_ptr;
-	
-	//The sink is always a cmac selected node !
-	if (is_sink)
-		FRET(OPC_TRUE);	
-		
-	//Walks in the list
-	for(i=op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
-		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
-		
-		//I am in its list of ktree children
-		for(j=0 ; j < op_prg_list_size(neigh_ptr->cmac_children) ; j++){
-			child_ptr = op_prg_list_access(neigh_ptr->cmac_children , j);
-			
-			//It is one parent -> save its stability
-			if (child_ptr->address == my_address)
-				FRET(OPC_TRUE);
-		}
-	}
-	FRET(OPC_FALSE);
-}
 
 
 //Am I one child of this node?
@@ -2141,15 +2138,44 @@ void empty_list(List **ll_ptr){
 }
 
 
+//Is this node a ktree node ?
+Boolean	compute_is_in_ktree(){
+	FIN(compute_is_in_ktree());
+	
+	int				i , j;
+	neigh_struct	*neigh_ptr;
+	child_struct	*child_ptr;
+	
+	//The sink is always a cmac selected node !
+	if (is_sink)
+		FRET(OPC_TRUE);	
+		
+	//Walks in the list
+	for(i=op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
+		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
+		
+		//I am in its list of ktree children
+		for(j=0 ; j < op_prg_list_size(neigh_ptr->cmac_children) ; j++){
+			child_ptr = op_prg_list_access(neigh_ptr->cmac_children , j);
+			
+			//It is one parent -> save its stability
+			if (child_ptr->address == my_address)
+				FRET(OPC_TRUE);
+		}
+	}
+	FRET(OPC_FALSE);
+}
+
+
 
 //Changes the status of this node
-Boolean update_is_in_ktree(){
-	FIN(update_is_in_ktree());
+Boolean update_is_in_ktree_and_dist(){
+	FIN(update_is_in_ktree_and_dist());
 	
 	int		old_value;
 
 	old_value = my_sink_tree.is_in_ktree;
-	my_sink_tree.is_in_ktree = get_is_in_ktree();
+	my_sink_tree.is_in_ktree = compute_is_in_ktree();
 	
 	//the value changed !
 	if (my_sink_tree.is_in_ktree != old_value){
@@ -2272,14 +2298,16 @@ void update_sink_tree_infos_dynamic(){
 	FOUT;
 }
 
+
+
 //static case -> tree along the grid
 void update_sink_tree_infos_static(){
 	FIN(update_sink_tree_infos_static());
 	short	direction;
 	
 	//position in the grid (x,y)
-	int	y_int = my_address /  100;
-	int	x_int = my_address - y_int * 100;
+	int	x_int = get_x_coord_in_grid(my_address);
+	int	y_int = get_y_coord_in_grid(my_address);	
 
 	if ((x_int == x_sink_int) && (y_int == y_sink_int))
 		op_sim_end("ERROR: the sink has no parent", "", "","");
@@ -2320,9 +2348,6 @@ void update_sink_tree_infos(){
 		
 	//particular case for the sink
 	if (is_sink){
-		y_sink_int = my_address /  100;
-		x_sink_int = my_address - y_sink_int * 100;
-
 		my_sink_tree.sink_dist 	= 0;
 		my_sink_tree.ktree_dist	= 0;
 		FOUT;
@@ -2620,7 +2645,7 @@ void update_current_cmac_children_sync(){
 	//--------------------------------------------------
 	//				NO KTREE NODE
 	//--------------------------------------------------
-	if ((!is_sink) && ((my_sync_rx_power == 0) || (!my_sink_tree.is_in_ktree) || (my_sink_tree.sink_dist > MAX_BRANCH_LENGTH))){
+	if ((!is_sink) && ((my_sync_rx_power == 0) || (!my_sink_tree.is_in_ktree))){// || (my_sink_tree.sink_dist > MAX_BRANCH_LENGTH))){
 		//debug_print(MAX , DEBUG_KTREE , "No ktree node: %d %d %d\n", my_sync_rx_power == 0 , !my_sink_tree.is_in_ktree , my_sink_dist > MAX_BRANCH_LENGTH);
 		FOUT;
 	}
@@ -2726,6 +2751,90 @@ void update_current_cmac_children_sync(){
 	FOUT;
 }
 
+//direction number (normalized)
+short addr_to_direction_in_grid(int addr){
+	FIN(addr_to_direction_in_grid(int addr));
+	
+	int	x_int = get_x_coord_in_grid(addr);
+	int	y_int = get_y_coord_in_grid(addr);	
+	
+	if (x_int < x_sink_int)
+		FRET(0);
+	if (x_int > x_sink_int)
+		FRET(1);
+	if (y_int < y_sink_int)
+		FRET(2);
+	if (y_int > y_sink_int)
+		FRET(3);
+
+	op_sim_end("Error: unknown direction for this address","", "", "");
+	FRET(0);
+}
+
+
+
+//the increment for the normalized direction (to the sink)
+short direction_to_addr_incr_in_grid(int direction){
+	FIN(direction_to_addr_incr_in_grid(int direction));
+	
+	switch(direction){	
+		case 0:
+			FRET(-1);
+		case 1:
+			FRET(1);
+		case 2:
+			FRET(-100);
+		case 3:
+			FRET(100);	
+	}
+	
+	op_sim_end("Error: unknown direction","", "", "");
+	FRET(0);
+}
+
+//returns the list of current ktree chdilren (children are chosen along the grid in a static manner)
+void update_current_cmac_children_static(){
+	FIN(update_current_cmac_children_static());
+	child_struct	*child_ptr;
+	int				i;
+
+	//not a ktree-node -> no child
+	if ((!my_sink_tree.is_in_ktree) || (ktree_static_ok[my_stat_id]))
+		FOUT;
+	
+	//empty the old list
+	while(op_prg_list_size(my_sink_tree.cmac_children) > 0){
+		child_ptr = op_prg_list_remove(my_sink_tree.cmac_children , 0);
+		op_prg_mem_free(child_ptr);
+	}
+
+	//how many branches have we got?
+	if (is_sink){
+		for(i=0; i<4; i++)
+			if (direction_to_branch_id[i] > -1){
+				child_ptr = op_prg_mem_alloc(sizeof(child_struct));
+				child_ptr->address 		= my_address + direction_to_addr_incr_in_grid(i);
+				child_ptr->branch_id 	= direction_to_branch_id[i];
+				op_prg_list_insert(my_sink_tree.cmac_children , child_ptr , OPC_LISTPOS_TAIL);
+			}
+	
+	}
+	//other nodes choose to forward along their axis
+	else if (my_sink_tree.is_in_ktree){
+		short direction = addr_to_direction_in_grid(my_address);
+	
+		child_ptr = op_prg_mem_alloc(sizeof(child_struct));
+		child_ptr->address 		= my_address + direction_to_addr_incr_in_grid(direction);
+		child_ptr->branch_id 	= direction_to_branch_id[direction];
+		op_prg_list_insert(my_sink_tree.cmac_children , child_ptr , OPC_LISTPOS_TAIL);
+	}
+	
+	ktree_static_ok[my_stat_id] = OPC_TRUE;
+	
+	FOUT;
+}
+
+
 
 
 //-----------------------------------------------------------
@@ -2755,6 +2864,11 @@ void update_current_cmac_children(){
 		
 		case KTREE_ALGO_MAXTREE :
 			update_current_cmac_children_maxtree();
+			FOUT;
+		break;
+		
+		case KTREE_ALGO_STATIC :
+			update_current_cmac_children_static();
 			FOUT;
 		break;
 		
@@ -3152,7 +3266,7 @@ void delete_timeouted_neighbors(void *ptr , int code){
 	//Modification in the neighborhood table !
 	if (is_modif_required){
 		//ktree node
-		if (update_is_in_ktree())
+		if (update_is_in_ktree_and_dist())
 			generate_hello(0);
 
 		//Distances
@@ -3281,7 +3395,7 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 	//NB: I must verify for each reception 
 	//the source may have change the list of its ktree children
 	
-	if (update_is_in_ktree())
+	if (update_is_in_ktree_and_dist())
 		hello_required = OPC_TRUE;
 		
 	
@@ -3490,6 +3604,7 @@ Packet* create_packet(frame_struct frame){
 					fill_savings_fields(pk);
 				break;
 				
+				case KTREE_ALGO_STATIC:
 				case KTREE_ALGO_NONE:
 				break;
 				
@@ -4419,7 +4534,7 @@ void receive_packet_from_radio(){
 					if (!my_sink_tree.is_in_ktree){
 						if (!neighborhood_table_cmac_children_replace_for_node(source, branch_id, my_address))
 							debug_print(LOW, DEBUG_CONTROL, "ERROR: we cannot update the list of children for the source of CTR\n");
-						update_is_in_ktree();
+						update_is_in_ktree_and_dist();
 					}
 					if (!my_sink_tree.is_in_ktree){
 						print_neighborhood_table(DEBUG_CONTROL);
@@ -4504,7 +4619,7 @@ void receive_packet_from_radio(){
 				bidirect = is_bidirect_from_packet(frame);
 				
 				//previous ktree values
-				Boolean prev_is_ktree_node 	= get_is_in_ktree();
+				Boolean prev_is_ktree_node 	= my_sink_tree.is_in_ktree;
 				int		prev_nb_children 	= op_prg_list_size(my_sink_tree.cmac_children);
 				
 				//changes the values in the neighborhood table
@@ -4513,12 +4628,12 @@ void receive_packet_from_radio(){
 				//a changed occured eventually in the ktree
 				if (source == my_sink_tree.parent){
 					update_current_cmac_children();
-					update_is_in_ktree();
+					update_is_in_ktree_and_dist();
 				}
 				
 				//triggers immediately one hello (changes are important)
-				if ((prev_is_ktree_node != get_is_in_ktree()) || (op_prg_list_size(my_sink_tree.cmac_children) != prev_nb_children)){
-					printf("special hello %d %f\n", my_address, op_sim_time()); 
+				if ((prev_is_ktree_node != my_sink_tree.is_in_ktree) || (op_prg_list_size(my_sink_tree.cmac_children) != prev_nb_children)){
+					printf("special hello %d %f (%d, %d)\n", my_address, op_sim_time(), (prev_is_ktree_node != my_sink_tree.is_in_ktree), (op_prg_list_size(my_sink_tree.cmac_children) != prev_nb_children)); 
 					generate_hello(0);
 				}	
 			break;
@@ -5253,6 +5368,11 @@ if (op_topo_assoc_count(intf_id , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_STRM) > 1)
 if (is_sink){
 	my_sink_tree.is_in_ktree 	= OPC_TRUE;
 	my_sync_rx_power 			= OPC_DBL_INFINITY;
+	
+	//other nodes have to know my position (if we have a grid network)
+	x_sink_int = get_x_coord_in_grid(my_address);
+	y_sink_int = get_y_coord_in_grid(my_address);
+
 }
 
 
@@ -5590,6 +5710,20 @@ op_intrpt_schedule_self (op_sim_time (), 0);
 			<attribute name="Exit Execs" type="textlist">
 				<value-text>
 <![CDATA[
+//position in the grid
+int	x_int = get_x_coord_in_grid(my_address);
+int	y_int = get_y_coord_in_grid(my_address);
+
+
+//how many directions have I got in the network (if we have a grid...)
+if (x_int < x_sink_int)
+	is_node_present_for_direction[0] = OPC_TRUE;
+if (x_int > x_sink_int)
+	is_node_present_for_direction[1] = OPC_TRUE;
+if (y_int < y_sink_int)
+	is_node_present_for_direction[2] = OPC_TRUE;
+if (y_int > y_sink_int)
+	is_node_present_for_direction[3] = OPC_TRUE;
 
 
 ]]>
@@ -5638,7 +5772,7 @@ op_intrpt_schedule_self (op_sim_time (), 0);
 			<attribute name="Exit Execs" type="textlist">
 				<value-text>
 <![CDATA[
-
+int		i;
 
 //----------------------------------------------
 //					IDENTIFICATION
@@ -5647,20 +5781,31 @@ op_intrpt_schedule_self (op_sim_time (), 0);
 
 
 //nodeid/addr conversion
-if (nodeid_to_addr_var == NULL)
-	nodeid_to_addr_var = op_prg_mem_alloc(sizeof(int) * get_nb_nodes());
+if (nodeid_to_addr_var == NULL){
+	nodeid_to_addr_var 	= op_prg_mem_alloc(sizeof(int) * get_nb_nodes());
+	ktree_static_ok 	= op_prg_mem_alloc(sizeof(Boolean) * get_nb_nodes());
+}
 nodeid_to_addr_var[my_stat_id] = my_address;
-
+ktree_static_ok[my_stat_id] = OPC_FALSE;
 
 //----------------------------------------------
 //					BRANCH LENGTH
 //----------------------------------------------
 
 
-if (my_stat_id == 0)
-	MAX_BRANCH_LENGTH = 5;//min_int(BETA + 1 , (int)(pow(nb_mac_nodes , 0.5) / 2) - 1);
+//if (my_stat_id == 0)
+//	MAX_BRANCH_LENGTH = 5;//min_int(BETA + 1 , (int)(pow(nb_mac_nodes , 0.5) / 2) - 1);
 
+//the branch_id associated to each direction (grid case)
+if (is_sink){
+	short branch_id = 0;
+	
+	//an increasing branch_id for each existing direction
+	for(i=0; i<4; i++)
+		if (is_node_present_for_direction[i])
+			direction_to_branch_id[i] = branch_id++;
 
+}
 
 //----------------------------------------------
 //					SINK 

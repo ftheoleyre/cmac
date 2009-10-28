@@ -188,8 +188,12 @@ int 	nodeid_to_addr(int nodeid);
 int 	addr_to_nodeid(int addr);
 
 
+//tools (grid positions);
+int get_x_coord_in_grid(int addr);
+int get_y_coord_in_grid(int addr);
+
+
 //interface
-Boolean	get_is_in_ktree();
 Boolean is_cmac_child_of(neigh_struct *neigh_ptr, int my_address_tmp);
 
 
