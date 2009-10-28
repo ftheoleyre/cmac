@@ -2792,6 +2792,20 @@ short direction_to_addr_incr_in_grid(int direction){
 	FRET(0);
 }
 
+//was this address attributed to at least one node?
+Boolean does_node_address_exists(int addr){
+	FIN(does_node_address_exists(int addr));
+	
+	int		i;
+	
+	//a simple walk in the list of attributed addresses!
+	for(i=0; i<get_nb_nodes(); i++)
+		if (nodeid_to_addr_var[i] == addr)
+			FRET(OPC_TRUE);
+	
+	FRET(OPC_FALSE);
+}
+
 //returns the list of current ktree chdilren (children are chosen along the grid in a static manner)
 void update_current_cmac_children_static(){
 	FIN(update_current_cmac_children_static());
@@ -2811,7 +2825,7 @@ void update_current_cmac_children_static(){
 	//how many branches have we got?
 	if (is_sink){
 		for(i=0; i<4; i++)
-			if (direction_to_branch_id[i] > -1){
+			if ((direction_to_branch_id[i] > -1) && (does_node_address_exists(my_address + direction_to_addr_incr_in_grid(i)))){
 				child_ptr = op_prg_mem_alloc(sizeof(child_struct));
 				child_ptr->address 		= my_address + direction_to_addr_incr_in_grid(i);
 				child_ptr->branch_id 	= direction_to_branch_id[i];
@@ -2820,13 +2834,15 @@ void update_current_cmac_children_static(){
 	
 	}
 	//other nodes choose to forward along their axis
-	else if (my_sink_tree.is_in_ktree){
+	else if (my_sink_tree.is_in_ktree) {
 		short direction = addr_to_direction_in_grid(my_address);
-	
-		child_ptr = op_prg_mem_alloc(sizeof(child_struct));
-		child_ptr->address 		= my_address + direction_to_addr_incr_in_grid(direction);
-		child_ptr->branch_id 	= direction_to_branch_id[direction];
-		op_prg_list_insert(my_sink_tree.cmac_children , child_ptr , OPC_LISTPOS_TAIL);
+	 
+		if (does_node_address_exists(my_address + direction_to_addr_incr_in_grid(direction))){
+			child_ptr = op_prg_mem_alloc(sizeof(child_struct));
+			child_ptr->address 		= my_address + direction_to_addr_incr_in_grid(direction);
+			child_ptr->branch_id 	= direction_to_branch_id[direction];
+			op_prg_list_insert(my_sink_tree.cmac_children , child_ptr , OPC_LISTPOS_TAIL);
+		}
 	}
 	
 	ktree_static_ok[my_stat_id] = OPC_TRUE;
@@ -3317,7 +3333,6 @@ Boolean neighborhood_table_cmac_children_replace_for_node(int source, short bran
 	
 	FRET(OPC_FALSE);
 }
-
 
 
 //updates the neighborhood table with one new entry !
