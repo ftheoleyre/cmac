@@ -116,7 +116,7 @@
 #define		STAB_NB							8
 
 //The minimum acceptable stability for one radio link
-#define		STAB_MIN						0.8
+#define		STAB_MIN						0.9
 
 
 
