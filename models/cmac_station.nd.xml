@@ -111,7 +111,7 @@ phase
 						<attribute creation-mechanics="Model" name="list" type="object list">
 							<object-list>
 								<sub-object>
-									<attribute creation-mechanics="Model" name="Data Rate" type="double" value-symbol="11 Mbps"/>
+									<attribute creation-mechanics="Model" name="Data Rate" type="double" value-symbol="1 Mbps"/>
 									<attribute creation-mechanics="Model" name="Packet Reception-Power Threshold" type="double" value-symbol="7.33E-14"/>
 									<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
 										<sub-object>
@@ -223,80 +223,6 @@ become idle.
 				<attribute name="pattern" type="typed file" spectype="17" value="tx_direc"/>
 				<attribute name="pointing ref. theta" type="double" value="0.0"/>
 				<attribute name="target longitude" type="double" value="1.0"/>
-			</module-attributes>
-		</module>
-		<module type="ratx" id="243" x="430" y="292">
-			<module-attributes>
-				<attribute name="name" type="string" value="tx_busy_tone"/>
-				<attribute name="channel" type="compound">
-					<sub-object>
-						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
-						<attribute creation-mechanics="Model" name="list" type="object list">
-							<object-list>
-								<sub-object>
-									<attribute creation-mechanics="Model" name="data rate" type="double" value="50,000"/>
-									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted"/>
-									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="0.01"/>
-									<attribute creation-mechanics="Model" name="min frequency" type="double" value="2.0"/>
-									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
-									<attribute creation-mechanics="Model" name="power" type="double" value="0.001"/>
-								</sub-object>
-							</object-list>
-						</attribute>
-					</sub-object>
-				</attribute>
-				<attribute name="closure model" type="typed file" spectype="10" value="dra_closure_all"/>
-				<attribute name="tagain model" type="typed file" spectype="10" value="NONE"/>
-			</module-attributes>
-		</module>
-		<module type="rarx" id="245" x="62" y="292">
-			<module-attributes>
-				<attribute name="name" type="string" value="rx_busy_tone"/>
-				<attribute name="channel" type="compound">
-					<sub-object>
-						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
-						<attribute creation-mechanics="Model" name="list" type="object list">
-							<object-list>
-								<sub-object>
-									<attribute creation-mechanics="Model" name="data rate" type="double" value="50"/>
-									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted"/>
-									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="0.005"/>
-									<attribute creation-mechanics="Model" name="min frequency" type="double" value="2.0"/>
-									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
-									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
-								</sub-object>
-							</object-list>
-						</attribute>
-					</sub-object>
-				</attribute>
-				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
-				<attribute name="power model" type="typed file" spectype="10" value="wlan_alpha_power"/>
-				<attribute name="ecc model" type="typed file" spectype="10" value="dpt_ecc"/>
-				<attribute creation-mechanics="Extended" name="reception end time" type="double" spectype="0" value-symbol="0.0">
-					<properties type="double" units="sec" auto-assign="no" symbolic-only="no">
-						<default-value value="0.0"/>
-						<lower-limit value="0.0" exclusive="no"/>
-						<symbol-map>
-							<symbol name="0.0" value="0.0"/>
-						</symbol-map>
-						<comments>
-<![CDATA[
-THIS ATTRIBUTE SHOULD NOT BE SET 
-TO ANY VALUE EXCEPT 0.0. This 
-attribute is used by the pipeline 
-stages to determine whether the 
-receiver is busy or not. The 
-value of the attribute will be 
-updated by the pipeline stages 
-dynamically during the 
-simulation. The value will 
-indicate when the receiver became 
-idle or when it is expected to 
-become idle.
-]]>
-						</comments>
-					</properties>
-				</attribute>
 			</module-attributes>
 		</module>
 		<module type="ratx" id="246" x="430" y="154">
@@ -413,18 +339,6 @@ become idle.
 				<attribute name="color" type="color" value="#550000"/>
 			</connection-attributes>
 		</connection>
-		<connection type="strm" id="54" src-module-id="245" dest-module-id="0">
-			<connection-path>
-				<path-entry x="74" y="300"/>
-				<path-entry x="239" y="198"/>
-			</connection-path>
-			<connection-attributes>
-				<attribute name="name" type="string" value="strm_6"/>
-				<attribute name="src stream" type="enumerated" value="0"/>
-				<attribute name="dest stream" type="enumerated" value="1"/>
-				<attribute name="color" type="color" value="red"/>
-			</connection-attributes>
-		</connection>
 		<connection type="stat" id="55" src-module-id="219" dest-module-id="0">
 			<connection-path>
 				<path-entry x="162" y="281"/>
@@ -442,48 +356,6 @@ become idle.
 				<attribute name="color" type="color" value="#550000"/>
 			</connection-attributes>
 		</connection>
-		<connection type="stat" id="56" src-module-id="245" dest-module-id="0">
-			<connection-path>
-				<path-entry x="69" y="289"/>
-				<path-entry x="234" y="193"/>
-			</connection-path>
-			<connection-attributes>
-				<attribute name="name" type="string" value="rxstat_11Mbps_0"/>
-				<attribute name="submodule" type="enumerated" value="channel [0]"/>
-				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
-				<attribute name="dest stat" type="enumerated" value="instat [2]"/>
-				<attribute name="rising edge trigger" type="toggle" value="0"/>
-				<attribute name="falling edge trigger" type="toggle" value="0"/>
-				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
-				<attribute name="high threshold trigger" type="toggle double" value="7.33E-14"/>
-				<attribute name="color" type="color" value="#550000"/>
-			</connection-attributes>
-		</connection>
-		<connection type="stat" id="57" src-module-id="243" dest-module-id="0">
-			<connection-path>
-				<path-entry x="421" y="294"/>
-				<path-entry x="248" y="196"/>
-			</connection-path>
-			<connection-attributes>
-				<attribute name="name" type="string" value="txstat_11Mbps_1"/>
-				<attribute name="submodule" type="enumerated" value="channel [0]"/>
-				<attribute name="src stat" type="enumerated" value="radio transmitter.busy"/>
-				<attribute name="dest stat" type="enumerated" value="instat [3]"/>
-				<attribute name="rising edge trigger" type="toggle" value="0"/>
-				<attribute name="color" type="color" value="#550000"/>
-			</connection-attributes>
-		</connection>
-		<connection type="strm" id="58" src-module-id="0" dest-module-id="243">
-			<connection-path>
-				<path-entry x="250" y="190"/>
-				<path-entry x="428" y="289"/>
-			</connection-path>
-			<connection-attributes>
-				<attribute name="name" type="string" value="strm_15"/>
-				<attribute name="src stream" type="enumerated" value="src stream [1]"/>
-				<attribute name="dest stream" type="enumerated" value="0"/>
-			</connection-attributes>
-		</connection>
 		<connection type="stat" id="59" src-module-id="246" dest-module-id="0">
 			<connection-path>
 				<path-entry x="430" y="147"/>
@@ -493,7 +365,7 @@ become idle.
 				<attribute name="name" type="string" value="txstat_11Mbps_0"/>
 				<attribute name="submodule" type="enumerated" value="channel [0]"/>
 				<attribute name="src stat" type="enumerated" value="radio transmitter.busy"/>
-				<attribute name="dest stat" type="enumerated" value="instat [4]"/>
+				<attribute name="dest stat" type="enumerated" value="instat [2]"/>
 				<attribute name="rising edge trigger" type="toggle" value="0"/>
 				<attribute name="color" type="color" value="#550000"/>
 			</connection-attributes>

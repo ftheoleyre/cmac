@@ -931,14 +931,14 @@ else{
 
 
 
-//If I have not stream to the upper layer, I am not the sink (i.e. the destination)
-if (op_strm_connected(OPC_STRM_OUT , STREAM_TO_UP) == OPC_TRUE)
+//-----------------------------------
+//		Forward to the upper layer
+//-----------------------------------
+if (op_strm_connected(OPC_STRM_OUT , STREAM_TO_UP) == OPC_TRUE){
 		
-	//-----------------------------------
-	//		Forward to the upper layer
-	//-----------------------------------
 	op_pk_send (pkptr, STREAM_TO_UP);
-
+	cmac_interface_add_in_route(current_pk_id - 1, mac_address);
+}
 	
 else 
 	op_sim_end("The node receives a data packet for it", "although it is not the sink", "", "");
@@ -996,13 +996,17 @@ int			i;
 pk_info		*elem;
 int			nb_pk_received = 0;
 int			nb_pk_sent = 0;
+double		av_degree = 0;
 //delay
 double		delay_tmp;
 double		cumulated_delay = 0;
+double		cumulated_route_length = 0;
 double		max_delay = 0;
 //Simulation parameters
 int			RTS;
 int			mac_layer = 0;
+int			sink_address, pos_method;
+double		X_MAX, Y_MAX;
 
 
 if (my_stat_id == 0){
@@ -1011,8 +1015,12 @@ if (my_stat_id == 0){
 	//				PARAMETERS
 	//-------------------------------------------
 	
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 		&RTS);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"mac_layer",	&mac_layer);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 			&RTS);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"mac_layer",		&mac_layer);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"sink_address",		&sink_address);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"X_MAX",			&X_MAX);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"Y_MAX",			&Y_MAX);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"Positions_Method",	&pos_method);
 
 
 	
@@ -1035,6 +1043,9 @@ if (my_stat_id == 0){
 				cumulated_delay += delay_tmp;
 				if (delay_tmp > max_delay)
 					max_delay = delay_tmp;
+				
+				//route length
+				cumulated_route_length += op_prg_list_size(elem->route) - 1;
 			}
 		}
 	}
@@ -1069,6 +1080,11 @@ if (my_stat_id == 0){
 	fprintf(pfile, "Duration                           : %f\n", op_sim_time());
 	fprintf(pfile, "RTS                                : %d\n", RTS);
 	fprintf(pfile, "Inter Packet Time                  : %f\n", inter_pk_time);
+	fprintf(pfile, "Sink address                       : %d\n", sink_address);
+	fprintf(pfile, "X_MAX                              : %f\n", X_MAX);
+	fprintf(pfile, "Y_MAX                              : %f\n", Y_MAX);
+	fprintf(pfile, "Initial Locations                  : %d\n", pos_method);
+	fprintf(pfile, "Average degree                     : %f\n", av_degree);
 	fprintf(pfile, "\n");
 		
 	
@@ -1090,7 +1106,10 @@ if (my_stat_id == 0){
 	fprintf(pfile, "Max Delay                          : %f\n", max_delay);
 	fprintf(pfile, "\n");
 
-	
+	fprintf(pfile, "\n\n--------------------  ROUTE ---------------------------------\n");
+	fprintf(pfile, "Average route length               : %f\n", cumulated_route_length / nb_pk_received);
+	fprintf(pfile, "\n");
+
 	
 	//-------------------------------------------
 	//		CLOSE

@@ -542,23 +542,6 @@ double	\my_main_frequency;
 /* The bandwidth for my main radio (in KHz) */
 double	\my_main_bandwidth;
 
-/* I am currently receiving a busy tone signal */
-Boolean	\is_busy_tone_rx;
-
-/* the speed for the busy tone channel */
-double	\busy_tone_speed;
-
-/* I must maintain the busy tone transmission */
-Boolean	\is_busy_tone_tx;
-
-/* The busy tone is activated in reception                             */
-/* But we do not care: the destination itself maintains this busy tone */
-/* (or we believe that)                                                */
-Boolean	\busy_tone_rx_ignored;
-
-/* Is the busy tone channel used ? */
-Boolean	\BUSY_TONE_ACTIVATED;
-
 /* The debug file (perso) */
 FILE*	\my_debug_file;
 
@@ -678,19 +661,13 @@ cmac to define the branches that 'collect' the traffic to the sink)
 #define		STREAM_TO_RADIO					0
 #define		STREAM_FROM_RADIO				0
 
-#define		STREAM_TO_BUSY_TONE				1
-#define		STREAM_FROM_BUSY_TONE			1
-
 #define		STREAM_TO_DIRECT_SYNC			2
 
 
 #define		STAT_FROM_RX					0
 #define		STAT_FROM_TX					1
 
-#define		STAT_FROM_RX_BUSY_TONE			2
-#define		STAT_FROM_TX_BUSY_TONE			3
-
-#define		STAT_FROM_TX_DIREC_SYNC			4
+#define		STAT_FROM_TX_DIREC_SYNC			2
 
 
 
@@ -751,7 +728,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 
 
 //Is the medium busy ? (transmission / reception / reservation)
-#define		IS_MEDIUM_BUSY					((is_rx_busy) || (is_tx_busy) || (get_nav_main_freq() >= op_sim_time()) || ((is_busy_tone_rx && !busy_tone_rx_ignored && BUSY_TONE_ACTIVATED) && (!my_sink_tree.is_in_ktree)))
+#define		IS_MEDIUM_BUSY					((is_rx_busy) || (is_tx_busy) || (get_nav_main_freq() >= op_sim_time()))
 
 
 //We must defer in any of these conditions: 
@@ -1009,7 +986,7 @@ void add_frame_timeout(double data_pk_size){
 
 //-----------------------------------------------------------
 //
-//					ANTENNAS & BUSY TONE
+//					ANTENNAS & RADIO
 //
 //-----------------------------------------------------------
 
@@ -1118,25 +1095,6 @@ void change_antenna_direction(int stream , int branch){
 	op_ima_obj_attr_set (antenna_id, "target longitude", 	y);
 
 	debug_print(LOW , DEBUG_RADIO , "New direction for the antenna: %f\n", theta);
-	
-	FOUT;
-}
-
-
-
-
-//sends a packet to the busy tone radio (to maintain a busy state)
-void maintain_busy_tone(double time){
-	FIN(maintain_busy_tone(double time));
-	
-	Packet	*pkptr;
-
-	//Create a packet with the required size (in bits)
-	pkptr = op_pk_create(busy_tone_speed * time);
-	debug_print(LOW , DEBUG_RADIO , "new busy tone for %fs (packet size %f bits)\n", time , op_pk_total_size_get(pkptr));
-
-	//transmission
-	op_pk_send(pkptr , STREAM_TO_BUSY_TONE);	
 	
 	FOUT;
 }
@@ -2801,20 +2759,21 @@ Boolean does_node_address_exists(int addr){
 }
 
 //returns the list of current ktree chdilren (children are chosen along the grid in a static manner)
-void update_current_cmac_children_static(){
-	FIN(update_current_cmac_children_static());
+void update_current_cmac_children_static(List * old_cmac_children){
+	FIN(update_current_cmac_children_static(List * old_cmac_children));
 	child_struct	*child_ptr;
 	int				i;
 
 	//not a ktree-node -> no child
-	if ((!my_sink_tree.is_in_ktree) || (ktree_static_ok[my_stat_id]))
+	if ((!my_sink_tree.is_in_ktree) || (ktree_static_ok[my_stat_id])){
+		op_prg_list_free(my_sink_tree.cmac_children);
+		op_prg_list_elems_copy(old_cmac_children, my_sink_tree.cmac_children);
+		debug_print(LOW, DEBUG_CONTROL, "static -> %d %d\n", my_sink_tree.is_in_ktree, ktree_static_ok[my_stat_id]);
 		FOUT;
+	}
 	
 	//empty the old list
-	while(op_prg_list_size(my_sink_tree.cmac_children) > 0){
-		child_ptr = op_prg_list_remove(my_sink_tree.cmac_children , 0);
-		op_prg_mem_free(child_ptr);
-	}
+	op_prg_list_free(my_sink_tree.cmac_children);
 
 	//how many branches have we got?
 	if (is_sink){
@@ -2837,6 +2796,8 @@ void update_current_cmac_children_static(){
 			child_ptr->branch_id 	= direction_to_branch_id[direction];
 			op_prg_list_insert(my_sink_tree.cmac_children , child_ptr , OPC_LISTPOS_TAIL);
 		}
+		else
+			debug_print(LOW, DEBUG_CONTROL, "%d does not exist\n", my_address + direction_to_addr_incr_in_grid(direction) );
 	}
 	
 	ktree_static_ok[my_stat_id] = OPC_TRUE;
@@ -2897,7 +2858,7 @@ void update_current_cmac_children(){
 		break;
 		
 		case KTREE_ALGO_STATIC :
-			update_current_cmac_children_static();
+			update_current_cmac_children_static(old_cmac_children);
 		break;
 		
 		default:
@@ -4858,17 +4819,6 @@ void interrupt_process(){
 					//debug_print(MEDIUM , DEBUG_RADIO , "rx_busy %d -> %d (rx pow %f)\n", old , is_rx_busy , new_rx_power * 1E14);
 				break;
 				
-				//Signal from my busy tone receiver	
-				case STAT_FROM_RX_BUSY_TONE :
-				
-					new_rx_power = op_stat_local_read(op_intrpt_stat()); 
-					old = is_busy_tone_rx;
-					is_busy_tone_rx	= (new_rx_power > rx_power_threshold);	
-					if (old != is_busy_tone_rx)
-						debug_print(LOW , DEBUG_RADIO , "busy tone %d -> %d (power %f, threshold %f)\n", old , is_busy_tone_rx , new_rx_power*1E14 , rx_power_threshold*1E14);
-					
-				break;
-				
 				//2 transmitters but considered logicaly as one single transmitter with a different antenna
 				case STAT_FROM_TX_DIREC_SYNC:
 				case STAT_FROM_TX :
@@ -4879,17 +4829,6 @@ void interrupt_process(){
 					//debug_print(MEDIUM , DEBUG_RADIO , "tx_busy %d -> %d\n", old , is_tx_busy);
 				break;
 				
-				//End of busy tone -> we send another packet
-				case STAT_FROM_TX_BUSY_TONE:
-					
-				
-					if ((op_stat_local_read(op_intrpt_stat()) != 1.0) && (is_busy_tone_tx)){
-						maintain_busy_tone(1E-6);						
-				
-						debug_print(MEDIUM , DEBUG_RADIO , "keeps on maintaining activity on the busy_tone tx\n");
-					}
-				break;
-					
 				default :
 					snprintf(msg, 100, "We are not configured to handle the stat from the line %d\n", op_intrpt_stat());
 					op_sim_end(msg, "" , "" , "");
@@ -5445,7 +5384,6 @@ op_ima_sim_attr_get(OPC_IMA_INTEGER , "mac_layer",				&MAC_LAYER);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "routing",				&MAC_ROUTING);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "ktree_algo",				&KTREE_ALGO);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , "busy_tone",				&BUSY_TONE_ACTIVATED);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_branches",			&NB_BRANCHES);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "sink_address",			&sink_address);
 
@@ -5557,7 +5495,6 @@ my_sync_rx_power			= 0;
 
 //Power of the last received packet (when rx busy -> !busy)
 last_rx_power				= 0;
-busy_tone_rx_ignored		= OPC_FALSE;
 
 //next packet == hello
 is_hello_to_send 			= OPC_FALSE;
@@ -5693,54 +5630,6 @@ for (i=0; i<nb_radio ; i++){
 		//Reception power threshold
 		op_ima_obj_state_set (sub_chann_objid, &rx_power_threshold);
 	}
-}
-
-
-//-----------------------------------------------
-//				BUSY TONE
-//-----------------------------------------------
-
-//Such that one bit is transmitted in 1us
-busy_tone_speed = 1E6;
-
-if (OPC_TRUE){
-
-//Transmission
-	tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, STREAM_TO_BUSY_TONE);
-	if (tx_id == OPC_OBJID_INVALID)
-		op_sim_end("No attached transmitter\n", "" , "" , "");
-
-	//Channels nb
-	op_ima_obj_attr_get (tx_id, "channel", &chann_objid);
-
-	//id access
-	sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
-
-	//Speed
-	op_ima_obj_attr_set (sub_chann_objid, "data rate", 		busy_tone_speed);
-	op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
-	op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_SEPARATION);
-	op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
-	
-	//NB: bandwidth in KHz, frequency in MHz
-	if (my_main_bandwidth * busy_tone_speed / operational_speed >= 1000 * SHIFT_FREQ_SEPARATION)
-		op_sim_end("The bandiwthd separation between the busy tone " , "and the principal radio is too small." , "Please increase the value of SHIFT_FREQ_BUSY_TONE", "to separate sufficiently the channels");
-
-	
-//reception	
-	rx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, STREAM_FROM_BUSY_TONE);
-	if (rx_id == OPC_OBJID_INVALID)
-		op_sim_end("No attached transmitter\n", "" , "" , "");
-
-	//Channels nb
-	op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
-
-	//id access
-	sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, 0);
-
-	//Speed
-	op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth * busy_tone_speed / operational_speed);
-	op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency - SHIFT_FREQ_SEPARATION);
 }
 
 
@@ -5969,21 +5858,6 @@ if (!is_tx_busy){
 	
 	switch (next_frame_to_send.type){
 	
-		//Ack sent -> no more busy_tone required
-		case ACK_PK_TYPE:
-			is_busy_tone_tx = OPC_FALSE;
-		break;
-		
-		//RTS sent -> we ignore further busy tone in reception
-		case RTS_PK_TYPE:
-			busy_tone_rx_ignored = OPC_TRUE;
-		break;
-		
-		//CTS sent -> we activate the busy tone
-		case CTS_PK_TYPE:
-			maintain_busy_tone(SIFS);
-		break;
-		
 		//Increases power (to 10W, that is enormous and all the nodes will get it)
 		//If a node does not receive the SYNC it is not a problem: the branch will not expand to the network extremities
 		case SYNC_PK_TYPE:
@@ -6328,7 +6202,6 @@ if (!IS_MEDIUM_BUSY){
 
 if (DEBUG_STATE_MACHINE){
 	debug_print(LOW , DEBUG_GLOBAL , "EXIT - DEFER1 - %d - timeout %f\n", my_address , next_frame_to_send.ifs *1E6);
-	debug_print(LOW, DEBUG_GLOBAL , "%d : %d %d %d %d %d %d %d\n", IS_MEDIUM_BUSY , is_rx_busy , is_tx_busy , get_nav_main_freq() >= op_sim_time() , is_busy_tone_rx , !busy_tone_rx_ignored , BUSY_TONE_ACTIVATED , !my_sink_tree.is_in_ktree);
 	print_nav_list(DEBUG_GLOBAL);
 }
 ]]>
@@ -6681,8 +6554,6 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 			change_tx_rx_freq(my_main_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
 	}	
 
-	//The frame timeouted: no more busy tone in transmission
-	is_busy_tone_tx 		= OPC_FALSE;
 }
 
 
@@ -6690,9 +6561,6 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 //The medium is no longer reserved for this flow
 if ((is_reply_received) || (IS_FRAME_TIMEOUT) || is_reply_bad) {
 	is_reply_to_receive		= OPC_FALSE;
-	
-	//The transmission whatever it is succefull or not is ended: we must take into account the current busy tones
-	busy_tone_rx_ignored 	= OPC_FALSE;
 }
 
 
