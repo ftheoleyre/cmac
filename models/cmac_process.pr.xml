@@ -380,6 +380,11 @@ The number of leaves for the k-tree core (in our case, the number of branches st
 				</comments>
 			</properties>
 		</attribute>
+		<attribute name="sink_address" group="traffic" type="integer">
+			<properties type="integer" auto-assign="no" symbolic-only="no">
+				<default-value value="0"/>
+			</properties>
+		</attribute>
 	</simulation-attributes>
 	<attribute-assignments>
 		<assignment attribute-name="Address" type="integer" status="promoted"/>
@@ -618,6 +623,8 @@ int	\NB_BRANCHES;
 /* -size of my subtree (descendant + myself)      */
 sink_tree_struct	\my_sink_tree;
 
+/* the address of the sink */
+int	\sink_address;
 
 ]]>
 	</state-variables>
@@ -656,8 +663,8 @@ cmac to define the branches that 'collect' the traffic to the sink)
 //				SPECIAL DEBUG
 //-----------------------------------------------
 
-#define		DEBUG_STATE_MACHINE				OPC_FALSE
-
+#define		DEBUG_STATE_MACHINE				0
+//(my_address == 506)
 
 
 
@@ -1463,6 +1470,33 @@ void print_frame_id_seen(int debug_type){
 //
 //-----------------------------------------------------------
 
+
+//Prints the content of the data frame buffer
+void print_unicast_frame_buffer(int debug_type){
+	FIN(print_unicast_frame_buffer(int debug_type));
+	
+	//Frame buffer
+	frame_struct	*ptr;
+	//info
+	char			msg[100];
+	int				i;
+
+	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
+	debug_print(LOW , debug_type , "			Unicast Frame Buffer of %d (size %d)\n" , my_address , op_prg_list_size(unicast_frame_buffer));
+	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
+	debug_print(LOW , debug_type , "DEST	|	TYPE		| 	ID		|	NB_RETRY	|	MIN_TRANSMISSION\n");
+
+
+	
+	for(i=op_prg_list_size(unicast_frame_buffer)-1 ; i>=0 ; i--){
+		ptr = op_prg_list_access(unicast_frame_buffer , i);
+
+		debug_print(LOW , debug_type , "%5d	|	%s	|	%d		|	%d		|	%f\n", ptr->destination ,  pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id , ptr->nb_retry , ptr->time_transmission_min);
+	}
+	FOUT;
+}
+
+
 //increments the number of retransmissions for the corresponding frame_id
 void increment_nb_rety_unicast_frame_buffer(int id){
 	FIN(increment_nb_rety_unicast_frame_buffer(int id));
@@ -1481,13 +1515,12 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 			ptr->nb_retry++;
 			
 			if (ptr->nb_retry == MEDIUM_NB_RETRY){
-				ptr->time_transmission_min = op_sim_time() + TIME_MAX_PRIVILEGED * 2;
+				ptr->time_transmission_min = op_sim_time() + TIME_MAX_PRIVILEGED;
 			}
 			
 			//Verify that we dont have too many retransmissions
 			if (ptr->nb_retry >= MAX_NB_RETRY){
 				debug_print(LOW, DEBUG_DATA , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
-				debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 				
 				
 				ptr = op_prg_list_remove(unicast_frame_buffer , i);
@@ -1496,9 +1529,11 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 				op_prg_mem_free(ptr);
 			}
 			else
-				debug_print(LOW, DEBUG_TIMEOUT , "the unicast frame to %d was not acknowledged -> RETRANSMISSION (nb retry %d type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
+				debug_print(LOW, DEBUG_DATA , "the unicast frame to %d was not acknowledged -> RETRANSMISSION (nb retry %d type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
 		}
-	}
+	}	
+	print_unicast_frame_buffer(DEBUG_DATA);	
+	
 	FOUT;
 }
 
@@ -1548,6 +1583,12 @@ void add_in_unicast_frame_buffer(frame_struct frame_tmp , int position){
 	if ((frame_tmp.type != DATA_UNICAST_PK_TYPE) && (frame_tmp.type != DATA_MULTICAST_PK_TYPE) && (frame_tmp.type != HELLO_PK_TYPE))
 		op_sim_end("It is not possible to add a control frame" , "in the buffer of data unicast frame to send", "" , "");
 	
+	//buffer size
+	if (op_prg_list_size(unicast_frame_buffer) > DATA_BUFFER_SIZE_MAX){
+		debug_print(LOW, DEBUG_DATA, "Overflow: the unicast frame to %d (id %d) was destroyed directly before its insertion in the data buffer\n", frame_tmp.destination , frame_tmp.frame_id);
+		op_pk_destroy(frame_tmp.payload);
+		FOUT;
+	}
 	
 	//Timeouts
 	if (op_prg_list_size(unicast_frame_buffer) == 0)
@@ -1613,30 +1654,6 @@ frame_struct *get_unicast_frame_buffer(int pos){
 }
 
 
-//Prints the content of the data frame buffer
-void print_unicast_frame_buffer(int debug_type){
-	FIN(print_unicast_frame_buffer(int debug_type));
-	
-	//Frame buffer
-	frame_struct	*ptr;
-	//info
-	char			msg[100];
-	int				i;
-
-	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
-	debug_print(LOW , debug_type , "			Unicast Frame Buffer of %d (size %d)\n" , my_address , op_prg_list_size(unicast_frame_buffer));
-	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
-	debug_print(LOW , debug_type , "DEST	|	TYPE		| 	ID		|	NB_RETRY	|	MIN_TRANSMISSION\n");
-
-
-	
-	for(i=op_prg_list_size(unicast_frame_buffer)-1 ; i>=0 ; i--){
-		ptr = op_prg_list_access(unicast_frame_buffer , i);
-
-		debug_print(LOW , debug_type , "%5d	|	%s	|	%d		|	%d		|	%f\n", ptr->destination ,  pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id , ptr->nb_retry , ptr->time_transmission_min);
-	}
-	FOUT;
-}
 
 
 
@@ -3750,10 +3767,10 @@ void set_next_frame_null(){
 void change_next_frame(frame_struct new_frame){
 	FIN(change_next_frame(frame_struct new_frame));
 	
-//	char	msg1[100];
-//	char	msg2[100];
+	char	msg1[100];
+	char	msg2[100];
 
-	//debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
+	debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
 	
 	next_frame_to_send = new_frame;
 	
@@ -4459,6 +4476,7 @@ void receive_packet_from_radio(){
 							int	data_id;
 							op_pk_fd_get(payload, FIELD_PAYLOAD_ID, &data_id);							
 							debug_print(LOW, DEBUG_DATA, "Data frame to forward (dataid %d)\n", data_id); 
+							cmac_interface_add_in_route(data_id, my_address);
 							
 							prepare_data_frame(payload , frame_id , next_hop , 1);
 							print_unicast_frame_buffer(DEBUG_CONTROL);
@@ -5389,7 +5407,7 @@ char	dirname[200];
 DIR		*pdir;
 char 	log_dir_tmp[FILENAME_LOG_MAX];
 //Id
-int		intf_id;
+//int		intf_id;
 
 
 
@@ -5413,51 +5431,6 @@ op_ima_obj_attr_set (op_id_self(), "Address", my_address);
 
 
 
-//-----------------------------------------------
-//		   			ROUTING
-//-----------------------------------------------
-
-
-//-----------  IS_KTREE_NODE  --------------
-
-my_sink_tree.is_in_ktree 	= OPC_FALSE;
-my_sink_tree.subtree_size	= 0;
-my_sink_tree.parent			= ADDR_INVALID;
-my_sink_tree.cmac_children	= op_prg_list_create();
-
-
-//--------------  IS_SINK  -----------------
-
-//The upper process is connected to two out-streams -> It has a SINK process
-intf_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_PROC, 0);
-if (op_topo_assoc_count(intf_id , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_STRM) > 1)
-	is_sink = OPC_TRUE;
-if (is_sink){
-	my_sink_tree.is_in_ktree 	= OPC_TRUE;
-	my_sync_rx_power 			= OPC_DBL_INFINITY;
-	
-	//other nodes have to know my position (if we have a grid network)
-	x_sink_int = get_x_coord_in_grid(my_address);
-	y_sink_int = get_y_coord_in_grid(my_address);
-
-}
-
-
-
-//---------  DISTANCES / ROUTING  ------------
-
-if (is_sink){
-	my_sink_tree.sink_dist 	= 0;
-	my_sink_tree.ktree_dist = 0;
-}
-else{
-	my_sink_tree.sink_dist 	= DIST_SINK_MAX;
-	my_sink_tree.ktree_dist = DIST_SINK_MAX;
-}
-
-
-
-
 
 
 //-----------------------------------------------
@@ -5474,6 +5447,7 @@ op_ima_sim_attr_get(OPC_IMA_INTEGER , "routing",				&MAC_ROUTING);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "ktree_algo",				&KTREE_ALGO);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "busy_tone",				&BUSY_TONE_ACTIVATED);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_branches",			&NB_BRANCHES);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "sink_address",			&sink_address);
 
 //no ktree-algo if I do not execute CMAC
 if (MAC_LAYER != CMAC)
@@ -5488,21 +5462,64 @@ if (op_ima_sim_attr_exists("Result_Directory")){
 //No RTS / CTS -> pk_size set to the infinity value
 if (RTS_PK_SIZE == -1)
 	RTS_PK_SIZE = OPC_INT_INFINITY;
+op_ima_obj_attr_get(op_id_self() ,  "Transmission Power",	&POWER_TX);
 
+
+//A ktree node is allowed to send packets only when it is privileged
+strict_privileged_mode = (MAC_LAYER == CMAC);
+
+
+
+
+//-----------------------------------------------
+//		   			ROUTING
+//-----------------------------------------------
+
+
+//-----------  IS_KTREE_NODE  --------------
+
+my_sink_tree.is_in_ktree 	= OPC_FALSE;
+my_sink_tree.subtree_size	= 0;
+my_sink_tree.parent			= ADDR_INVALID;
+my_sink_tree.cmac_children	= op_prg_list_create();
+
+
+//--------------  IS_SINK  -----------------
+
+//The upper process is connected to two out-streams -> It has a SINK process
+/*intf_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_PROC, 0);
+if (op_topo_assoc_count(intf_id , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_STRM) > 1)
+	is_sink = OPC_TRUE;
+*/
+if (sink_address == my_address){
+	is_sink = OPC_TRUE;
+	my_sink_tree.is_in_ktree 	= OPC_TRUE;
+	my_sync_rx_power 			= OPC_DBL_INFINITY;
 	
-	
-if (is_sink){
+	//other nodes have to know my position (if we have a grid network)
+	x_sink_int = get_x_coord_in_grid(my_address);
+	y_sink_int = get_y_coord_in_grid(my_address);
+
+	//time for privileged nodes
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "max_time_priv_mode",	&slot_privileged_duration);
 	TIME_MAX_PRIVILEGED = slot_privileged_duration * 2;
 }
 else
 	slot_privileged_duration 	= 0;
 
-op_ima_obj_attr_get(op_id_self() ,  "Transmission Power",	&POWER_TX);
 
 
-//A ktree node is allowed to send packets only when it is privileged
-strict_privileged_mode = (MAC_LAYER == CMAC);
+
+//---------  DISTANCES / ROUTING  ------------
+
+if (is_sink){
+	my_sink_tree.sink_dist 	= 0;
+	my_sink_tree.ktree_dist = 0;
+}
+else{
+	my_sink_tree.sink_dist 	= DIST_SINK_MAX;
+	my_sink_tree.ktree_dist = DIST_SINK_MAX;
+}
 
 
 
@@ -6469,6 +6486,7 @@ if ((op_ev_valid(backoff_intrpt)) && (IS_MEDIUM_BUSY)){
 	
 	//Stores the remaining backoff
 	my_backoff = ceil((op_ev_time(backoff_intrpt) - op_sim_time()) / SLOT_BACKOFF);
+	debug_print(MEDIUM, DEBUG_BACKOFF, "%f - %f / %f\n", op_ev_time(backoff_intrpt) , op_sim_time() , SLOT_BACKOFF);
 
 	//disable the previous backoff interrupt (the backoff must not be decremented during medium activity)
 	op_ev_cancel(backoff_intrpt);
@@ -6646,7 +6664,7 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 	if ((last_frame_sent.type == DATA_UNICAST_PK_TYPE) || (last_frame_sent.type == RTS_PK_TYPE))
 		increment_nb_rety_unicast_frame_buffer(last_frame_sent.frame_id);
 		
-	debug_print(LOW , DEBUG_TIMEOUT , "the flow to %d is broken for one of my frame (type %s, retry %d , id %d, next type %d) (timeout %d bad_reply %d)\n", last_frame_sent.destination , pk_type_to_str(last_frame_sent.type, msg, 100) , last_frame_sent.nb_retry , last_frame_sent.frame_id , next_frame_to_send.type , IS_FRAME_TIMEOUT , is_reply_bad);
+	debug_print(LOW , DEBUG_TIMEOUT , "the flow to %d is broken for one of my frame (type %s, retry %d , id %d, next type %d, dataok %d, empty %d) (timeout %d bad_reply %d)\n", last_frame_sent.destination , pk_type_to_str(last_frame_sent.type, msg, 100) , last_frame_sent.nb_retry , last_frame_sent.frame_id , next_frame_to_send.type , IS_DATA_OK , is_frame_buffer_empty() , IS_FRAME_TIMEOUT , is_reply_bad);
 	
 	
 	//CTR -> we must retransmit it
@@ -6661,14 +6679,8 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 		//Failed -> go to the main channel
 		if (nb_channels > 1)
 			change_tx_rx_freq(my_main_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
-	}
-	
+	}	
 
-	//Error time when a packet failed
-	if (!is_node_privileged)
-		update_nav_time(EIFS , my_address , my_main_frequency , -1);
-	
-	
 	//The frame timeouted: no more busy tone in transmission
 	is_busy_tone_tx 		= OPC_FALSE;
 }
@@ -6758,7 +6770,7 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="name" type="string" value="tr_316"/>
 			<attribute name="condition" type="string" value="is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad"/>
 		</transition>
-		<transition source-state-id="62" destination-state-id="41" label-x="643" label-y="70">
+		<transition source-state-id="62" destination-state-id="41" label-x="681" label-y="66">
 			<path-point x="794" y="147"/>
 			<path-point x="444" y="73"/>
 			<attribute name="name" type="string" value="tr_317"/>

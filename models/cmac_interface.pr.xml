@@ -27,7 +27,10 @@ priority of the packet.
 		</attribute>
 		<attribute name="Destination" type="integer">
 			<properties type="integer" auto-assign="no" symbolic-only="no">
-				<default-value value="1"/>
+				<default-value value-symbol="SINK"/>
+				<symbol-map>
+					<symbol name="SINK" value="1"/>
+				</symbol-map>
 			</properties>
 		</attribute>
 	</model-attributes>
@@ -113,6 +116,9 @@ int	\DEBUG;
 
 /* inter packet time for traffic generation */
 double	\inter_pk_time;
+
+/* the address of the sink */
+int	\sink_address_intf;
 
 ]]>
 	</state-variables>
@@ -470,7 +476,7 @@ double compute_delivery_ratio(List* ll, int id1, int id2){
 			nb_pk_sent ++;
 		
 		//this packet was received
-		if ((elem->pk_id <= id2) && (elem->pk_id >= id1) && (elem->received))
+		if ((elem->pk_id <= id2) && (elem->pk_id >= id1) && (elem->time_received > 0))
 			nb_pk_received++;
 	}
 	FRET((double)nb_pk_received / nb_pk_sent);
@@ -500,7 +506,7 @@ double compute_delay(List* ll, int id1, int id2){
 			nb_pk_sent ++;
 		
 		//this packet was received
-		if ((elem->pk_id <= id2) && (elem->pk_id >= id1) && (elem->received)){
+		if ((elem->pk_id <= id2) && (elem->pk_id >= id1) && (elem->time_received > 0)){
 			nb_pk_received++;
 			delay += elem->time_received - elem->time_sent;
 		}
@@ -533,7 +539,7 @@ double compute_max_delay(List* ll, int id1, int id2){
 			nb_pk_sent ++;
 		
 		//this packet was received
-		if ((elem->pk_id <= id2) && (elem->pk_id >= id1) && (elem->received)){
+		if ((elem->pk_id <= id2) && (elem->pk_id >= id1) && (elem->time_received > 0)){
 			nb_pk_received++;
 			if (elem->time_received - elem->time_sent > max_delay)
 				max_delay = elem->time_received - elem->time_sent;
@@ -544,6 +550,58 @@ double compute_max_delay(List* ll, int id1, int id2){
 
 
 
+
+
+//-----------------------------------------------------------
+//
+//			   STATS MANAGEMENT
+//
+//-----------------------------------------------------------
+
+
+//updates the route for this frame
+void cmac_interface_add_in_route(int frame_id, int addr){
+	FIN(cmac_interface_add_in_route(int frame_id, int addr));
+	pk_info		*elem;
+	int			i;
+	int			*addr_ptr;
+	
+	
+	//Error
+	if (frame_id > op_prg_list_size(pk_list))
+		op_sim_end("invalid data frame id", "", "", "");
+	
+	for(i=0 ; i < op_prg_list_size(pk_list) ; i++){
+		elem = op_prg_list_access(pk_list , i);
+		
+		//nb of sent packets
+		if (elem->pk_id == frame_id){
+			addr_ptr = op_prg_mem_alloc(sizeof(int));
+			*addr_ptr = addr;
+			op_prg_list_insert(elem->route, addr_ptr, OPC_LISTPOS_TAIL);
+			FOUT;
+		}
+	}
+
+	FOUT;
+}
+
+
+//converts a route into a string
+char*route_to_str(List *route, char *msg, short length){
+	FIN(route_to_str(List *route, char *msg, short length));
+	int		i;
+	char	str[20];
+	int		*elem;
+	
+	strcpy(msg, "");
+	for(i=0; i<op_prg_list_size(route); i++){
+		elem = op_prg_list_access(route, i);
+		snprintf(str, 20, "%d ", *elem);
+		strncat(msg, str, length);
+	}		
+	FRET(msg);;
+}
 
 
 //-----------------------------------------------------------
@@ -574,10 +632,10 @@ void debug_write_pk_info(){
 		op_sim_end(msg, "" , "" , "");
 	}
 
-	fprintf(pfile , "SRC	DEST	HOPS	RECEIVED	DELAY		PK_ID	SENT\n");
+	fprintf(pfile , "SRC	HOPS	DELAY		PK_ID	SENT	ROUTE\n");
 	for(i=0; i <op_prg_list_size(pk_list) ; i++){
 		elem = op_prg_list_access(pk_list, i);
-		fprintf(pfile , "%d	%d	%d	%d		%f	%d	%f\n" , elem->source , elem->destination , elem->hops , elem->received , elem->time_received - elem->time_sent , elem->pk_id , elem->time_sent);
+		fprintf(pfile , "%d	%d	%f	%d		%f	%s\n" , elem->source , op_prg_list_size(elem->route)-1, elem->time_received - elem->time_sent , elem->pk_id , elem->time_sent, route_to_str(elem->route, msg, 100));
 		
 	}
 	fclose(pfile);
@@ -682,9 +740,12 @@ op_ima_obj_attr_set(mac_id , "Address" , 	my_address);
 
 op_ima_obj_attr_get(op_id_self(),"Destination" ,&pk_destination);
 op_ima_sim_attr_get_int32("debug_level",		&DEBUG);
+op_ima_sim_attr_get_int32("sink_address",		&sink_address_intf);
 op_ima_sim_attr_get_dbl("interpacket_time", 	&inter_pk_time);
 op_ima_sim_attr_get_str("Result_Directory", 	FILENAME_LOG_MAX, log_dir_tmp);
 set_log_dir(log_dir_tmp);
+
+
 
 //----------------------------------------------------
 //
@@ -702,11 +763,9 @@ id_list = op_prg_list_create();
 
 //----------------------------------------------------
 //
-//			   SELF POSITIONING
+//				  TRAFFIC
 //
 //-----------------------------------------------------
-
-
 
 
 //Sets the inter-packet time value for all the nodes 
@@ -797,25 +856,30 @@ Packet	*pkptr;
 pkptr = op_pk_get(op_intrpt_strm());
 
 
+//the sink does not generate any packet (else it would be for itself)
+if (mac_address == sink_address_intf){
+	op_pk_destroy(pkptr);
+}
+else{
 
-//Sets source and destination (embedded directly in the frame)
-op_pk_fd_set(pkptr, FIELD_PAYLOAD_SOURCE, 	OPC_FIELD_TYPE_INTEGER, mac_address,	16);
-op_pk_fd_set(pkptr, FIELD_PAYLOAD_ID, 		OPC_FIELD_TYPE_INTEGER, current_pk_id, 	16);
+	//Sets source and destination (embedded directly in the frame)
+	op_pk_fd_set(pkptr, FIELD_PAYLOAD_SOURCE, 	OPC_FIELD_TYPE_INTEGER, mac_address,	16);
+	op_pk_fd_set(pkptr, FIELD_PAYLOAD_ID, 		OPC_FIELD_TYPE_INTEGER, current_pk_id, 	16);
 
 
-//Stats
-info_ptr = (pk_info*) op_prg_mem_alloc(sizeof(pk_info));
-info_ptr->source		= mac_address;
-info_ptr->destination	= pk_destination;
-info_ptr->hops			= 0;
-info_ptr->pk_id			= current_pk_id++;
-info_ptr->received		= OPC_FALSE;
-info_ptr->time_sent		= op_sim_time();
-op_prg_list_insert(pk_list, info_ptr, OPC_LISTPOS_TAIL);
+	//Stats
+	info_ptr = (pk_info*) op_prg_mem_alloc(sizeof(pk_info));
+	info_ptr->source		= mac_address;
+	info_ptr->pk_id			= current_pk_id++;
+	info_ptr->time_sent		= op_sim_time();
+	info_ptr->time_received	= -1;
+	info_ptr->route			= op_prg_list_create();
+	op_prg_list_insert(pk_list, info_ptr, OPC_LISTPOS_TAIL);
+	cmac_interface_add_in_route(current_pk_id - 1, mac_address);
 
-//effective transmission to the layer below
-op_pk_send (pkptr, STREAM_TO_MAC);
-
+	//effective transmission to the layer below
+	op_pk_send (pkptr, STREAM_TO_MAC);
+}
 ]]>
 				</value-text>
 			</attribute>
@@ -861,9 +925,7 @@ info_ptr = get_pk_info_in_list(pk_list , pk_id_tmp);
 if (info_ptr == NULL)
 	op_sim_end("The pk_id is not found in the list of generated packets" , "Do you use one single wlan_mac_intf ?" , "" , "");
 else{
-	info_ptr->hops ++;
-	
-	info_ptr->received 		= OPC_TRUE;
+	info_ptr->hops ++;	
 	info_ptr->time_received = op_sim_time();
 }
 
@@ -965,7 +1027,7 @@ if (my_stat_id == 0){
 			nb_pk_sent ++;
 	
 			//Received !!
-			if (elem->received){
+			if (elem->time_received > 0){
 				nb_pk_received ++;
 			
 				//Delays

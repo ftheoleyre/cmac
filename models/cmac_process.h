@@ -124,12 +124,11 @@ typedef struct{
 
 typedef struct {
 	int		source;
-	int		destination;
 	int		hops;
 	int		pk_id;
-	Boolean	received;
 	double	time_sent;
 	double	time_received;
+	List	*route;
 } pk_info;
 
 

@@ -60,4 +60,15 @@
 
 
 
+
+//--------------------------------------
+//
+//	TO UPDATE STATS ON DATA FRAMES
+//
+//--------------------------------------
+
+//updates the route for this frame
+void cmac_interface_add_in_route(int frame_id, int addr);
+
+
 #endif
