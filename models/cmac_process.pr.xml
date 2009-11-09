@@ -314,24 +314,6 @@ remains privileged
 				<default-value value="4"/>
 			</properties>
 		</attribute>
-		<attribute name="routing" group="routing" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="yes">
-				<default-value value-symbol="KTREE"/>
-				<symbol-map>
-					<symbol name="KTREE" value="2"/>
-					<symbol name="SHORT" value="1"/>
-					<symbol name="NO" value="0"/>
-				</symbol-map>
-				<comments>
-<![CDATA[
-the routing algorihtm used in the MAC layer:
--KTREE: traffic is first forwarded to the closest ktree node, and then forwarded uniquely through the ktree-core
--short: shortest routes
--no: no mac routing is implemented (it has to be specified in the application layer)
-]]>
-				</comments>
-			</properties>
-		</attribute>
 		<attribute name="nb_channels" group="cmac" type="integer">
 			<properties type="integer" auto-assign="yes" symbolic-only="no">
 				<default-value value="1"/>
@@ -359,15 +341,6 @@ SYNC: a SYNC packets is sent by the sink, with a maximum power. Any node receive
 MTree: firstly, a tree which maximizes the leaves is constructed. Then, we construct a node-disjoint k-tree core (i.e. selection of the k different branches which maximizes the number of descendants)
 ]]>
 				</comments>
-			</properties>
-		</attribute>
-		<attribute name="busy_tone" group="cmac" type="integer">
-			<properties type="integer" auto-assign="yes" symbolic-only="yes">
-				<default-value value-symbol="NO"/>
-				<symbol-map>
-					<symbol name="YES" value="1"/>
-					<symbol name="NO" value="0"/>
-				</symbol-map>
 			</properties>
 		</attribute>
 		<attribute name="nb_branches" group="cmac" type="integer">
@@ -584,9 +557,6 @@ int	\BETA;
 
 /* A RTS/CTS is required gor longer packets (OPC_INT_INFINITY -> never required) */
 int	\RTS_PK_SIZE;
-
-/* Type of routing in the MAC layer */
-int	\MAC_ROUTING;
 
 /* transmission power */
 double	\POWER_TX;
@@ -1017,6 +987,30 @@ void change_tx_power(double power , int stream){
 	FOUT;
 }
 
+
+//returns my current freq
+short get_my_current_freq(){
+	FIN(get_my_current_freq());
+	
+	int			radio_id , chan_id , sub_chan_id;
+	double		frequency, frequency_norm;
+	int			channel_num;
+
+	//Gets only transmitter value (the receiver value is identical, or there is a big trouble !)
+	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , STREAM_TO_RADIO);
+	op_ima_obj_attr_get (radio_id, "channel", &chan_id);
+	sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
+	op_ima_obj_attr_get (sub_chan_id, "min frequency", 	&frequency);
+	
+	frequency_norm 	= frequency - my_main_frequency - (my_main_bandwidth / 1000 + SHIFT_FREQ_SEPARATION);
+	channel_num 	= frequency_norm / (my_main_bandwidth * RATIO_PRIV_BANDWIDTH  / 1000 + SHIFT_FREQ_SEPARATION);
+	
+//	my_privileged_frequency = my_main_frequency;
+//	my_privileged_frequency += my_main_bandwidth / 1000 + SHIFT_FREQ_SEPARATION;
+//	my_privileged_frequency += (my_main_bandwidth * RATIO_PRIV_BANDWIDTH  / 1000 + SHIFT_FREQ_SEPARATION) * (ctr_last_branch % (nb_channels - 1));
+
+	FRET(channel_num);
+}
 
 //returns true if we are focused on the main channel
 Boolean is_main_freq_active(int stream){
@@ -1991,41 +1985,17 @@ void print_frame_buffer(int debug_type){
 int get_next_hop(){
 	FIN(get_next_hop());
 	
-//	int				i;
-//	neigh_struct	*neigh_ptr;
 	compar_struct 	next;
 	
 	debug_print(LOW , DEBUG_DATA , "Route computation toward the sink. Candidates are:\n");
 	
-	//Initialization
-	next.addr 		= ADDR_BROADCAST;
-	next.ktree_dist = my_sink_tree.ktree_dist;
-	next.sink_dist	= my_sink_tree.sink_dist;
-	switch (MAC_ROUTING){
-	
-		//In priority to the ktree and then to the sink
-		case ROUTING_MAC_KTREE:
-		
-		//since all nodes have a null distance to the ktree, equivalent to the shortest paths to the sink
-		case ROUTING_MAC_SHORT:
-		
-			next.addr		= my_sink_tree.parent;
-			next.ktree_dist	= my_sink_tree.ktree_dist;
-			next.sink_dist	= my_sink_tree.sink_dist - 1;
+	//Next hop
+	next.addr		= my_sink_tree.parent;
+	next.ktree_dist	= my_sink_tree.ktree_dist;
+	next.sink_dist	= my_sink_tree.sink_dist - 1;
 			
-			debug_print(MAX , DEBUG_DATA , "parent node to the sink: node %d\n", next.addr);
+	debug_print(MAX , DEBUG_DATA , "Next hop (and parent node) to the sink is %d\n", next.addr);
 
-		break;
-		case ROUTING_MAC_NO:
-			op_sim_end("I am not allowed to route packets" , "But I try to find one next hop" , "Please correct the corresponding bug" , "");
-		break;
-		
-		default:
-			op_sim_end("Unknown routing type" , "" , "" , "");
-		break;
-	}
-
-	debug_print(MEDIUM , DEBUG_DATA , "Next hop to the sink is %d\n",  next.addr);
 	FRET(next.addr);
 
 }
@@ -3271,10 +3241,16 @@ void delete_timeouted_neighbors(void *ptr , int code){
 		
 		//The entry is timeouted -> stability --
 		if (neigh_ptr->timeout <= op_sim_time()){
-			stability_update(neigh_ptr, OPC_FALSE);
-			neigh_ptr->timeout 	+= HELLO_PK_PERIOD + HELLO_PK_PERIOD / 10;
-			if (my_address == 707)
-				debug_print(MAX, DEBUG_HELLO,"timeouted for neigh %d\n", neigh_ptr->address);
+			if ((op_sim_time() < TIME_BEFORE_HELLO_CONVERGENCE) || (!FREEZE_HELLO_DISCOVERY_AFTER_CONVERGENCE))
+				stability_update(neigh_ptr, OPC_FALSE);		
+			
+			//next timeout 
+			if (op_sim_time() < TIME_BEFORE_HELLO_CONVERGENCE)
+				neigh_ptr->timeout 	+= HELLO_PK_PERIOD_BEFORE_CONVERGENCE + HELLO_PK_PERIOD_BEFORE_CONVERGENCE / 10;
+			else
+				neigh_ptr->timeout 	+= HELLO_PK_PERIOD + HELLO_PK_PERIOD / 10;
+				
+			
 			
 			//the PDR is 0 -> we just remove this neighbor
 			if (stability_get(neigh_ptr) == 0){
@@ -4424,7 +4400,7 @@ void receive_packet_from_radio(){
 
 					
 					//Transmission to the upper layer
-					if ((!is_frame_id_seen(source, frame_id)) && ((is_sink) || (MAC_ROUTING == ROUTING_MAC_NO))){
+					if ((!is_frame_id_seen(source, frame_id)) && (is_sink)){
 						debug_print(LOW, DEBUG_DATA, "The data frame was received by the sink (id %d)\n", frame_id);
 						op_pk_send(op_pk_copy(payload), STREAM_TO_UP);
 					}
@@ -4858,10 +4834,10 @@ void interrupt_process(){
 			if (op_intrpt_code() == HELLO_PK_CODE){
 				
 				//The next HELLO
-				if (op_sim_time() > TIME_START_DATA - 3 * HELLO_PK_PERIOD)
+				if (op_sim_time() > TIME_BEFORE_HELLO_CONVERGENCE)
 					next_hello = HELLO_PK_PERIOD - op_dist_uniform(HELLO_PK_PERIOD / 10);
 				else
-					next_hello = HELLO_PK_PERIOD_BEFORE_DATA - op_dist_uniform(HELLO_PK_PERIOD_BEFORE_DATA / 10);
+					next_hello = HELLO_PK_PERIOD_BEFORE_CONVERGENCE - op_dist_uniform(HELLO_PK_PERIOD_BEFORE_CONVERGENCE / 10);
 					
 				//prepares the packet
 				generate_hello(next_hello);
@@ -5137,6 +5113,7 @@ char* pk_type_to_str(short pk_type , char *msg, int length){
 	FRET(msg);
 }
 
+
 // Print all debug messages classified in different files
 void debug_print(const int level, const int type , const char* fmt, ...){	
 	FIN(debug_print(const int level, const int type , const char* fmt, ...));
@@ -5166,9 +5143,10 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 	if (level <= DEBUG)	{			
 		//Normal debug
 		if (type != DEBUG_GLOBAL){
-			fprintf(pfile , "[%4ds , "	, (int) floor(time));
-			fprintf(pfile , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
-			fprintf(pfile , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
+			fprintf(pfile , "[%4ds, "	, (int) floor(time));
+			fprintf(pfile , "%4dms, "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
+			fprintf(pfile , "%4dus, "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
+			fprintf(pfile , "%1.1ich, "	, get_my_current_freq());	
 			fprintf(pfile , "%4.1i] "	, my_address);	
 			vfprintf(pfile , fmt, argptr);     
 		}
@@ -5179,6 +5157,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 			printf("[%4ds , "	, (int) floor(time));
 			printf("%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			printf("%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
+			printf("%1.1ich, "	, get_my_current_freq());	
 			printf("%4.1i] "	, my_address);	
 			vprintf(fmt, argptr);   
 		}
@@ -5188,6 +5167,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 			fprintf(my_debug_file , "[%4ds , "	, (int) floor(time));
 			fprintf(my_debug_file , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			fprintf(my_debug_file , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
+			fprintf(my_debug_file , "%1.1ich, "	, get_my_current_freq());	
 			fprintf(my_debug_file , "%4.1i] "	, my_address);	
 			vfprintf(my_debug_file , fmt, argptr);     
 		}
@@ -5197,6 +5177,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 			fprintf(debug_files[DEBUG_GLOBAL] , "[%4ds , "	, (int) floor(time));
 			fprintf(debug_files[DEBUG_GLOBAL] , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			fprintf(debug_files[DEBUG_GLOBAL] , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
+			fprintf(debug_files[DEBUG_GLOBAL] , "%1.1ich, "	, get_my_current_freq());	
 			fprintf(debug_files[DEBUG_GLOBAL] , "%4.1i] "	, my_address);	
 			vfprintf(debug_files[DEBUG_GLOBAL] , fmt, argptr);     
 		}
@@ -5382,7 +5363,6 @@ op_ima_sim_attr_get(OPC_IMA_INTEGER , "beta",					&BETA);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "mac_layer",				&MAC_LAYER);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , "routing",				&MAC_ROUTING);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "ktree_algo",				&KTREE_ALGO);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_branches",			&NB_BRANCHES);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "sink_address",			&sink_address);

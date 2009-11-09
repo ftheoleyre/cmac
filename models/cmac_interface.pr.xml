@@ -999,14 +999,14 @@ int			nb_pk_sent = 0;
 double		av_degree = 0;
 //delay
 double		delay_tmp;
-double		cumulated_delay = 0;
-double		cumulated_route_length = 0;
-double		max_delay = 0;
+double		delay_avg, delay_cumulated = 0, delay_max = 0, delay_stddev = 0;
+double		route_length_cumulated = 0;		
 //Simulation parameters
 int			RTS;
 int			mac_layer = 0;
 int			sink_address, pos_method;
 double		X_MAX, Y_MAX;
+int			nb_branches, nb_channels;
 
 
 if (my_stat_id == 0){
@@ -1021,6 +1021,8 @@ if (my_stat_id == 0){
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"X_MAX",			&X_MAX);
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"Y_MAX",			&Y_MAX);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"Positions_Method",	&pos_method);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_branches",		&nb_branches);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_channels",		&nb_channels);
 
 
 	
@@ -1040,16 +1042,26 @@ if (my_stat_id == 0){
 			
 				//Delays
 				delay_tmp = elem->time_received - elem->time_sent;
-				cumulated_delay += delay_tmp;
-				if (delay_tmp > max_delay)
-					max_delay = delay_tmp;
+				delay_cumulated += delay_tmp;
+				if (delay_tmp > delay_max)
+					delay_max = delay_tmp;
 				
 				//route length
-				cumulated_route_length += op_prg_list_size(elem->route) - 1;
+				route_length_cumulated += op_prg_list_size(elem->route) - 1;
 			}
 		}
 	}
-
+	delay_avg = delay_cumulated / nb_pk_received;
+	//second walk to compute the standard deviation
+	for(i=0; i <op_prg_list_size(pk_list) ; i++){
+		elem = op_prg_list_access(pk_list, i);
+		
+		if ((elem->time_sent <= op_sim_time() -1.0) && (elem->time_received > 0)){
+			delay_stddev += pow(delay_avg - (elem->time_received - elem->time_sent), 2);
+		}
+	}	
+	delay_stddev = sqrt(delay_stddev / nb_pk_received);
+	
 	//All info about the packets in a common file
 	if (DEBUG)
 		debug_write_pk_info();
@@ -1081,6 +1093,8 @@ if (my_stat_id == 0){
 	fprintf(pfile, "RTS                                : %d\n", RTS);
 	fprintf(pfile, "Inter Packet Time                  : %f\n", inter_pk_time);
 	fprintf(pfile, "Sink address                       : %d\n", sink_address);
+	fprintf(pfile, "Number of branches                 : %d\n", nb_branches);
+	fprintf(pfile, "Number of channels                 : %d\n", nb_channels);
 	fprintf(pfile, "X_MAX                              : %f\n", X_MAX);
 	fprintf(pfile, "Y_MAX                              : %f\n", Y_MAX);
 	fprintf(pfile, "Initial Locations                  : %d\n", pos_method);
@@ -1102,12 +1116,15 @@ if (my_stat_id == 0){
 	fprintf(pfile, "\n");
 		
 	fprintf(pfile, "\n\n--------------------  DELAY ---------------------------------\n");
-	fprintf(pfile, "Average Delay                      : %f\n", cumulated_delay / nb_pk_received);
-	fprintf(pfile, "Max Delay                          : %f\n", max_delay);
+	fprintf(pfile, "Average Delay                      : %f\n", delay_avg);
+	fprintf(pfile, "Max Delay                          : %f\n", delay_max);
+	fprintf(pfile, "Delay Confidence Interval plus     : %f\n", delay_avg + 2 * delay_stddev / sqrt(nb_pk_received));
+	fprintf(pfile, "Delay Confidence Interval min      : %f\n", delay_avg - 2 * delay_stddev / sqrt(nb_pk_received));
+	fprintf(pfile, "Delay Standard Deviation           : %f\n", delay_stddev);
 	fprintf(pfile, "\n");
 
 	fprintf(pfile, "\n\n--------------------  ROUTE ---------------------------------\n");
-	fprintf(pfile, "Average route length               : %f\n", cumulated_route_length / nb_pk_received);
+	fprintf(pfile, "Average route length               : %f\n", route_length_cumulated / nb_pk_received);
 	fprintf(pfile, "\n");
 
 	
