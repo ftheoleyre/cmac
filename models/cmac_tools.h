@@ -35,6 +35,13 @@ typedef struct{
 #define	FILENAME_LOG_MAX	50
 
 
+//-------------------------  FREQUENCIES  -----------------------------------
+
+
+
+double 	channel_get_freq(int nb);
+int 	channel_get_id(double freq);
+
 
 //-------------------------  GRAPH  -----------------------------------
 

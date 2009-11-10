@@ -30,6 +30,12 @@
 
 
 
+//-----------------------------------------------
+//				ATTRIBUTES
+//-----------------------------------------------
+
+extern int nb_channels;
+
 
 
 //-----------------------------------------------
@@ -140,7 +146,7 @@ typedef struct {
 typedef struct{
 	int		address;
 	double	timeout;
-	double	frequency;
+	short	channel;
 }nav_struct;
 
 

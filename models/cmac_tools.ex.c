@@ -11,7 +11,76 @@
 #include 	"cmac_tools.h"
 
 
+//-----------------------------------------------------------------------------
+//						FREQUENCIES
+//-----------------------------------------------------------------------------
 
+
+//list of channels and their associated frequency
+double channel_get_freq(int nb){
+	FIN(channel_get_freq(int nb));
+
+	//802.11bg
+	switch(nb){
+		case 0 :
+			FRET(2412);
+		case 1 :
+			FRET(2437);
+		case 2 :
+			FRET(2472);
+		default :
+			op_sim_end("Error, this channel number is unknown", "","","");
+	}
+
+/*	//802.11a
+	switch(nb){
+		case 0 :
+			FRET(5170);
+		case 1 :
+			FRET(5200);
+		case 2 :
+			FRET(5230);
+		case 3 :
+			FRET(5260);
+		case 4 :
+			FRET(5300);
+		case 5 :
+			FRET(5500);
+		case 6 :
+			FRET(5540);
+		case 7 :
+			FRET(5600);
+		case 8 :
+			FRET(5640);
+		case 9 :
+			FRET(5680);
+		case 10 :
+			FRET(5745);
+		case 11 :
+			FRET(5785);
+		case 12 :
+			FRET(5825);
+		default :
+			op_sim_end("Error, this channel number is unknown", "","","");
+	}
+*/
+	FRET(-1);
+}
+
+//returns the channel nb associated to a given frequency
+int channel_get_id(double freq){
+	FIN(channel_get_id(double freq));
+
+	int		i;
+
+	for(i=0; i<nb_channels; i++)
+		if (channel_get_freq(i) == freq)
+			FRET(i);
+	
+	op_sim_end("This frequency does not correspond to any channel", "", "", "");
+	FRET(-1);
+	
+}
 
 
 

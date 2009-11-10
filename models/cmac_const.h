@@ -150,26 +150,13 @@
 #define		DATA_BUFFER_SIZE_MAX			20
 
 
-//-----------------------------------------------
-//				BUSY TONE
-//-----------------------------------------------
-
-//The frequency for the busy tone is 
-//SHIFT_FREQ_SEPARATION MHz less than for the transmission radio
-#define		SHIFT_FREQ_SEPARATION			0.2					
-
-
-
-
 
 
 //-----------------------------------------------
 //				MULTI CHANNEL
 //-----------------------------------------------
 
-//#define		MULTI_CHANNEL					1
-#define		RATIO_PRIV_BANDWIDTH 			1
-
+#define		CHANNEL_MAIN_ID					0
 
 
 
@@ -281,7 +268,7 @@
 #define		FIELD_PK_DATA_PAYLOAD				"payload"
 
 //ctr
-#define		FIELD_PK_CTR_FREQ					"freq"
+#define		FIELD_PK_CTR_CHANNEL				"channel"
 #define		FIELD_PK_CTR_TSLOT					"t_slot"
 #define		FIELD_PK_CTR_OFFSET					"offset"
 #define		FIELD_PK_CTR_BRANCHID				"branch_id"
