@@ -39,7 +39,7 @@ typedef struct{
 
 
 
-double 	channel_to_freq(short channels);
+double 	channel_to_freq(int channel);
 int 	freq_to_channel(double freq);
 
 

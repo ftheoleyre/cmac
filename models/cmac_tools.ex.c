@@ -17,8 +17,8 @@
 
 
 //list of channels and their associated frequency
-double channel_to_freq(short channel){
-	FIN(channel_to_freq(short channel));
+double channel_to_freq(int channel){
+	FIN(channel_to_freq(int channel));
 
 	//802.11bg
 	switch(channel){
