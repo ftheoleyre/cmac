@@ -489,8 +489,8 @@ Evhandle	\frame_timeout_intrpt;
 /* The interruption which triggers a timeout if the frame was not received */
 Evhandle	\timeout_intrpt;
 
-/* The interruption which triggers a return to the main channel */
-Evhandle	\main_channel_return_intrpt;
+/* The interruption which triggers a return to the main frequency */
+Evhandle	\main_freq_return_intrpt;
 
 /* the debug level for the simulations */
 int	\DEBUG;
@@ -506,8 +506,11 @@ int	\ctr_last_branch;
 /* (just before the rx_module leaves its busy state) */
 double	\last_rx_power;
 
-/* The main channel I am using*/
-double	\my_main_channel;
+/* The frequency for my main radio (in Khz) */
+double	\my_main_frequency;
+
+/* The bandwidth for my main radio (in KHz) */
+double	\my_main_bandwidth;
 
 /* The debug file (perso) */
 FILE*	\my_debug_file;
@@ -537,8 +540,8 @@ int	\sync_last_branch;
 /* My branch number (if I identified it) */
 int	\my_branch;
 
-/* The channel used for my current transmissions */
-double	\my_privileged_channel;
+/* The frequency used for my current transmissions */
+double	\my_privileged_frequency;
 
 /* The time during which a node remains privileged */
 double	\slot_privileged_duration;
@@ -692,7 +695,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 
 
 //Is the medium busy ? (transmission / reception / reservation)
-#define		IS_MEDIUM_BUSY					((is_rx_busy) || (is_tx_busy) || (get_nav_main_channel() >= op_sim_time()))
+#define		IS_MEDIUM_BUSY					((is_rx_busy) || (is_tx_busy) || (get_nav_main_freq() >= op_sim_time()))
 
 
 //We must defer in any of these conditions: 
@@ -728,7 +731,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 #define		PRIVILEGED_HIGH_LIMIT			((is_node_privileged) && (END_PRIV_SLOT || END_PRIV_INTRPT))
 
 
-#define		MAIN_CHANNEL_RETURN				((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == MAIN_CHANNEL_RETURN_CODE))
+#define		MAIN_FREQ_RETURN				((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == MAIN_FREQ_RETURN_CODE))
 
 
 //No frame to send
@@ -758,7 +761,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 //I can send one BROADCAST frame -> other nodes will receive it
 //Special case: the source is the sink (I can send a packet even if I am not privileged (I am never))
 #define		IS_BROADCAST_FORBIDDEN			0
-//((!is_node_privileged && my_sink_tree.is_in_ktree && !is_sink && (nb_channels == 1)) || (is_nav_for_other_channel()) || (!is_main_channel_active(STREAM_TO_RADIO)))
+//((!is_node_privileged && my_sink_tree.is_in_ktree && !is_sink && (nb_channels == 1)) || (is_nav_for_other_freq()) || (!is_main_freq_active(STREAM_TO_RADIO)))
 //TAG
 
 
@@ -819,7 +822,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 
 
 //I must return to my main frequency
-#define		MAIN_CHANNEL_RETURN_CODE		13
+#define		MAIN_FREQ_RETURN_CODE			13
 
 
 
@@ -848,6 +851,8 @@ double 	TIME_MAX_PRIVILEGED;
 int		*nodeid_to_addr_var = NULL;
 Boolean	connectivity_verification = OPC_FALSE;
 
+
+
 //the position of the sink in the grid
 int		y_sink_int = 0, x_sink_int = 0;
 //directions (deduce the nb of branches)
@@ -861,10 +866,7 @@ Boolean	*ktree_static_ok;
 //				PARAMETERS
 //-----------------------------------------------
 
-
-// Number of channels to use
-int		nb_channels = 0;
-
+int		nb_channels;
 ]]>
 	</header-block>
 	<function-block>
@@ -992,73 +994,80 @@ void change_tx_power(double power , int stream){
 }
 
 
-//returns my current channel
-short get_my_current_channel(){
-	FIN(get_my_current_channel());
+//returns my current freq
+short get_my_current_freq(){
+	FIN(get_my_current_freq());
 	
 	int			radio_id , chan_id , sub_chan_id;
-	double		frequency;
-	int			channel;
-	
+	double		frequency, frequency_norm;
+	int			channel_num;
+
 	//Gets only transmitter value (the receiver value is identical, or there is a big trouble !)
 	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , STREAM_TO_RADIO);
 	op_ima_obj_attr_get (radio_id, "channel", &chan_id);
 	sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
 	op_ima_obj_attr_get (sub_chan_id, "min frequency", 	&frequency);
 	
-	channel = channel_get_id(frequency);
-	if (channel != CHANNEL_MAIN_ID)
-		op_sim_end("error", "", "", "");
+	frequency_norm 	= frequency - my_main_frequency - (my_main_bandwidth / 1000 + SHIFT_FREQ_SEPARATION);
+	channel_num 	= frequency_norm / (my_main_bandwidth * RATIO_PRIV_BANDWIDTH  / 1000 + SHIFT_FREQ_SEPARATION);
 	
-	FRET(channel);
+//	my_privileged_frequency = my_main_frequency;
+//	my_privileged_frequency += my_main_bandwidth / 1000 + SHIFT_FREQ_SEPARATION;
+//	my_privileged_frequency += (my_main_bandwidth * RATIO_PRIV_BANDWIDTH  / 1000 + SHIFT_FREQ_SEPARATION) * (ctr_last_branch % (nb_channels - 1));
+
+	FRET(channel_num);
 }
 
 //returns true if we are focused on the main channel
-Boolean is_main_channel_active(){
-	FIN(is_main_channel_active());
+Boolean is_main_freq_active(int stream){
+	FIN(is_main_freq_active(int stream));
 
 	int			radio_id , chan_id , sub_chan_id;
-	double		frequency;	
+	double		frequency;
+	
 
 	//Gets only transmitter value (the receiver value is identical, or there is a big trouble !)
-	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , STREAM_TO_RADIO);
+	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , stream);
 	op_ima_obj_attr_get (radio_id, "channel", &chan_id);
 	sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
 	op_ima_obj_attr_get (sub_chan_id, "min frequency", 	&frequency);
 	
-	FRET(CHANNEL_MAIN_ID == channel_get_id(frequency));
+	FRET(frequency == my_main_frequency);
 }
 
-
 //Changes the radio power for tranmissions
-void change_tx_rx_phy(short channel){
-	FIN(change_tx_rx_phy(short channel));
-
+void change_tx_rx_freq(double frequency , double bandwidth , int stream){
+	FIN(change_tx_rx_freq(double frequency , double bandwidth , int stream));
+	
 	int		radio_id , chan_id , sub_chan_id;
 	double	old_freq;
-	double	frequency = channel_get_freq(channel);
 	
 	//------------ TRANSMISSION -----------
-	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , STREAM_TO_RADIO);
+	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , stream);
 	op_ima_obj_attr_get (radio_id, "channel", &chan_id);
 	sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RATXCH, 0);
 	op_ima_obj_attr_get (sub_chan_id, "min frequency", 	&old_freq);
+	op_ima_obj_attr_set (sub_chan_id, "bandwidth", 		bandwidth);
 	op_ima_obj_attr_set (sub_chan_id, "min frequency", 	frequency);
+	
 	
 
 	//------------ RECEPTION -----------
-	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_IN , OPC_OBJTYPE_RARX , STREAM_TO_RADIO);
+	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_IN , OPC_OBJTYPE_RARX , stream);
 	op_ima_obj_attr_get (radio_id, "channel", &chan_id);
 	sub_chan_id = op_topo_child (chan_id, OPC_OBJTYPE_RARXCH, 0);
+	op_ima_obj_attr_set (sub_chan_id, "bandwidth", 		bandwidth);
 	op_ima_obj_attr_set (sub_chan_id, "min frequency", 	frequency);
 
 	if (frequency != old_freq){
-		debug_print(LOW , DEBUG_RADIO , "channel changed %d (%f Hz) -> %d (%f Hz)\n", channel_get_id(old_freq), old_freq , channel, frequency);
-		debug_print(LOW , DEBUG_RADIO , "freq nb %d\n", get_my_current_channel());
+		debug_print(LOW , DEBUG_RADIO , "new bandwidth %f and frequency %f (main %f/%f)\n", bandwidth , frequency , my_main_bandwidth , my_main_frequency);
+		debug_print(LOW , DEBUG_NODE , "new bandwidth %f and frequency %f (main %f/%f)\n", bandwidth , frequency , my_main_bandwidth , my_main_frequency);
 	}
 	
 	FOUT;
 }
+
+
 
 //Changes the radio power for tranmissions
 void change_antenna_direction(int stream , int branch){
@@ -1095,6 +1104,12 @@ void change_antenna_direction(int stream , int branch){
 
 
 
+
+
+
+
+
+
 //-----------------------------------------------------------
 //
 //			 NAV (Network Allocation Vector)
@@ -1115,12 +1130,12 @@ void print_nav_list(int debug_type){
 	debug_print(LOW , debug_type , "-----------------------------------------\n");
 	debug_print(LOW , debug_type , "\n");
 	
-	debug_print(LOW , debug_type , "  ADDR   | CHANNEL |  TIMEOUT\n");
+	debug_print(LOW , debug_type , "    ADDR	|	FREQ		|	TIMEOUT\n");
 	
 	for (i=0 ; i< op_prg_list_size(my_nav_list) ; i++){
 		ptr = op_prg_list_access(my_nav_list , i);
 		
-		debug_print(LOW , debug_type , "%8d	|   %3d   |  %f\n", ptr->address , ptr->channel , ptr->timeout);
+		debug_print(LOW , debug_type , "%8d	|	%3f	|	%f\n", ptr->address , ptr->frequency , ptr->timeout);
 	}
 	FOUT;
 }
@@ -1159,8 +1174,8 @@ void delete_timeouted_nav(void * arg, int code){
 
 
 //adds a medium reservation
-void add_nav(int src, double duration , short channel){
-	FIN(add_nav(int src, double duration , short channel));
+void add_nav(int src, double duration , double frequency){
+	FIN(add_nav(int src, double duration , double frequency));
 	
 	nav_struct	*ptr;
 	int			i;
@@ -1173,11 +1188,10 @@ void add_nav(int src, double duration , short channel){
 	for(i=0 ; i < op_prg_list_size(my_nav_list) ; i++){
 		ptr = op_prg_list_access(my_nav_list , i);
 		
-		if (ptr->address == src){
+		if ((ptr->address == src) && (ptr->frequency == frequency)){
 			ptr->timeout = op_sim_time() + duration;
-			ptr->channel = channel;
 	
-			debug_print(LOW , DEBUG_BACKOFF , "NAV updated, src %d, duration %fus, channel %d\n", src , duration * 1E6, channel);			
+			debug_print(LOW , DEBUG_BACKOFF , "NAV updated, src %d, duration %fus\n", src , duration * 1E6);			
 			FOUT;
 		}
 	}
@@ -1185,40 +1199,58 @@ void add_nav(int src, double duration , short channel){
 	//Adds one new element
 	ptr = op_prg_mem_alloc(sizeof(nav_struct));
 	ptr->address 	= src;
-	ptr->channel	= channel;
+	ptr->frequency	= frequency;
 	ptr->timeout 	= op_sim_time() + duration;
 	op_prg_list_insert(my_nav_list, ptr , OPC_LISTPOS_TAIL);
 	
-	debug_print(LOW , DEBUG_BACKOFF , "NAV added, src %d, duration %fus, channel %d\n", src , duration * 1E6, channel);
+	debug_print(LOW , DEBUG_BACKOFF , "NAV added, src %d, duration %fus\n", src , duration * 1E6);
 	FOUT;
 }
 
 
 
 //updates the nav
-void update_nav_time(double transmission_time, int source , short channel , int pk_size){
-	FIN(update_nav_time(double transmission_time, int source , short channel , int pk_size));
+void update_nav_time(double transmission_time, int source , double frequency , int pk_size){
+	FIN(update_nav_time(double transmission_time, int source , double frequency , int pk_size));
 		
 	//No real reservation
 	if (transmission_time <= 0){
-		debug_print(LOW , DEBUG_BACKOFF , "NAV ! UPDATED -> src %d, duration %fus, pk_size %d, channel %d\n", source , transmission_time * 1E6 , pk_size, channel);
+		debug_print(LOW , DEBUG_BACKOFF , "NAV ! UPDATED -> src %d, duration %fus, pk_size %d\n", source , transmission_time * 1E6 , pk_size);
 		FOUT;
 	}
 
 	//Stores the NAV duration
-	add_nav(source, transmission_time, channel);
+	add_nav(source , transmission_time , frequency);
 					
 	//Schedules the end of the NAV	
 	op_intrpt_schedule_self(op_sim_time() + transmission_time , NAV_END_CODE);
 	
-	debug_print(LOW , DEBUG_BACKOFF , "NAV -> src %d, duration %fus, pk_size %d, channel %d\n", source , transmission_time * 1E6 , pk_size, channel);
+	
+	debug_print(LOW , DEBUG_BACKOFF , "NAV -> src %d, duration %fus, pk_size %d\n", source , transmission_time * 1E6 , pk_size);
 	FOUT;
 }
 
 
-//Returns the longest NAV for the main channel
-double get_nav_main_channel(){
-	FIN(get_nav_main_channel());
+//Returns TRUE if a reservation was registered for another frequency
+Boolean is_nav_for_other_freq(){
+	FIN(is_nav_for_other_freq());
+	
+	int			i;
+	nav_struct	*ptr;
+	
+	for(i=0 ; i < op_prg_list_size(my_nav_list) ; i++){
+		ptr = op_prg_list_access(my_nav_list , i);
+		
+		if ((ptr->timeout > op_sim_time()) && (ptr->frequency != my_main_frequency))
+			FRET(OPC_TRUE);
+	}
+	
+	FRET(OPC_FALSE);
+}
+
+//Returns the longest NAV for the main frequency
+double get_nav_main_freq(){
+	FIN(get_nav_main_freq());
 	
 	int			i;
 	nav_struct	*ptr;
@@ -1227,7 +1259,7 @@ double get_nav_main_channel(){
 	for(i=0 ; i < op_prg_list_size(my_nav_list) ; i++){
 		ptr = op_prg_list_access(my_nav_list , i);
 		
-		if ((ptr->timeout > timeout) && (ptr->channel == my_main_channel))
+		if ((ptr->timeout > timeout) && (ptr->frequency == my_main_frequency))
 			timeout = ptr->timeout;
 	}
 	
@@ -1235,9 +1267,9 @@ double get_nav_main_channel(){
 }
 
 
-//Is the medium free to reply to addr ? (i.e. no other node has already reserved this channel ?
-Boolean is_reply_possible(int addr , short channel){
-	FIN(is_reply_possible(int addr , short channel));
+//Is the medium free to reply to addr ? (i.e. no other node has already reserved this frequency ?
+Boolean is_reply_possible(int addr , double frequency){
+	FIN(is_reply_possible(int addr , double frequency));
 	
 	int			i;
 	nav_struct	*ptr;
@@ -1245,7 +1277,7 @@ Boolean is_reply_possible(int addr , short channel){
 	for(i=0 ; i < op_prg_list_size(my_nav_list) ; i++){
 		ptr = op_prg_list_access(my_nav_list , i);
 		
-		if ((ptr->timeout > op_sim_time()) && (ptr->channel == channel) && (ptr->address != addr))
+		if ((ptr->timeout > op_sim_time()) && (ptr->frequency == frequency) && (ptr->address != addr))
 			FRET(OPC_FALSE);
 	}
 	
@@ -1253,7 +1285,7 @@ Boolean is_reply_possible(int addr , short channel){
 }
 
 
-//The destination is available for reception (no NAV for any channel)
+//The destination is available for reception (no NAV for any frequency)
 Boolean is_destination_available(int destination){
 	FIN(is_destination_available(int destination));
 
@@ -2407,7 +2439,7 @@ List *neigh_construct_max_saving_child(){
 					saving_record = op_prg_mem_alloc(sizeof(saving_comp_struct));
 					saving_record->address 	= neigh_ptr->address;
 					saving_record->saving	= neigh_ptr->savings[j];		
-					//debug_print(MAX, DEBUG_KTREE, "saving %d %d to insert\n", saving_record->address, saving_record->saving);
+					debug_print(MAX, DEBUG_KTREE, "saving %d %d to insert\n", saving_record->address, saving_record->saving);
 					op_prg_list_insert_sorted(ll, saving_record, saving_value_compare); 
 				}	
 	}	
@@ -2448,7 +2480,7 @@ void update_current_cmac_children_maxtree(){
 			child_new->branch_id	= i;
 			op_prg_list_insert(my_sink_tree.cmac_children, child_new, OPC_LISTPOS_TAIL);
 			
-			debug_print(MAX, DEBUG_KTREE, "The sink is choosing %d for the branch %d\n", child_new->address, child_new->branch_id);
+			//debug_print(MAX, DEBUG_KTREE, "The sink is choosing %d for the branch %d\n", child_new->address, child_new->branch_id);
 		}
 	}
 	
@@ -2482,7 +2514,7 @@ void update_current_cmac_children_maxtree(){
 						child_new->branch_id	= child_ptr->branch_id;
 						op_prg_list_insert(my_sink_tree.cmac_children, child_new, OPC_LISTPOS_TAIL);
 					
-						debug_print(MAX, DEBUG_KTREE, "node %d was elected child (branch %d, saving %d)\n", child_new->address, child_new->branch_id, child_saving->saving);
+						//debug_print(MAX, DEBUG_KTREE, "node %d was elected child (branch %d, saving %d)\n", child_new->address, child_new->branch_id, child_saving->saving);
 					}
 				}
 			}		
@@ -2601,7 +2633,7 @@ void update_current_cmac_children_sync(){
 					child_ptr->branch_id 	= election_ptr->branch;
 					op_prg_list_insert(my_sink_tree.cmac_children , child_ptr , OPC_LISTPOS_TAIL);
 					
-					//debug_print(MAX , DEBUG_KTREE , "	->%d\n", child_ptr->address);					
+					debug_print(MAX , DEBUG_KTREE , "	->%d\n", child_ptr->address);					
 				}
 			}
 		}	
@@ -2877,7 +2909,7 @@ short *create_null_savings(){
 	FIN(create_null_savings());
 	int		i;
 	short	*savings_field = op_prg_mem_alloc(sizeof(short) * NB_BRANCHES);
-	
+
 	for(i=0; i<NB_BRANCHES; i++)
 		savings_field[i] = 0;
 	
@@ -2922,7 +2954,7 @@ void fill_savings_fields(Packet *pk){
 	short				*saving_field = op_prg_mem_alloc(sizeof(short) * NB_BRANCHES);
 	//control
 	int		i;
-	
+		
 	//extract the best children
 	sav_list = neigh_construct_max_saving_child();
 	
@@ -2995,7 +3027,7 @@ List *create_my_cmac_children_from_packet(Packet *pk){
 		child_ptr->address 		= list_children_ptr[i].address;
 		child_ptr->branch_id 	= list_children_ptr[i].branch_id;
 		op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_HEAD);
-		debug_print(MAX, DEBUG_HELLO, "\t%d (branch %d)\n", child_ptr->address, child_ptr->branch_id);
+		//debug_print(MAX, DEBUG_HELLO, "\t%d (branch %d)\n", child_ptr->address, child_ptr->branch_id);
 	}
 	
 	//memory release for the packet field itself
@@ -3615,7 +3647,7 @@ Packet* create_packet(frame_struct frame){
 		break;
 		case CTR_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr");
-			op_pk_nfd_set(pk , FIELD_PK_CTR_CHANNEL, 	my_privileged_channel);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_FREQ, 		my_privileged_frequency);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_TSLOT , 	slot_privileged_duration);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 	op_sim_time() - frame.time_added);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_BRANCHID,	ctr_last_branch);
@@ -3627,7 +3659,7 @@ Packet* create_packet(frame_struct frame){
 		break;
 		case CTR_ACK_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr_ack");
-			op_pk_nfd_set(pk , FIELD_PK_CTR_CHANNEL , 	my_privileged_channel);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_FREQ , 		my_privileged_frequency);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_TSLOT , 	slot_privileged_duration);
 		break;
 		case CTR_END_PK_TYPE:
@@ -3917,23 +3949,25 @@ void generate_ctr(){
 	int				destination;
 	int				frame_id;
 	
-	//Main channel
-	change_tx_rx_phy(my_main_channel);
+	//Main frequency
+	change_tx_rx_freq(my_main_frequency , my_main_bandwidth , STREAM_TO_RADIO);
 	
 	//Destination
 	if (is_sink){
-		if (++ctr_last_branch >= get_nb_branches())
-			ctr_last_branch = 0;
+		ctr_last_branch++;
 		
 		//If several available channels, get one for this branch (round robin when the branch changes)
 		if (nb_channels > 1){
-			my_privileged_channel = 1 + ctr_last_branch % (nb_channels - 1);
-			debug_print(LOW, DEBUG_CONTROL, "SINK: %d %d (max %d)\n", ctr_last_branch, get_my_current_channel(), nb_channels);
+			my_privileged_frequency = my_main_frequency;
+			my_privileged_frequency += my_main_bandwidth / 1000 + SHIFT_FREQ_SEPARATION;
+			my_privileged_frequency += (my_main_bandwidth * RATIO_PRIV_BANDWIDTH  / 1000 + SHIFT_FREQ_SEPARATION) * (ctr_last_branch % (nb_channels - 1));
 		}
 		else
-			my_privileged_channel = 0;
+			my_privileged_frequency = my_main_frequency;
 		
 		
+		if (ctr_last_branch >= get_nb_branches())
+			ctr_last_branch = 0;
 		destination = get_cmac_child(ctr_last_branch);	
 	}
 	else
@@ -3948,7 +3982,7 @@ void generate_ctr(){
 	//Normal CTR
 	else {
 		//Unavailability of the next hop
-		//update_nav_time(2 * (slot_privileged_duration + MAX_CTR_DELAY_FROM_SINK) , destination , my_main_channel , 0);
+		//update_nav_time(2 * (slot_privileged_duration + MAX_CTR_DELAY_FROM_SINK) , destination , my_privileged_frequency , 0);
 	
 		//frame id
 		frame_id = get_new_frame_id();
@@ -4248,7 +4282,7 @@ void receive_packet_from_radio(){
 	double			power_ratio;
 	Boolean			bidirect;
 	//CTR
-	short			channel;
+	double			freq;
 	double			t_slot;
 	double			offset;	
 	short			branch_id;
@@ -4283,7 +4317,7 @@ void receive_packet_from_radio(){
 	op_pk_nfd_get(frame, FIELD_PK_ID,			&frame_id);
 	
 	//DEBUG
-	debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main channel %f)\n", source , destination , pk_type_to_str(frame_type , msg, 100) , frame_id , accepted , is_reply_to_receive , get_nav_main_channel());
+	debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main freq %f)\n", source , destination , pk_type_to_str(frame_type , msg, 100) , frame_id , accepted , is_reply_to_receive , get_nav_main_freq());
 	
 	//Valid frame ?
 	if ((!accepted) && ((my_address == destination) || (destination == ADDR_BROADCAST)) ){
@@ -4393,22 +4427,22 @@ void receive_packet_from_radio(){
 						}
 					}
 					
-					//else 
-						//printf("frame id %d dropped by %d\n", frame_id , my_address);					
+					else 
+						printf("frame id %d dropped by %d\n", frame_id , my_address);					
 					
 					//This frame is marked as seen
 					add_frame_id_seen(source, frame_id);
 					
-					//sends an acknowledgement (unicast + n/o nav)
-					debug_print(LOW, DEBUG_CONTROL, "destination %d rep possible %d\n", destination, is_reply_possible(destination , my_main_channel));
-					if ((destination != ADDR_BROADCAST) && (is_reply_possible(destination , my_main_channel))){
+					//sends an acknowledgement (unicast + no nav)
+					debug_print(LOW, DEBUG_CONTROL, "destination %d rep possible %d\n", destination, is_reply_possible(destination , my_main_frequency));
+					if ((destination != ADDR_BROADCAST) && (is_reply_possible(destination , my_main_frequency))){
 						generate_ack(source , frame_id , duration , power_ratio);
 						is_reply_to_send 	= OPC_TRUE;
 						debug_print(LOW, DEBUG_CONTROL, "ack because I just received a data (dest %d)\n", destination);
 					}
 				}
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_main_channel , duration);
+					update_nav_time(transmission_time , source , my_main_frequency , duration);
 			
 			break;
 				
@@ -4431,7 +4465,7 @@ void receive_packet_from_radio(){
 				
 				//NaV if a reservation is present
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_main_channel , duration);
+					update_nav_time(transmission_time , source , my_main_frequency , duration);
 			
 			break;
 			
@@ -4448,18 +4482,18 @@ void receive_packet_from_radio(){
 				// -> I am not in communication (I am waiting for a reply for a transmitted frame)
 				// -> If we are privileged, our privileged time has not expired
 				//
-				if ((destination == my_address) && (is_reply_possible(destination , my_main_channel)) && (!is_reply_to_receive) && (!is_node_privileged)){
+				if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency)) && (!is_reply_to_receive) && (!is_node_privileged)){
 					generate_cts(source , duration , frame_id , power_ratio);
 					is_reply_to_send 	= OPC_TRUE;
 				}
 
 				//debug
 				else if (destination == my_address)
-					debug_print(LOW , DEBUG_DATA , "no reply authorized: reply_possible (%d), is rep_required (%d), piviledged %d\n" , is_reply_possible(destination , my_main_channel) , is_reply_to_receive , is_node_privileged);
+					debug_print(LOW , DEBUG_DATA , "no reply authorized: reply_possible (%d), is rep_required (%d), piviledged %d\n" , is_reply_possible(destination , my_main_frequency) , is_reply_to_receive , is_node_privileged);
 			
 				//exchange : RTS - CTS - DATA - ACK
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_main_channel , duration);
+					update_nav_time(transmission_time , source , my_main_frequency , duration);
 
 			break;
 			
@@ -4473,7 +4507,7 @@ void receive_packet_from_radio(){
 			
 				//We received a CTS for us -> we have to send now the data packet
 				//NB: it is unicast because multicast frame are sent in ADDR_BROADCAST, wihtout RTS / CTS
-				if ((destination == my_address) && (is_reply_possible(destination , my_main_channel)) && (!is_frame_buffer_empty())){
+				if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency)) && (!is_frame_buffer_empty())){
 					frame_ptr = get_unicast_frame_buffer(0);
 					if (frame_ptr != NULL)
 						change_next_frame(*frame_ptr);
@@ -4481,7 +4515,7 @@ void receive_packet_from_radio(){
 				}
 
 				//A particular case : we received a CTS and meanwhile, the data packet we wanted to send was timeouted and deleted
-				else if ((destination == my_address) && (is_reply_possible(destination , my_main_channel))){
+				else if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency))){
 					
 					debug_print(LOW, DEBUG_CONTROL , "ERROR: we received a CTS and we do not have any data frame to transmit\n");
 					print_unicast_frame_buffer(DEBUG_CONTROL);
@@ -4490,33 +4524,34 @@ void receive_packet_from_radio(){
 			
 				//exchange : RTS - CTS - DATA - ACK
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_main_channel , duration);
+					update_nav_time(transmission_time , source , my_main_frequency , duration);
 
 			break;
 			
 			//We become privileged node
 			//-> automatically, we will send a DATA_PK (or a CTR if we have none)
 			case CTR_PK_TYPE:
-				op_pk_nfd_get(frame , FIELD_PK_CTR_CHANNEL, &channel);
+				op_pk_nfd_get(frame , FIELD_PK_CTR_FREQ, 	&freq);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_TSLOT, 	&t_slot);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_OFFSET, 	&offset);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_BRANCHID,&branch_id);
 				
-				//Multi-channel -> this ktree node is in privileged mode (using another channel)
+				//Multi-channel -> this ktree node is in privileged mode (using another frequency)
 				if (nb_channels > 1)
-					transmission_time 		= t_slot;				
+					transmission_time 		= t_slot;
+				
 				//Single channel -> reserves the medium for the reply (which will be sent through this channel)
 				else
 					transmission_time =  SIFS + PROPAGATION_DELAY + (double)MTU_MAX / operational_speed;
 				
-				if ((destination == my_address) && (is_reply_possible(destination , my_main_channel))){
+				if ((destination == my_address) && (is_reply_possible(destination , my_main_frequency))){
 					
 					//the node becomes privileged
 					is_node_privileged 			= OPC_TRUE;
 					time_start_privileged		= op_sim_time();
 					slot_privileged_duration	= t_slot;
 					slot_privileged_offset		= offset;
-					my_privileged_channel	 	= channel;
+					my_privileged_frequency 	= freq;
 					ctr_last_branch				= branch_id;
 					
 					//Error
@@ -4561,20 +4596,20 @@ void receive_packet_from_radio(){
 				}
 				
 				else if (destination != my_address)
-					update_nav_time(transmission_time , source , channel , 0);
+					update_nav_time(transmission_time , source , freq , 0);
 					
 			break;
 		   	
 			case CTR_ACK_PK_TYPE:
 				//A node which sends a CTR-ACK will become unavailable during t_slot
 				//Then, it will send a CTR to indicate that it will privilege receiver
-				op_pk_nfd_get(frame , FIELD_PK_CTR_CHANNEL, &channel);
+				op_pk_nfd_get(frame , FIELD_PK_CTR_FREQ, 	&freq);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_TSLOT, 	&t_slot);
 				
-				//And I will update this only if it comes from the 'normal' channel
-				//If it comes throug the privileged channel -> I already set this NAV (with an higher value since I know that I is busy 2*t_slot)
-				if (is_main_channel_active())
-					update_nav_time(t_slot , source , channel , 0);
+				//And I will update this only if it comes from the 'normal' frequency
+				//If it comes throug the privileged frequency -> I already set this NAV (with an higher value since I know that I is busy 2*t_slot)
+				if (is_main_freq_active(STREAM_TO_RADIO))
+					update_nav_time(t_slot , source , freq , 0);
 			//TAG
 			break;
 			
@@ -4829,9 +4864,9 @@ void interrupt_process(){
 					generate_ctr();
 			}
 			
-			//Returns to the main channel
-			if (op_intrpt_code() == MAIN_CHANNEL_RETURN_CODE)			
-				change_tx_rx_phy(my_main_channel);
+			//Returns to the main frequency
+			if (op_intrpt_code() == MAIN_FREQ_RETURN_CODE)			
+				change_tx_rx_freq(my_main_frequency , my_main_bandwidth , STREAM_TO_RADIO);
 		
 			
 			
@@ -5117,7 +5152,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 			fprintf(pfile , "[%4ds, "	, (int) floor(time));
 			fprintf(pfile , "%4dms, "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			fprintf(pfile , "%4dus, "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
-			fprintf(pfile , "%1.1ich, "	, get_my_current_channel());	
+			fprintf(pfile , "%1.1ich, "	, get_my_current_freq());	
 			fprintf(pfile , "%4.1i] "	, my_address);	
 			vfprintf(pfile , fmt, argptr);     
 		}
@@ -5128,7 +5163,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 			printf("[%4ds , "	, (int) floor(time));
 			printf("%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			printf("%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
-			printf("%1.1ich, "	, get_my_current_channel());	
+			printf("%1.1ich, "	, get_my_current_freq());	
 			printf("%4.1i] "	, my_address);	
 			vprintf(fmt, argptr);   
 		}
@@ -5138,7 +5173,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 			fprintf(my_debug_file , "[%4ds , "	, (int) floor(time));
 			fprintf(my_debug_file , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			fprintf(my_debug_file , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
-			fprintf(my_debug_file , "%1.1ich, "	, get_my_current_channel());	
+			fprintf(my_debug_file , "%1.1ich, "	, get_my_current_freq());	
 			fprintf(my_debug_file , "%4.1i] "	, my_address);	
 			vfprintf(my_debug_file , fmt, argptr);     
 		}
@@ -5148,7 +5183,7 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 			fprintf(debug_files[DEBUG_GLOBAL] , "[%4ds , "	, (int) floor(time));
 			fprintf(debug_files[DEBUG_GLOBAL] , "%4dms , "	, (int) (floor(time * 1E3) - 1E3 * floor(time)));
 			fprintf(debug_files[DEBUG_GLOBAL] , "%4dus , "	, (int) (floor(time * 1E6) - 1E3 * floor(time * 1E3)));
-			fprintf(debug_files[DEBUG_GLOBAL] , "%1.1ich, "	, get_my_current_channel());	
+			fprintf(debug_files[DEBUG_GLOBAL] , "%1.1ich, "	, get_my_current_freq());	
 			fprintf(debug_files[DEBUG_GLOBAL] , "%4.1i] "	, my_address);	
 			vfprintf(debug_files[DEBUG_GLOBAL] , fmt, argptr);     
 		}
@@ -5285,7 +5320,6 @@ int		num_chann;
 Objid	chann_objid;
 Objid	sub_chann_objid;
 Objid	tx_id , rx_id;
-double	bandwidth, frequency;
 //Control
 int		i , j;
 char	str[300];
@@ -5334,13 +5368,10 @@ op_ima_sim_attr_get(OPC_IMA_INTEGER , "debug_level",			&DEBUG);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "beta",					&BETA);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "mac_layer",				&MAC_LAYER);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "ktree_algo",				&KTREE_ALGO);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_branches",			&NB_BRANCHES);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "sink_address",			&sink_address);
-
-if (nb_channels == 0)
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
-
 
 //no ktree-algo if I do not execute CMAC
 if (MAC_LAYER != CMAC)
@@ -5518,8 +5549,8 @@ op_ima_obj_attr_get (params_attr_objid, "Packet Reception-Power Threshold", &rx_
 //Channel
 op_ima_obj_attr_get (params_attr_objid, "Channel Settings", &chann_params_comp_attr_objid);
 subchann_params_attr_objid = op_topo_child (chann_params_comp_attr_objid, OPC_OBJTYPE_GENERIC, 0);
-op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 				&bandwidth);	
-op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 			&frequency);	
+op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 				&my_main_bandwidth);	
+op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 			&my_main_frequency);	
 
 
 
@@ -5548,8 +5579,8 @@ for (i=0; i<nb_radio ; i++){
 	sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
 
 	//Frequency + bandwidth
-	op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth);
-	op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	channel_get_freq(CHANNEL_MAIN_ID));
+	op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth);
+	op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency);
 	op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
 
 }
@@ -5579,8 +5610,8 @@ for (i=0; i<nb_radio ; i++){
 		sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, j);
 	
 		//Frequency + bandwidth
-		op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth);
-		op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	channel_get_freq(CHANNEL_MAIN_ID));		
+		op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		my_main_bandwidth);
+		op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	my_main_frequency);		
 		
 		//Reception power threshold
 		op_ima_obj_state_set (sub_chann_objid, &rx_power_threshold);
@@ -5795,7 +5826,7 @@ if (DEBUG_STATE_MACHINE)
 if (!is_tx_busy){
 
 	//debug
-	debug_print(LOW , DEBUG_DATA , "sends a packet to %d (type %s, id %d, my_nav %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , get_nav_main_channel());
+	debug_print(LOW , DEBUG_DATA , "sends a packet to %d (type %s, id %d, my_nav %f)\n",  next_frame_to_send.destination , pk_type_to_str(next_frame_to_send.type , msg, 100) , next_frame_to_send.frame_id , get_nav_main_freq());
 
 	//Prepares the packet
 	is_tx_busy = OPC_TRUE;
@@ -5912,11 +5943,11 @@ if (!is_tx_busy){
 	
 		//CTR sent -> changes to the privileged channel
 		if (last_frame_sent.type == CTR_PK_TYPE){
-			change_tx_rx_phy(my_privileged_channel );
+			change_tx_rx_freq(my_privileged_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
 			
-			if (op_ev_valid(main_channel_return_intrpt))
-				op_ev_cancel(main_channel_return_intrpt);
-			main_channel_return_intrpt = op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration , MAIN_CHANNEL_RETURN_CODE);
+			if (op_ev_valid(main_freq_return_intrpt))
+				op_ev_cancel(main_freq_return_intrpt);
+			main_freq_return_intrpt = op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration , MAIN_FREQ_RETURN_CODE);
 		}
 		
 		
@@ -5924,7 +5955,7 @@ if (!is_tx_busy){
 		if ((last_frame_sent.type == CTR_ACK_PK_TYPE) && (last_frame_sent.nb_retry == 0)){
 		
 			//Channel change
-			change_tx_rx_phy(my_privileged_channel);
+			change_tx_rx_freq(my_privileged_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
 			
 			//sends a CTR-ACK through the privileged channel if no data frame to send
 			if (is_frame_buffer_empty()){
@@ -6320,7 +6351,7 @@ if ((op_ev_valid(backoff_intrpt)) && (IS_MEDIUM_BUSY)){
 	op_ev_cancel(backoff_intrpt);
 
 	//debug
-	debug_print(MEDIUM , DEBUG_BACKOFF , "stoping backoff %d (busy %d, nav %3f, cancel %d, rec %d, back defer %d)\n", my_backoff , is_rx_busy , (get_nav_main_channel() - op_sim_time()) * 1E6, TRANSMISSION_CANCELED, IS_FRAME_RECEIVED, IS_BACK_TO_DEFER);
+	debug_print(MEDIUM , DEBUG_BACKOFF , "stoping backoff %d (busy %d, nav %3f, cancel %d, rec %d, back defer %d)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6, TRANSMISSION_CANCELED, IS_FRAME_RECEIVED, IS_BACK_TO_DEFER);
 }
 
 
@@ -6338,7 +6369,7 @@ if ((!op_ev_valid(backoff_intrpt)) && (!IS_MEDIUM_BUSY) && ((op_intrpt_type() ==
 	backoff_intrpt = op_intrpt_schedule_self(op_sim_time() + SLOT_BACKOFF * my_backoff , BACKOFF_CODE);
 
 	//debug
-	debug_print(MEDIUM , DEBUG_BACKOFF , "resuming backoff %d (busy %d nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_channel() - op_sim_time()) * 1E6);
+	debug_print(MEDIUM , DEBUG_BACKOFF , "resuming backoff %d (busy %d nav %3f)\n", my_backoff , is_rx_busy , (get_nav_main_freq() - op_sim_time()) * 1E6);
 }
 
 
@@ -6506,7 +6537,7 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 		
 		//Failed -> go to the main channel
 		if (nb_channels > 1)
-			change_tx_rx_phy(my_main_channel);
+			change_tx_rx_freq(my_main_frequency , my_main_bandwidth * RATIO_PRIV_BANDWIDTH , STREAM_TO_RADIO);
 	}	
 
 }
