@@ -39,8 +39,8 @@ typedef struct{
 
 
 
-double 	channel_get_freq(int nb);
-int 	channel_get_id(double freq);
+double 	channel_to_freq(short channels);
+int 	freq_to_channel(double freq);
 
 
 //-------------------------  GRAPH  -----------------------------------

@@ -17,11 +17,11 @@
 
 
 //list of channels and their associated frequency
-double channel_get_freq(int nb){
-	FIN(channel_get_freq(int nb));
+double channel_to_freq(short channel){
+	FIN(channel_to_freq(short channel));
 
 	//802.11bg
-	switch(nb){
+	switch(channel){
 		case 0 :
 			FRET(2412);
 		case 1 :
@@ -33,7 +33,7 @@ double channel_get_freq(int nb){
 	}
 
 /*	//802.11a
-	switch(nb){
+	switch(channel){
 		case 0 :
 			FRET(5170);
 		case 1 :
@@ -68,13 +68,13 @@ double channel_get_freq(int nb){
 }
 
 //returns the channel nb associated to a given frequency
-int channel_get_id(double freq){
-	FIN(channel_get_id(double freq));
+int freq_to_channel(double freq){
+	FIN(freq_to_channel(double freq));
 
 	int		i;
 
 	for(i=0; i<nb_channels; i++)
-		if (channel_get_freq(i) == freq)
+		if (channel_to_freq(i) == freq)
 			FRET(i);
 	
 	op_sim_end("This frequency does not correspond to any channel", "", "", "");

@@ -158,6 +158,9 @@
 
 #define		CHANNEL_MAIN_ID					0
 
+#define		RATIO_PRIV_BANDWIDTH 			1
+#define		SHIFT_FREQ_SEPARATION			0.2					
+
 
 
 
@@ -268,7 +271,7 @@
 #define		FIELD_PK_DATA_PAYLOAD				"payload"
 
 //ctr
-#define		FIELD_PK_CTR_CHANNEL				"channel"
+#define		FIELD_PK_CTR_FREQ					"freq"
 #define		FIELD_PK_CTR_TSLOT					"t_slot"
 #define		FIELD_PK_CTR_OFFSET					"offset"
 #define		FIELD_PK_CTR_BRANCHID				"branch_id"

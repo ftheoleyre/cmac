@@ -146,7 +146,7 @@ typedef struct {
 typedef struct{
 	int		address;
 	double	timeout;
-	short	channel;
+	double	frequency;
 }nav_struct;
 
 
