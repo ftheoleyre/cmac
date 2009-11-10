@@ -12,7 +12,7 @@
 							<attribute creation-mechanics="Model" name="list" type="object list">
 								<object-list>
 									<sub-object>
-										<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
+										<attribute creation-mechanics="Model" name="Channel Settings" type="compound" spectype="0">
 											<sub-object>
 												<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
 												<attribute creation-mechanics="Model" name="list" type="object list">
