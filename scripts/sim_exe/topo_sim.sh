@@ -57,7 +57,9 @@ echo "XMAX" $X_MAX_LIST
 POS_METHOD=`cat $FILE_PARAMS | grep "^[^#]" | grep Positions_Method | cut -d '=' -f 2`
 
 #name for the file
-SIMULATION_NAME=$TOPO"_"`cat $FILE_PARAMS | grep "^[^#]" |Êgrep Name_Simulation_Set | cut -d '=' -f 2`
+TMP=`cat $FILE_PARAMS | grep "^[^#]" | grep Positions_Method | cut -d '=' -f 2`
+SIMULATION_NAME=$TOPO"_"$TMP
+echo "SIMULATION NAME" $SIMULATION_NAME
 
 #ARGS
 ARGS="-net_name $TOPO -ef cmac_generic.ef -noprompt"
