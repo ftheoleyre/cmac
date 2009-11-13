@@ -2160,7 +2160,7 @@ void update_sink_tree_infos_dynamic(){
 		debug_print(MEDIUM , DEBUG_HELLO , "Updates the distance to the sink %d (old %d) and to the k=tree %d (old %d)\n", neigh_ptr->address, best_ktree_dist, my_sink_tree.sink_dist, best_sink_dist, my_sink_tree.ktree_dist);
 	
 	if (my_sink_tree.parent	!= best_parent){
-		printf("%d: parent changed %d -> %d \n", my_address, my_sink_tree.parent, best_parent);
+		//printf("%d: parent changed %d -> %d \n", my_address, my_sink_tree.parent, best_parent);
 		debug_print(MAX, DEBUG_CONTROL, "parent changed %d -> %d \n", my_sink_tree.parent, best_parent);
 	}
 	

@@ -1,9 +1,10 @@
 Packet_Interarrival_Time=0.1 0.075 0.065 0.057 0.05 0.042 0.035
 #2=ST, 3=OPT, 1=MIS
-ktree_Algo=1
+Ktree_algo=1
 # MTree=2, static=3
 Nb_channels=1
 Nb_branches=4
+Max_time_priv_mode=0.01
 X_MAX=15
 #the destination
 sink_address=404
