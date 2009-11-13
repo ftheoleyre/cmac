@@ -48,8 +48,8 @@ NB_CHANNELS_LIST=`cat $FILE_PARAMS | grep "^[^#]" | grep Nb_channels | cut -d '=
 echo "NB_CHANNELS" $NB_CHANNELS_LIST
 NB_BRANCHES_LIST=`cat $FILE_PARAMS | grep "^[^#]" | grep Nb_branches | cut -d '=' -f 2`
 echo "NB_BRANCHES" $NB_BRANCHES_LIST
-MAX_TIME_PRIV_MODE_LIST=`cat $FILE_PARAMS | grep "^[^#]" | grep Max_time_priv_mode | cut -d '=' -f 2`
-echo "MAX_TIME_PRIV_MODE" $MAX_TIME_PRIV_MODE_LIST
+MAX_PRIV_DURATION_LIST=`cat $FILE_PARAMS | grep "^[^#]" | grep Max_priv_duration | cut -d '=' -f 2`
+echo "MAX_PRIV_DURATION" $MAX_PRIV_DURATION_LIST
 
 #Positions
 X_MAX_LIST=`cat $FILE_PARAMS | grep "^[^#]" | grep X_MAX | cut -d '=' -f 2`
@@ -87,7 +87,7 @@ do
 					do
 						for NB_BRANCHES in $NB_BRANCHES_LIST;
 						do
-							for MAX_TIME_PRIV_MODE in $MAX_TIME_PRIV_MODE_LIST;
+							for MAX_PRIV_DURATION in $MAX_PRIV_DURATION_LIST;
 							do
 							
 								#one random seed
@@ -96,10 +96,10 @@ do
 								mkdir -p $RES_TMP_DIR
 
 								#simulation arguments for this run
-								CMD="op_runsim -Mac_Layer $MAC_LAYER -seed $SEED -Result_Directory $RES_TMP_DIR"
+								CMD="op_runsim -mac_layer $MAC_LAYER -seed $SEED -Result_Directory $RES_TMP_DIR"
 								CMD="$CMD -interpacket_time $INTER_PK_TIME"
 								CMD="$CMD -ktree_algo $KTREE_ALGO"
-								CMD="$CMD -max_time_priv_mode $MAX_TIME_PRIV_MODE"
+								CMD="$CMD -max_priv_duration $MAX_PRIV_DURATION"
 								CMD="$CMD -nb_branches $NB_BRANCHES -nb_channels $NB_CHANNELS"
 								CMD="$CMD -X_MAX $X_MAX"
 								CMD="$CMD -sink_address $SINK_ADDR"
@@ -121,8 +121,7 @@ do
 								#extract the correct stats
 								MAC_FILE="`ls $RES_DIR/$SEED/*stats-nodes*`"
 								CMD="./extract_values_from_result_file.sh $MAC_FILE $SEED $RES_DIR"
-								echo $CMD
-								#$CMD
+								echo $CMD; $CMD
 								#rm -rf $RES_TMP_DIR
 							done
 						done

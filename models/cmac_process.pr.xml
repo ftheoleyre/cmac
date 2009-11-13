@@ -298,13 +298,12 @@ convergecast networks)
 				</comments>
 			</properties>
 		</attribute>
-		<attribute name="max_time_priv_mode" group="cmac" type="double">
+		<attribute name="max_priv_duration" group="cmac" type="double">
 			<properties type="double" auto-assign="no" symbolic-only="no">
 				<default-value value="0.01"/>
 				<comments>
 <![CDATA[
-The time during which a node 
-remains privileged
+The maximum time during which a node keeps to be privileged (after that, it forward the privilege to its child in the ktree)
 ]]>
 				</comments>
 			</properties>
@@ -5373,7 +5372,7 @@ if (sink_address == my_address){
 	y_sink_int = get_y_coord_in_grid(my_address);
 
 	//time for privileged nodes
-	op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "max_time_priv_mode",	&slot_privileged_duration);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "max_priv_duration",	&slot_privileged_duration);
 	TIME_MAX_PRIVILEGED = slot_privileged_duration * 2;
 }
 else

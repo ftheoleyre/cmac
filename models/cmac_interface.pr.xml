@@ -1007,7 +1007,8 @@ double		route_length_cumulated = 0;
 double		jain_dratio = 0;
 //Simulation parameters
 int			RTS;
-int			mac_layer = 0;
+int			mac_layer, ktree_algo;
+double		max_privileged_duration;
 int			sink_address, pos_method;
 double		X_MAX, Y_MAX;
 int			nb_branches, nb_channels;
@@ -1039,7 +1040,9 @@ if (my_stat_id == 0){
 	
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 			&RTS);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"mac_layer",		&mac_layer);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ktree_algo",		&ktree_algo);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"sink_address",		&sink_address);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"Max_priv_duration",&max_privileged_duration);
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"X_MAX",			&X_MAX);
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"Y_MAX",			&Y_MAX);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"Positions_Method",	&pos_method);
@@ -1151,10 +1154,12 @@ if (my_stat_id == 0){
 	fprintf(pfile, "Number of nodes                      : %d\n", nb_nodes);
 	fprintf(pfile, "Mac layer id                         : %d\n", mac_layer);
 	fprintf(pfile, "Mac layer name                       : %s\n", get_mac_layer_to_str(mac_layer, msg, 100));
+	fprintf(pfile, "Ktree algorithm                      : %d\n", ktree_algo);
 	fprintf(pfile, "Duration                             : %f\n", op_sim_time());
 	fprintf(pfile, "RTS                                  : %d\n", RTS);
 	fprintf(pfile, "Inter Packet Time                    : %f\n", inter_pk_time);
 	fprintf(pfile, "Sink address                         : %d\n", sink_address);
+	fprintf(pfile, "Max privileged duration              : %d\n", max_privileged_duration);
 	fprintf(pfile, "Number of branches                   : %d\n", nb_branches);
 	fprintf(pfile, "Number of channels                   : %d\n", nb_channels);
 	fprintf(pfile, "X_MAX                                : %f\n", X_MAX);

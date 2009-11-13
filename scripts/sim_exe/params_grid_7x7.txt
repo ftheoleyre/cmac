@@ -4,7 +4,7 @@ Ktree_algo=1
 # MTree=2, static=3
 Nb_channels=1
 Nb_branches=4
-Max_time_priv_mode=0.01
+Max_priv_duration=0.01
 X_MAX=15
 #the destination
 sink_address=404
