@@ -1,4 +1,4 @@
 #!/bin/bash
 
 #Random mesh networks
-./topo_sim.sh grid7x7
+./topo_sim.sh grid_7x7

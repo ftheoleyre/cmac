@@ -135,6 +135,7 @@ typedef struct {
 	double	time_sent;
 	double	time_received;
 	List	*route;
+	int		pk_size;
 } pk_info;
 
 

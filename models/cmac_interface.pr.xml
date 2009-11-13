@@ -874,6 +874,7 @@ else{
 	info_ptr->time_sent		= op_sim_time();
 	info_ptr->time_received	= -1;
 	info_ptr->route			= op_prg_list_create();
+	info_ptr->pk_size		= op_pk_total_size_get(pkptr);
 	op_prg_list_insert(pk_list, info_ptr, OPC_LISTPOS_TAIL);
 	cmac_interface_add_in_route(current_pk_id - 1, mac_address);
 
@@ -995,12 +996,17 @@ int			i;
 //Stats
 pk_info		*elem;
 int			nb_pk_received = 0;
+int			*tab_pk_rec;
+int			*tab_pk_sent;
 int			nb_pk_sent = 0;
 double		av_degree = 0;
+int			nb_bits_received = 0;
+int			nb_bits_sent = 0;
 //delay
 double		delay_tmp;
 double		delay_avg, delay_cumulated = 0, delay_max = 0, delay_stddev = 0;
-double		route_length_cumulated = 0;		
+double		route_length_cumulated = 0;	
+double		jain_dratio = 0;
 //Simulation parameters
 int			RTS;
 int			mac_layer = 0;
@@ -1010,6 +1016,18 @@ int			nb_branches, nb_channels;
 
 
 if (my_stat_id == 0){
+	
+	//-------------------------------------------
+	//				INITIALIZATION
+	//-------------------------------------------
+
+	tab_pk_rec = op_prg_mem_alloc(sizeof(int) * nb_nodes);
+	tab_pk_sent = op_prg_mem_alloc(sizeof(int) * nb_nodes);
+	for(i=0; i<nb_nodes; i++){
+		tab_pk_rec[i] = 0;
+		tab_pk_sent[i] = 0;
+	}
+	
 	
 	//-------------------------------------------
 	//				PARAMETERS
@@ -1035,10 +1053,13 @@ if (my_stat_id == 0){
 		
 		if (elem->time_sent <= op_sim_time() -1.0){
 			nb_pk_sent ++;
+			tab_pk_sent[i]++;
 	
 			//Received !!
 			if (elem->time_received > 0){
 				nb_pk_received ++;
+				tab_pk_rec[i]++;
+				nb_bits_sent += elem->pk_size;
 			
 				//Delays
 				delay_tmp = elem->time_received - elem->time_sent;
@@ -1048,6 +1069,9 @@ if (my_stat_id == 0){
 				
 				//route length
 				route_length_cumulated += op_prg_list_size(elem->route) - 1;
+				
+				//volume
+				nb_bits_received += elem->pk_size;
 			}
 		}
 	}
@@ -1062,6 +1086,21 @@ if (my_stat_id == 0){
 	}	
 	delay_stddev = sqrt(delay_stddev / nb_pk_received);
 	
+	
+	//-------------------------------------------
+	//				JAIN INDEX
+	//-------------------------------------------
+	double 	jain_dratio_numerateur = 0, jain_dratio_denominateur = 0;
+	int		nb = 0;
+	for(i=0; i<nb_nodes; i++)
+		if (tab_pk_sent[i] > 0){
+			nb++;
+			jain_dratio_numerateur 		+= (double)tab_pk_sent[i] / tab_pk_sent[i];
+			jain_dratio_denominateur 	+= pow((double)tab_pk_sent[i] / tab_pk_sent[i], 2);
+		}
+	jain_dratio = (double)pow(jain_dratio_numerateur, 2) / (nb * jain_dratio_denominateur);
+	
+		
 	//All info about the packets in a common file
 	if (DEBUG)
 		debug_write_pk_info();
@@ -1086,19 +1125,19 @@ if (my_stat_id == 0){
 	fprintf(pfile, " --------------------------------------------------------------\n");
 
 	fprintf(pfile, "-------------------------  GENERAL ----------------------------\n");
-	fprintf(pfile, "Number of nodes                    : %d\n", nb_nodes);
-	fprintf(pfile, "Mac layer id                       : %d\n", mac_layer);
-	fprintf(pfile, "Mac layer name                     : %s\n", get_mac_layer_to_str(mac_layer, msg, 100));
-	fprintf(pfile, "Duration                           : %f\n", op_sim_time());
-	fprintf(pfile, "RTS                                : %d\n", RTS);
-	fprintf(pfile, "Inter Packet Time                  : %f\n", inter_pk_time);
-	fprintf(pfile, "Sink address                       : %d\n", sink_address);
-	fprintf(pfile, "Number of branches                 : %d\n", nb_branches);
-	fprintf(pfile, "Number of channels                 : %d\n", nb_channels);
-	fprintf(pfile, "X_MAX                              : %f\n", X_MAX);
-	fprintf(pfile, "Y_MAX                              : %f\n", Y_MAX);
-	fprintf(pfile, "Initial Locations                  : %d\n", pos_method);
-	fprintf(pfile, "Average degree                     : %f\n", av_degree);
+	fprintf(pfile, "Number of nodes                      : %d\n", nb_nodes);
+	fprintf(pfile, "Mac layer id                         : %d\n", mac_layer);
+	fprintf(pfile, "Mac layer name                       : %s\n", get_mac_layer_to_str(mac_layer, msg, 100));
+	fprintf(pfile, "Duration                             : %f\n", op_sim_time());
+	fprintf(pfile, "RTS                                  : %d\n", RTS);
+	fprintf(pfile, "Inter Packet Time                    : %f\n", inter_pk_time);
+	fprintf(pfile, "Sink address                         : %d\n", sink_address);
+	fprintf(pfile, "Number of branches                   : %d\n", nb_branches);
+	fprintf(pfile, "Number of channels                   : %d\n", nb_channels);
+	fprintf(pfile, "X_MAX                                : %f\n", X_MAX);
+	fprintf(pfile, "Y_MAX                                : %f\n", Y_MAX);
+	fprintf(pfile, "Initial Locations                    : %d\n", pos_method);
+	fprintf(pfile, "Average degree                       : %f\n", av_degree);
 	fprintf(pfile, "\n");
 		
 	
@@ -1111,20 +1150,27 @@ if (my_stat_id == 0){
 	fprintf(pfile, "-----------------------------------------------------------------\n");
 	fprintf(pfile, "|                          TRAFFIC                               |\n");
 	fprintf(pfile, " ----------------------------------------------------------------\n");
-	fprintf(pfile, "Nb packets sent                    : %d\n", nb_pk_sent);
-	fprintf(pfile, "Delivery Ratio                     : %f\n", (double)nb_pk_received / nb_pk_sent);
+	fprintf(pfile, "Nb packets sent                      : %d\n", nb_pk_sent);
+	fprintf(pfile, "Delivery Ratio                       : %f\n", (double)nb_pk_received / nb_pk_sent);
+	fprintf(pfile, "Goodput (in Mbps)                    : %f\n", nb_bits_received / (op_sim_time() - TIME_START_DATA) );
+	fprintf(pfile, "Goodput (in pps)                     : %f\n", nb_pk_received / (op_sim_time() - TIME_START_DATA));
 	fprintf(pfile, "\n");
 		
 	fprintf(pfile, "\n\n--------------------  DELAY ---------------------------------\n");
-	fprintf(pfile, "Average Delay                      : %f\n", delay_avg);
-	fprintf(pfile, "Max Delay                          : %f\n", delay_max);
-	fprintf(pfile, "Delay Confidence Interval plus     : %f\n", delay_avg + 2 * delay_stddev / sqrt(nb_pk_received));
-	fprintf(pfile, "Delay Confidence Interval min      : %f\n", delay_avg - 2 * delay_stddev / sqrt(nb_pk_received));
-	fprintf(pfile, "Delay Standard Deviation           : %f\n", delay_stddev);
+	fprintf(pfile, "Average Delay (in s)                 : %f\n", delay_avg);
+	fprintf(pfile, "Max Delay (in s)                     : %f\n", delay_max);
+	fprintf(pfile, "Delay Confidence Interval plus (in s): %f\n", delay_avg + 2 * delay_stddev / sqrt(nb_pk_received));
+	fprintf(pfile, "Delay Confidence Interval min (in s) : %f\n", delay_avg - 2 * delay_stddev / sqrt(nb_pk_received));
+	fprintf(pfile, "Delay Standard Deviation (in s)      : %f\n", delay_stddev);
 	fprintf(pfile, "\n");
 
+	fprintf(pfile, "\n\n--------------------  FAIRNESS ---------------------------------\n");
+	fprintf(pfile, "Delivery Ratio Jain Index            : %f\n", jain_dratio);
+	fprintf(pfile, "\n");
+
+	
 	fprintf(pfile, "\n\n--------------------  ROUTE ---------------------------------\n");
-	fprintf(pfile, "Average route length               : %f\n", route_length_cumulated / nb_pk_received);
+	fprintf(pfile, "Average route length                : %f\n", route_length_cumulated / nb_pk_received);
 	fprintf(pfile, "\n");
 
 	

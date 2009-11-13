@@ -15,14 +15,3 @@
 "routing":				"KTREE"
 "RTS":					"NO"
 "X_MAX":				"15"
-
-"nb_branches":			"4"
-"nb_channels":			"1"
-
-"max_time_priv_mode":	"0.01"
-
-"mac_layer":			"CMAC"
-
-"duration":				"62"
-"interpacket_time":		"0.030"
-"ktree_algo":			"MTree"
