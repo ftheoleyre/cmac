@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/ksh
 
 #verify the nb of parameters
 if [ $# -ne 1 ]
@@ -30,9 +30,6 @@ fi
 #--------------------------------------
 #		PARAMETERS
 #--------------------------------------
-#0=CMAC, 1=80211
-MAC_LAYER_LIST="1 2"	
-MAC_LAYER_NAME=(cmac ieee80211)
 DURATION=90
 
 # traffic
@@ -40,6 +37,10 @@ INTER_PK_TIME_LIST=`cat $FILE_PARAMS | grep "^[^#]" | grep Packet_Interarrival_T
 echo "INTER PK TIMES" $INTER_PK_TIME_LIST
 SINK_ADDR=`cat $FILE_PARAMS | grep "^[^#]" | grep sink_address | cut -d '=' -f 2`
 echo "Sink Address" $SINK_ADDR
+
+#MAC layer
+MAC_LAYER_LIST=`cat $FILE_PARAMS | grep "^[^#]" | grep Mac_layer | cut -d '=' -f 2`
+echo "MAC_LAYER" $MAC_LAYER_LIST
 
 #Cmac-parameters
 KTREE_ALGO_LIST=`cat $FILE_PARAMS | grep "^[^#]" | grep Ktree_algo | cut -d '=' -f 2`
@@ -59,9 +60,11 @@ POS_METHOD=`cat $FILE_PARAMS | grep "^[^#]" | grep Positions_Method | cut -d '='
 #name for the file
 SIMULATION_NAME=$TOPO
 echo "SIMULATION NAME" $SIMULATION_NAME
+NET_NAME=`cat $FILE_PARAMS | grep "^[^#]" | grep Net_name | cut -d '=' -f 2`
+echo "SIMULATION NAME" $NET_NAME
 
 #ARGS
-ARGS="-net_name cmac-$TOPO -ef cmac_generic.ef -noprompt"
+ARGS="-net_name cmac-$NET_NAME -ef cmac_generic.ef -noprompt"
 ARGS="$ARGS -duration $DURATION"
 ARGS="$ARGS -Positions_Method $POS_METHOD"
 
@@ -75,7 +78,7 @@ ARGS="$ARGS -Positions_Method $POS_METHOD"
 i=1
 while [ $i -le "20" ]
 do
-	for MAC_LAYER in $MAC_LAYER_LIST;
+	for MAX_PRIV_DURATION in $MAX_PRIV_DURATION_LIST;
 	do
 		for INTER_PK_TIME in $INTER_PK_TIME_LIST;
 		do
@@ -87,7 +90,7 @@ do
 					do
 						for NB_BRANCHES in $NB_BRANCHES_LIST;
 						do
-							for MAX_PRIV_DURATION in $MAX_PRIV_DURATION_LIST;
+							for MAC_LAYER in $MAC_LAYER_LIST;
 							do
 							
 								#one random seed
@@ -108,7 +111,7 @@ do
 								$CMD
 			
 								#I must move the results in the correct place
-								RES_DIR="../results/$SIMULATION_NAME/${MAC_LAYER_NAME[${MAC_LAYER}]}/"
+								RES_DIR="../results/$SIMULATION_NAME/$MAC_LAYER/"
 								echo $RES_DIR
 								if [ ! -d $RES_DIR ]
 								then
