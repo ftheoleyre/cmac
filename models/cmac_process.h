@@ -130,7 +130,6 @@ typedef struct{
 
 typedef struct {
 	int		source;
-	int		hops;
 	int		pk_id;
 	double	time_sent;
 	double	time_received;

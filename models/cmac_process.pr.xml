@@ -308,9 +308,14 @@ The maximum time during which a node keeps to be privileged (after that, it forw
 				</comments>
 			</properties>
 		</attribute>
-		<attribute name="beta" group="routing" type="integer">
+		<attribute name="CTR_hop_spacing" group="cmac" type="integer">
 			<properties type="integer" auto-assign="no" symbolic-only="no">
 				<default-value value="4"/>
+				<comments>
+<![CDATA[
+The number of hops that separate two consecutive CTR sent by the sinks
+]]>
+				</comments>
 			</properties>
 		</attribute>
 		<attribute name="nb_channels" group="cmac" type="integer">
@@ -545,8 +550,8 @@ double	\slot_privileged_duration;
 /* Offset time before I received the CTR from my parent */
 double	\slot_privileged_offset;
 
-/* BETA interference range */
-int	\BETA;
+/* The number of hops that must separate two consecutive CTR */
+int	\CTR_HOP_SPACING;
 
 /* A RTS/CTS is required gor longer packets (OPC_INT_INFINITY -> never required) */
 int	\RTS_PK_SIZE;
@@ -1154,7 +1159,7 @@ void add_nav(int src, double duration , short channel){
 			ptr->timeout = op_sim_time() + duration;
 			ptr->channel = channel;
 	
-			debug_print(LOW , DEBUG_BACKOFF , "NAV updated, src %d, duration %fus, channel %d\n", src , duration * 1E6, channel);			
+			//debug_print(LOW , DEBUG_BACKOFF , "NAV updated, src %d, duration %fus, channel %d\n", src , duration * 1E6, channel);			
 			FOUT;
 		}
 	}
@@ -1166,7 +1171,7 @@ void add_nav(int src, double duration , short channel){
 	ptr->timeout 	= op_sim_time() + duration;
 	op_prg_list_insert(my_nav_list, ptr , OPC_LISTPOS_TAIL);
 	
-	debug_print(LOW , DEBUG_BACKOFF , "NAV added, src %d, duration %fus, channel %d\n", src , duration * 1E6, channel);
+	//debug_print(LOW , DEBUG_BACKOFF , "NAV added, src %d, duration %fus, channel %d\n", src , duration * 1E6, channel);
 	FOUT;
 }
 
@@ -1417,7 +1422,7 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 		
 			ptr->nb_retry++;
 			
-			if (ptr->nb_retry == MEDIUM_NB_RETRY){
+			if ((ptr->nb_retry == MEDIUM_NB_RETRY) && (!my_sink_tree.is_in_ktree)){
 				ptr->time_transmission_min = op_sim_time() + TIME_MAX_PRIVILEGED;
 			}
 			
@@ -3655,10 +3660,10 @@ void set_next_frame_null(){
 void change_next_frame(frame_struct new_frame){
 	FIN(change_next_frame(frame_struct new_frame));
 	
-	char	msg1[100];
-	char	msg2[100];
+//	char	msg1[100];
+//	char	msg2[100];
 
-	debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
+	//debug_print(MEDIUM , DEBUG_DATA , "old frame scheduled (destination %d, type %s) replaced by a new frame (destination %d, type %s)\n", next_frame_to_send.destination, pk_type_to_str(next_frame_to_send.type , msg1, 100) , new_frame.destination , pk_type_to_str(new_frame.type , msg2, 100));
 	
 	next_frame_to_send = new_frame;
 	
@@ -4260,7 +4265,8 @@ void receive_packet_from_radio(){
 	op_pk_nfd_get(frame, FIELD_PK_ID,			&frame_id);
 	
 	//DEBUG
-	debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main channel %f)\n", source , destination , pk_type_to_str(frame_type , msg, 100) , frame_id , accepted , is_reply_to_receive , get_nav_main_channel());
+	if (accepted)
+		debug_print(MEDIUM , DEBUG_NODE , "received a frame from %d to %d (type %s, id %d, accepted %d, reply_required %d , nav main channel %f)\n", source , destination , pk_type_to_str(frame_type , msg, 100) , frame_id , accepted , is_reply_to_receive , get_nav_main_channel());
 	
 	//Valid frame ?
 	if ((!accepted) && ((my_address == destination) || (destination == ADDR_BROADCAST)) ){
@@ -4768,10 +4774,12 @@ void interrupt_process(){
 				generate_ctr();
 				
 				//The next CTR from the sink (if several channels, the period of CTR should be reduced)
+				//the first channel is only used for common control channel (data for non-privileged nodes + CTR)
 				if (nb_channels > 1)
-					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * BETA /  (nb_channels - 1) + MAX_CTR_DELAY_FROM_SINK, SINK_CTR_CODE);
+					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * CTR_HOP_SPACING /  (nb_channels - 1), 	SINK_CTR_CODE);
+				//one single channel is used for boththe data and the privileged transmissions
 				else
-					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * BETA + MAX_CTR_DELAY_FROM_SINK, 						SINK_CTR_CODE);
+					op_intrpt_schedule_self(op_sim_time() + slot_privileged_duration * CTR_HOP_SPACING, 						SINK_CTR_CODE);
 			}
 
 			//SYNC from the sink
@@ -4800,10 +4808,10 @@ void interrupt_process(){
 			//min code -> we should have no data frame to send before ending the privileged mode
 			if (((op_intrpt_code() == PRIVILEGED_MIN_CODE) && (is_frame_buffer_empty())) || (op_intrpt_code() == PRIVILEGED_MAX_CODE)){
 			
-				debug_print(LOW, DEBUG_CONTROL, "We have to forward the CTR now (ctr scheduled %d, is_priv %d, correct time %d (%f + %f (%f) > %f)\n", next_frame_to_send.type == CTR_PK_TYPE, (is_node_privileged) , (time_start_privileged + slot_privileged_duration >= op_sim_time()), time_start_privileged , slot_privileged_duration , time_start_privileged + slot_privileged_duration, op_sim_time());
+				debug_print(LOW, DEBUG_CONTROL, "We have to forward the CTR now (ctr scheduled %d, is_priv %d, buffer_size %d)\n", next_frame_to_send.type == CTR_PK_TYPE, (is_node_privileged) , get_frame_buffer_size());
 				
-				//End interruption (we have also a min_time interruption)
-				if ((is_node_privileged) && (next_frame_to_send.type != CTR_PK_TYPE) && (time_start_privileged + slot_privileged_duration >= op_sim_time()))
+				//Te node is not anymore privileged (not anymore data or the end of the maximum slot duration)
+				if ((is_node_privileged) && (next_frame_to_send.type != CTR_PK_TYPE))// && (time_start_privileged + slot_privileged_duration >= op_sim_time()))
 					generate_ctr();
 			}
 			
@@ -5309,7 +5317,7 @@ op_ima_obj_attr_set (op_id_self(), "Address", my_address);
 
 //Parameters
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "debug_level",			&DEBUG);
-op_ima_sim_attr_get(OPC_IMA_INTEGER , "beta",					&BETA);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "CTR_hop_spacing",		&CTR_HOP_SPACING);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "RTS",					&RTS_PK_SIZE);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "mac_layer",				&MAC_LAYER);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "ktree_algo",				&KTREE_ALGO);
@@ -5373,7 +5381,8 @@ if (sink_address == my_address){
 
 	//time for privileged nodes
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE ,  "max_priv_duration",	&slot_privileged_duration);
-	TIME_MAX_PRIVILEGED = slot_privileged_duration * 2;
+	printf("privileged for %f seconds\n", slot_privileged_duration);
+	TIME_MAX_PRIVILEGED = slot_privileged_duration;
 }
 else
 	slot_privileged_duration 	= 0;

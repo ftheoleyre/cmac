@@ -926,7 +926,7 @@ info_ptr = get_pk_info_in_list(pk_list , pk_id_tmp);
 if (info_ptr == NULL)
 	op_sim_end("The pk_id is not found in the list of generated packets" , "Do you use one single wlan_mac_intf ?" , "" , "");
 else{
-	info_ptr->hops ++;	
+	cmac_interface_add_in_route(pk_id_tmp, mac_address);
 	info_ptr->time_received = op_sim_time();
 }
 
@@ -1011,7 +1011,7 @@ int			mac_layer, ktree_algo;
 double		max_privileged_duration;
 int			sink_address, pos_method;
 double		X_MAX, Y_MAX;
-int			nb_branches, nb_channels;
+int			nb_branches, nb_channels, CTR_hop_spacing;
 //degree
 List 		**neigh_table_ptr;
 Objid		node_id, mac_id;
@@ -1042,12 +1042,13 @@ if (my_stat_id == 0){
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"mac_layer",		&mac_layer);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ktree_algo",		&ktree_algo);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"sink_address",		&sink_address);
-	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"Max_priv_duration",&max_privileged_duration);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"max_priv_duration",&max_privileged_duration);
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"X_MAX",			&X_MAX);
 	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"Y_MAX",			&Y_MAX);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"Positions_Method",	&pos_method);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_branches",		&nb_branches);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_channels",		&nb_channels);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"CTR_hop_spacing",	&CTR_hop_spacing);
 
 	
 	
@@ -1157,9 +1158,10 @@ if (my_stat_id == 0){
 	fprintf(pfile, "Ktree algorithm                      : %d\n", ktree_algo);
 	fprintf(pfile, "Duration                             : %f\n", op_sim_time());
 	fprintf(pfile, "RTS                                  : %d\n", RTS);
+	fprintf(pfile, "CTR hop spacing                      : %d\n", CTR_hop_spacing);
 	fprintf(pfile, "Inter Packet Time                    : %f\n", inter_pk_time);
 	fprintf(pfile, "Sink address                         : %d\n", sink_address);
-	fprintf(pfile, "Max privileged duration              : %d\n", max_privileged_duration);
+	fprintf(pfile, "Max privileged duration              : %f\n", max_privileged_duration);
 	fprintf(pfile, "Number of branches                   : %d\n", nb_branches);
 	fprintf(pfile, "Number of channels                   : %d\n", nb_channels);
 	fprintf(pfile, "X_MAX                                : %f\n", X_MAX);
@@ -1179,7 +1181,7 @@ if (my_stat_id == 0){
 	fprintf(pfile, "|                          TRAFFIC                               |\n");
 	fprintf(pfile, " ----------------------------------------------------------------\n");
 	fprintf(pfile, "Nb packets sent                      : %d\n", nb_pk_sent);
-	fprintf(pfile, "Delivery Ratio                       : %f\n", (double)nb_pk_received / nb_pk_sent);
+	fprintf(pfile, "Delivery Ratio (data)                : %f\n", (double)nb_pk_received / nb_pk_sent);
 	fprintf(pfile, "Goodput (in Mbps)                    : %f\n", (double) nb_bits_received / (op_sim_time() - TIME_START_DATA) * 1e-6);
 	fprintf(pfile, "Goodput (in pps)                     : %f\n", (double) nb_pk_received / (op_sim_time() - TIME_START_DATA));
 	fprintf(pfile, "\n");

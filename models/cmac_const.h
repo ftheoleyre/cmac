@@ -129,8 +129,6 @@
 //the 
 #define		PRIVILEGED_MIN_TIME_RATIO		0.9
 
-//A CTR could be delayed
-#define		MAX_CTR_DELAY_FROM_SINK			100E-6
 
 
 
@@ -148,7 +146,7 @@
 //-----------------------------------------------
 
 
-#define		DATA_BUFFER_SIZE_MAX			20
+#define		DATA_BUFFER_SIZE_MAX			40
 
 
 

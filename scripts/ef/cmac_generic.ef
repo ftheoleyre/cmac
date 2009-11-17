@@ -3,7 +3,7 @@
 "beta":					"4"
 "comp_trace_info":		"kernel-based"
 "Conf_File-Positions":	""
-"debug_level":			"NO"
+"debug_level":			"MAX"
 "default_site_position_cache_time_granularity":	"0"
 "Max_Speed":			"5.0"
 "Min_Speed":			"0.0"
