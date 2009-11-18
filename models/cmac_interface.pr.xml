@@ -559,12 +559,40 @@ double compute_max_delay(List* ll, int id1, int id2){
 //-----------------------------------------------------------
 
 
+//updates the arival time for this frame
+void cmac_interface_frame_received(int frame_id){
+	FIN(cmac_interface_frame_received(int frame_id));
+	pk_info		*elem;
+	int			i;	
+	char		msg[100];
+	
+	//Error
+	if (frame_id > op_prg_list_size(pk_list))
+		op_sim_end("invalid data frame id", "", "", "");
+	
+	for(i=0 ; i < op_prg_list_size(pk_list) ; i++){
+		elem = op_prg_list_access(pk_list , i);
+		
+		//nb of sent packets
+		if (elem->pk_id == frame_id){
+			elem->time_received = op_sim_time();
+			FOUT;
+		}
+	}
+
+	snprintf(msg, 100, "Error: the frame id %d was not found", frame_id);
+	op_sim_end(msg, "in cmac_interface_frame_arrived()", "", "");
+	FOUT;
+}
+
+
 //updates the route for this frame
 void cmac_interface_add_in_route(int frame_id, int addr){
 	FIN(cmac_interface_add_in_route(int frame_id, int addr));
 	pk_info		*elem;
 	int			i;
 	int			*addr_ptr;
+	char		msg[100];
 	
 	
 	//Error
@@ -583,6 +611,8 @@ void cmac_interface_add_in_route(int frame_id, int addr){
 		}
 	}
 
+	snprintf(msg, 100, "Error: the frame id %d was not found", frame_id);
+	op_sim_end(msg, "in cmac_interface_add_in_route()", "", "");
 	FOUT;
 }
 
@@ -632,7 +662,7 @@ void debug_write_pk_info(){
 		op_sim_end(msg, "" , "" , "");
 	}
 
-	fprintf(pfile , "SRC	HOPS	DELAY		PK_ID	SENT	ROUTE\n");
+	fprintf(pfile , "SRC	HOPS	DELAY		PK_ID		SENT		ROUTE\n");
 	for(i=0; i <op_prg_list_size(pk_list) ; i++){
 		elem = op_prg_list_access(pk_list, i);
 		fprintf(pfile , "%d	%d	%f	%d		%f	%s\n" , elem->source , op_prg_list_size(elem->route)-1, elem->time_received - elem->time_sent , elem->pk_id , elem->time_sent, route_to_str(elem->route, msg, 100));
@@ -894,7 +924,6 @@ else{
 //Src and destination
 int			source;
 //Information about the packet to receive/forward
-pk_info		*info_ptr;
 int			pk_id_tmp;
 //tmp vaue
 Packet		*pkptr;
@@ -916,30 +945,20 @@ op_pk_fd_get(pkptr , FIELD_PAYLOAD_SOURCE, 	&source);
 op_pk_fd_get(pkptr , FIELD_PAYLOAD_ID, 		&pk_id_tmp);
 
 
-
-
-
-//-----------------------------------
-//				STATS
-//-----------------------------------
-info_ptr = get_pk_info_in_list(pk_list , pk_id_tmp);
-if (info_ptr == NULL)
-	op_sim_end("The pk_id is not found in the list of generated packets" , "Do you use one single wlan_mac_intf ?" , "" , "");
-else{
-	cmac_interface_add_in_route(pk_id_tmp, mac_address);
-	info_ptr->time_received = op_sim_time();
-}
-
+//stats update
+cmac_interface_add_in_route(pk_id_tmp, mac_address);
+cmac_interface_frame_received(pk_id_tmp);
 
 
 //-----------------------------------
 //		Forward to the upper layer
 //-----------------------------------
 if (op_strm_connected(OPC_STRM_OUT , STREAM_TO_UP) == OPC_TRUE){
-		
-	op_pk_send (pkptr, STREAM_TO_UP);
-	cmac_interface_add_in_route(current_pk_id - 1, mac_address);
+	
+	//forward the packet upper in the layers
+	op_pk_send (pkptr, STREAM_TO_UP);	
 }
+
 	
 else 
 	op_sim_end("The node receives a data packet for it", "although it is not the sink", "", "");

@@ -19,9 +19,9 @@
 #define C					3.0E+08		/* speed of light (m/s) */
 #define SIXTEEN_PI_SQ		157.91367	/* 16 times pi-squared 	*/
 #define	PI					3.141592653589793238462
-#define	ALPHA				4.0			/* attenuation coefficient */
+#define	ALPHA				2.0			/* attenuation coefficient */
 
-static const char*	PowI_Err_Hdr = "Error in radio power computation pipeline stage (dra_power):";
+//static const char*	PowI_Err_Hdr = "Error in radio power computation pipeline stage (dra_power):";
 
 
 /***** pipeline procedure *****/
@@ -69,8 +69,7 @@ wlan_alpha_power (Packet * pkptr)
 		/* meters). 											*/
 		prop_distance = op_td_get_dbl (pkptr, OPC_TDA_RA_START_DIST);
 		
-		/* Compute the path loss for this distance and			*/
-		/* wavelength. 											*/
+		// Compute the path loss for this distance and wavelength
 		if (prop_distance > 0.0)
 			{
 			//path_loss = (lambda * lambda) / (SIXTEEN_PI_SQ * prop_distance * prop_distance);
@@ -81,7 +80,6 @@ wlan_alpha_power (Packet * pkptr)
 		else
 			path_loss = 1.0;
 		}
-
 	/* Determine the receiver bandwidth and base frequency.		*/
 	rx_base_freq = op_td_get_dbl (pkptr, OPC_TDA_RA_RX_FREQ);
 	rx_bandwidth = op_td_get_dbl (pkptr, OPC_TDA_RA_RX_BW);

@@ -111,7 +111,7 @@ phase
 						<attribute creation-mechanics="Model" name="list" type="object list">
 							<object-list>
 								<sub-object>
-									<attribute creation-mechanics="Model" name="Data Rate" type="double" value-symbol="1 Mbps"/>
+									<attribute creation-mechanics="Model" name="Data Rate" type="double" value-symbol="11 Mbps"/>
 									<attribute creation-mechanics="Model" name="Packet Reception-Power Threshold" type="double" value-symbol="7.33E-14"/>
 									<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
 										<sub-object>
@@ -211,6 +211,7 @@ become idle.
 						</attribute>
 					</sub-object>
 				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
 				<attribute name="rxgroup model" type="typed file" spectype="10" value="wlan_rxgroup"/>
 				<attribute name="chanmatch model" type="typed file" spectype="10" value="wlan_chanmatch"/>
 				<attribute name="tagain model" type="typed file" spectype="10" value="NONE"/>
@@ -245,6 +246,7 @@ become idle.
 						</attribute>
 					</sub-object>
 				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
 				<attribute name="rxgroup model" type="typed file" spectype="10" value="wlan_rxgroup"/>
 				<attribute name="closure model" type="typed file" spectype="10" value="dra_closure_all"/>
 				<attribute name="chanmatch model" type="typed file" spectype="10" value="wlan_chanmatch"/>

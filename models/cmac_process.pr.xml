@@ -12,7 +12,7 @@
 							<attribute creation-mechanics="Model" name="list" type="object list">
 								<object-list>
 									<sub-object>
-										<attribute creation-mechanics="Model" name="Channel Settings" type="compound" spectype="0">
+										<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
 											<sub-object>
 												<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
 												<attribute creation-mechanics="Model" name="list" type="object list">
@@ -616,7 +616,7 @@ cmac to define the branches that 'collect' the traffic to the sink)
 //-----------------------------------------------
 
 #define		DEBUG_STATE_MACHINE				0
-//(my_address == 506)
+//(my_address == 206)
 
 
 
@@ -950,7 +950,7 @@ void add_frame_timeout(double data_pk_size){
 	timeout_intrpt = op_intrpt_schedule_self(op_sim_time() + 2*SIFS + 2*PROPAGATION_DELAY + (double)data_pk_size/operational_speed, FRAME_TIMEOUT_CODE);
 	
 	//debug
-	debug_print(MAX , DEBUG_TIMEOUT , "adds a timeout for %fus\n", 1E6 * (2*SIFS + 2*PROPAGATION_DELAY + (double)data_pk_size/operational_speed) );
+	debug_print(MAX , DEBUG_TIMEOUT , "adds a timeout for %fus (pk size is %f, speed is %f)\n", 1E6 * (2*SIFS + 2*PROPAGATION_DELAY + (double)data_pk_size/operational_speed), data_pk_size, operational_speed);
 
 	FOUT;
 }
@@ -1183,7 +1183,7 @@ void update_nav_time(double transmission_time, int source , short channel , int 
 		
 	//No real reservation
 	if (transmission_time <= 0){
-		debug_print(LOW , DEBUG_BACKOFF , "NAV ! UPDATED -> src %d, duration %fus, pk_size %d, channel %d\n", source , transmission_time * 1E6 , pk_size, channel);
+		//debug_print(LOW , DEBUG_BACKOFF , "NAV ! UPDATED -> src %d, duration %fus, pk_size %d, channel %d\n", source , transmission_time * 1E6 , pk_size, channel);
 		FOUT;
 	}
 
@@ -1193,7 +1193,7 @@ void update_nav_time(double transmission_time, int source , short channel , int 
 	//Schedules the end of the NAV	
 	op_intrpt_schedule_self(op_sim_time() + transmission_time , NAV_END_CODE);
 	
-	debug_print(LOW , DEBUG_BACKOFF , "NAV -> src %d, duration %fus, pk_size %d, channel %d\n", source , transmission_time * 1E6 , pk_size, channel);
+	//debug_print(LOW , DEBUG_BACKOFF , "NAV -> src %d, duration %fus, pk_size %d, channel %d\n", source , transmission_time * 1E6 , pk_size, channel);
 	FOUT;
 }
 
@@ -2037,14 +2037,15 @@ Boolean	compute_is_in_ktree(){
 	for(i=op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
-		//I am in its list of ktree children
-		for(j=0 ; j < op_prg_list_size(neigh_ptr->cmac_children) ; j++){
-			child_ptr = op_prg_list_access(neigh_ptr->cmac_children , j);
+		//Tis is a parent and I am in the list of its ktree children
+		if (neigh_ptr->address == my_sink_tree.parent)
+			for(j=0 ; j < op_prg_list_size(neigh_ptr->cmac_children) ; j++){
+				child_ptr = op_prg_list_access(neigh_ptr->cmac_children , j);
 			
-			//It is one parent -> save its stability
-			if (child_ptr->address == my_address)
-				FRET(OPC_TRUE);
-		}
+				//It is one parent -> save its stability
+				if (child_ptr->address == my_address)
+					FRET(OPC_TRUE);
+			}
 	}
 	FRET(OPC_FALSE);
 }
@@ -2915,10 +2916,10 @@ void fill_savings_fields(Packet *pk){
 		if ((i == 0) && (op_prg_list_size(sav_list) == 0)){
 			saving_field[i] = 1;		
 		}
-		//first child: max saving + 1 (I will be contained in this branch)
+		//first child: the subtree size
 		else if (i == 0){
 			sav_ptr = op_prg_list_access(sav_list, i);
-			saving_field[i] = sav_ptr->saving + 1;		
+			saving_field[i] = my_sink_tree.subtree_size;//sav_ptr->saving + 1;		
 		}
 		//for other children, I just forward their savings without any modification
 		else if (op_prg_list_size(sav_list) > i){
@@ -2978,6 +2979,9 @@ List *create_my_cmac_children_from_packet(Packet *pk){
 		child_ptr->branch_id 	= list_children_ptr[i].branch_id;
 		op_prg_list_insert(ll , child_ptr , OPC_LISTPOS_HEAD);
 		debug_print(MAX, DEBUG_HELLO, "\t%d (branch %d)\n", child_ptr->address, child_ptr->branch_id);
+		
+		if ((child_ptr->address == my_address) && (my_sink_tree.parent != source))
+			debug_print(LOW, DEBUG_HELLO, "Inconsistent decision: %d chosed me as child although it is not my parent!\n", source);
 	}
 	
 	//memory release for the packet field itself
@@ -3015,7 +3019,7 @@ void fill_cmac_children_fields(Packet *pk){
 			child_ptr = op_prg_list_access(my_sink_tree.cmac_children, i);
 			list_children_ptr[i].address 	= child_ptr->address;			
 			list_children_ptr[i].branch_id 	= child_ptr->branch_id;			
-			debug_print(MAX, DEBUG_HELLO, "\t%d (branch %d)\n", child_ptr->address, child_ptr->branch_id);
+			debug_print(MAX, DEBUG_HELLO, "\t%d (branch %d)\n", child_ptr->address, child_ptr->branch_id);			
 		}		
 		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_CMAC_CHILDREN, list_children_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(child_struct) * nb_cmac_children);
 	}
@@ -3190,7 +3194,7 @@ void delete_timeouted_neighbors(void *ptr , int code){
 	int				i;
 	neigh_struct	*neigh_ptr;
 	Boolean			is_modif_required = OPC_FALSE;
-	
+		
 	//Walks in the list
 	for(i= op_prg_list_size(my_neighborhood_table)-1 ; i>= 0 ; i--){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
@@ -3204,9 +3208,7 @@ void delete_timeouted_neighbors(void *ptr , int code){
 			if (op_sim_time() < TIME_BEFORE_HELLO_CONVERGENCE)
 				neigh_ptr->timeout 	+= HELLO_PK_PERIOD_BEFORE_CONVERGENCE + HELLO_PK_PERIOD_BEFORE_CONVERGENCE / 10;
 			else
-				neigh_ptr->timeout 	+= HELLO_PK_PERIOD + HELLO_PK_PERIOD / 10;
-				
-			
+				neigh_ptr->timeout 	+= HELLO_PK_PERIOD + HELLO_PK_PERIOD / 10;			
 			
 			//the PDR is 0 -> we just remove this neighbor
 			if (stability_get(neigh_ptr) == 0){
@@ -3244,8 +3246,11 @@ void delete_timeouted_neighbors(void *ptr , int code){
 	}
 	
 	//Next verification
+	if (op_sim_time() > older_entry)
+		printf("toto error sur timeout\n");	
 	if (op_prg_list_size(my_neighborhood_table) != 0)
 		op_intrpt_schedule_call(older_entry , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
+	
 	FOUT;	
 }
 
@@ -3336,7 +3341,7 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 	if (!neighbor_updated){
 		//We add one entry -> we must schedule the timeout verification
 		if (op_prg_list_size(my_neighborhood_table) == 0)			
-			op_intrpt_schedule_call(op_sim_time() + HELLO_PK_PERIOD , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
+			op_intrpt_schedule_call(op_sim_time() + next_hello + next_hello / 10 , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
 
 		neigh_ptr = op_prg_mem_alloc(sizeof(neigh_struct));
 		stability_init(neigh_ptr);
@@ -3573,7 +3578,6 @@ Packet* create_packet(frame_struct frame){
 				break;
 				
 				case KTREE_ALGO_STATIC:
-				case KTREE_ALGO_NONE:
 				break;
 				
 				default:
@@ -4544,9 +4548,12 @@ void receive_packet_from_radio(){
 					
 				}
 				
-				else if (destination != my_address)
+				else if (destination != my_address){
+					if (nb_channels == 1)
+						update_nav_time(t_slot , source , channel , 0);
+					else
 					update_nav_time(transmission_time , source , channel , 0);
-					
+				}
 			break;
 		   	
 			case CTR_ACK_PK_TYPE:
@@ -5287,9 +5294,87 @@ char 	log_dir_tmp[FILENAME_LOG_MAX];
 //Id
 //int		intf_id;
 
+Objid 	rxch_objid, txch_objid;
+Objid	tx_objid, rx_objid;
+Objid	my_objid = op_id_self();
+double	tx_power;
+void	*temp_ptr;
 
+op_ima_obj_attr_get(op_id_self() ,  "Transmission Power",	&tx_power);
+
+	/* Obtaining transmitter objid for accessing channel data rate attribute.	*/
+	tx_objid = op_topo_assoc (my_objid, OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, 0);
+
+	/* If no receiver is attach then generate error message and abort the simulation.	*/
+	if (tx_objid == OPC_OBJID_INVALID)
+		{
+		wlan_error_print ("No transmitter attached to this MAC process", OPC_NIL, OPC_NIL);	
+		}
+
+	/* Obtaining number of channels available.									*/
+	op_ima_obj_attr_get (tx_objid, "channel", &chann_objid);
+	num_chann = op_topo_child_count (chann_objid, OPC_OBJTYPE_RATXCH);
+	
+	/* Check for error conditions. The transmitter is expected to have a single	*/
+	/* channel.																	*/
+	if (num_chann > 1)
+		wlan_error_print ("The transmitter of the surrounding node has too many channels. This MAC",
+						  "is implemented to use a single channel for all supported data rates.",
+						  "Possibly, the new MAC process model is deployed in an old node model.");
+	else if (num_chann == 0)
+		wlan_error_print ("No channel is available for transmission.", OPC_NIL, OPC_NIL);
+		
+	/* Set the transmitter's transmission power.								*/	
+	txch_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
+	op_ima_obj_attr_set (txch_objid, "power", tx_power);
+
+	/* Free the transmitter channel state information set at the rxgroup		*/
+	/* pipeline stage.															*/
+	temp_ptr = (void *) op_ima_obj_state_get (txch_objid);
+	op_prg_mem_free (temp_ptr);	
+	
+	/* Reset the channel state. */
+	op_ima_obj_state_set (txch_objid, OPC_NIL);
+
+	/* Obtaining receiver's objid for accessing channel data rate attribute.	*/
+	rx_objid = op_topo_assoc (my_objid, OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, 0);
+
+	/* If no receiver is attach then generate error message and abort the		*/
+	/* simulation.																*/
+	if (rx_objid == OPC_OBJID_INVALID)
+		{
+		wlan_error_print ("No receiver attached to this MAC process", OPC_NIL, OPC_NIL);	
+		}
+
+	/* Disable the apptracking capability for the receiver						*/
+//	apptrack_rx_processing_disable (rx_objid);
+	
+	/* Obtaining number of channels available.									*/
+	op_ima_obj_attr_get (rx_objid, "channel", &chann_objid);
+	num_chann = op_topo_child_count (chann_objid, OPC_OBJTYPE_RARXCH);
+	
+	/* Check for error conditions. The receiver is expected to have a single	*/
+	/* channel.																	*/
+	if (num_chann > 1)
+		wlan_error_print ("The receiver of the surrounding node has too many channels. This MAC",
+						  "is implemented to use a single channel for all supported data rates.",
+						  "Possibly, the new MAC process model is deployed in an old node model.");
+	else if (num_chann == 0)
+		wlan_error_print ("No channel is available for reception.", OPC_NIL, OPC_NIL);
+
+	/* Free the receiver channel state information set at the rxgroup stage.	*/
+	rxch_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, 0);
+	temp_ptr = (void *) op_ima_obj_state_get (rxch_objid);
+	op_prg_mem_free (temp_ptr);
+	
+	/* Reset the channel state. */
+	op_ima_obj_state_set (rxch_objid, OPC_NIL);
 
 	
+	
+	
+
+
 //-----------------------------------------------
 //		   		IDENTIFICATION
 //-----------------------------------------------
@@ -5327,10 +5412,6 @@ op_ima_sim_attr_get(OPC_IMA_INTEGER , "sink_address",			&sink_address);
 if (nb_channels == 0)
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
 
-
-//no ktree-algo if I do not execute CMAC
-if (MAC_LAYER != CMAC)
-	KTREE_ALGO = KTREE_ALGO_NONE;
 
 //log directory name
 if (op_ima_sim_attr_exists("Result_Directory")){
@@ -5669,8 +5750,10 @@ if (DEBUG_STATE_MACHINE)
 interrupt_process();
 
 
-if (DEBUG_STATE_MACHINE)
-	debug_print(LOW , DEBUG_GLOBAL , "EXIT - IDLE2 - %d\n", my_address);
+if (DEBUG_STATE_MACHINE){
+	debug_print(LOW , DEBUG_GLOBAL , "EXIT - IDLE2 - %d (pk_to_send %d -> (%d & %d) || %d\n", my_address, IS_PK_TO_SEND, IS_DATA_OK , !is_frame_buffer_empty() ,next_frame_to_send.type != NO_PK_TYPE);
+	debug_print(LOW , DEBUG_GLOBAL , "DTA_OK: %d | (%d & %d) | %d | %d | %d\n", !strict_privileged_mode, is_hello_to_send, !IS_BROADCAST_FORBIDDEN, !my_sink_tree.is_in_ktree, is_node_privileged, is_sink);
+}
 ]]>
 				</value-text>
 			</attribute>

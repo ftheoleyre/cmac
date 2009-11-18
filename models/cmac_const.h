@@ -44,7 +44,7 @@
 //ktree algo
 #define		KTREE_ALGO_SYNC					1
 #define		KTREE_ALGO_MAXTREE				2
-#define		KTREE_ALGO_NONE					0
+//#define		KTREE_ALGO_NONE					0
 #define		KTREE_ALGO_STATIC				3
 
 
