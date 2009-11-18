@@ -86,46 +86,59 @@ do
 			do
 				for X_MAX in $X_MAX_LIST;
 				do
-					for NB_CHANNELS in $NB_CHANNELS_LIST;
+					for MAC_LAYER in $MAC_LAYER_LIST;
 					do
-						for NB_BRANCHES in $NB_BRANCHES_LIST;
+					
+						#only one branch and one channel for IEEE 802.11
+						if [ $MAC_LAYER -eq 2 ]
+						then
+							NB_CHANNELS_LIST_TMP="1"
+							NB_BRANCHES_LIST_TMP="1"
+						else
+							NB_CHANNELS_LIST_TMP="$NB_CHANNELS_LIST"
+							NB_BRANCHES_LIST_TMP="$NB_BRANCHES_LIST"
+						fi						
+						
+						for NB_CHANNELS in $NB_CHANNELS_LIST_TMP;
 						do
-							for MAC_LAYER in $MAC_LAYER_LIST;
+							for NB_BRANCHES in $NB_BRANCHES_LIST_TMP;
 							do
 							
-								#one random seed
-								SEED=`hexdump -n4 -e\"%u\" /dev/random`
-								RES_TMP_DIR="/tmp/debug/$TOPO/$SEED"
-								mkdir -p $RES_TMP_DIR
+							
+										#one random seed
+										SEED=`hexdump -n4 -e\"%u\" /dev/random`
+										RES_TMP_DIR="/tmp/debug/$TOPO/$SEED"
+										mkdir -p $RES_TMP_DIR
 
-								#simulation arguments for this run
-								CMD="op_runsim -mac_layer $MAC_LAYER -seed $SEED -Result_Directory $RES_TMP_DIR"
-								CMD="$CMD -interpacket_time $INTER_PK_TIME"
-								CMD="$CMD -ktree_algo $KTREE_ALGO"
-								CMD="$CMD -max_priv_duration $MAX_PRIV_DURATION"
-								CMD="$CMD -nb_branches $NB_BRANCHES -nb_channels $NB_CHANNELS"
-								CMD="$CMD -X_MAX $X_MAX"
-								CMD="$CMD -sink_address $SINK_ADDR"
-								CMD="$CMD $ARGS"				
-								echo $CMD " > " $RES_TMP_DIR
-								$CMD
+										#simulation arguments for this run
+										CMD="op_runsim -mac_layer $MAC_LAYER -seed $SEED -Result_Directory $RES_TMP_DIR"
+										CMD="$CMD -interpacket_time $INTER_PK_TIME"
+										CMD="$CMD -ktree_algo $KTREE_ALGO"
+										CMD="$CMD -max_priv_duration $MAX_PRIV_DURATION"
+										CMD="$CMD -nb_branches $NB_BRANCHES -nb_channels $NB_CHANNELS"
+										CMD="$CMD -X_MAX $X_MAX"
+										CMD="$CMD -sink_address $SINK_ADDR"
+										CMD="$CMD $ARGS"				
+										echo $CMD " > " $RES_TMP_DIR
+										$CMD
 			
-								#I must move the results in the correct place
-								RES_DIR="../results/$SIMULATION_NAME/$MAC_LAYER/"
-								echo $RES_DIR
-								if [ ! -d $RES_DIR ]
-								then
-									mkdir -p $RES_DIR
-								fi
+										#I must move the results in the correct place
+										RES_DIR="../results/$SIMULATION_NAME/$MAC_LAYER/"
+										echo $RES_DIR
+										if [ ! -d $RES_DIR ]
+										then
+											mkdir -p $RES_DIR
+										fi
 						
-								#copy the resulting files
-								mv $RES_TMP_DIR $RES_DIR
+										#copy the resulting files
+										mv $RES_TMP_DIR $RES_DIR
 						
-								#extract the correct stats
-								MAC_FILE="`ls $RES_DIR/$SEED/*stats-nodes*`"
-								CMD="./extract_values_from_result_file.sh $MAC_FILE $SEED $RES_DIR"
-								echo $CMD; $CMD
-								#rm -rf $RES_TMP_DIR
+										#extract the correct stats
+										MAC_FILE="`ls $RES_DIR/$SEED/*stats-nodes*`"
+										CMD="./extract_values_from_result_file.sh $MAC_FILE $SEED $RES_DIR"
+										echo $CMD; $CMD
+										#rm -rf $RES_TMP_DIR
+
 							done
 						done
 					done
