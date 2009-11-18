@@ -2756,9 +2756,10 @@ void print_cmac_children(List *ll, short debug_type){
 //-----------------------------------------------------------
 
 	
-//returns the list of current cmac chdilren
-void update_current_cmac_children(){
+//updates my cmac children and return if it actually changes
+Boolean update_current_cmac_children(){
 	FIN(update_current_cmac_children());
+	
 	child_struct	*child_ptr, *child_ptr2;
 	int				i , j, k;
 	Boolean			list_changed;
@@ -2767,7 +2768,7 @@ void update_current_cmac_children(){
 	
 	//only for cmac!
 	if (MAC_LAYER != CMAC) 
-		FOUT;
+		FRET(OPC_FALSE);
 	
 	//saves the old list
 	old_cmac_children = my_sink_tree.cmac_children;
@@ -2840,7 +2841,7 @@ void update_current_cmac_children(){
 	op_prg_mem_free(old_cmac_children);
 
 	
-	FOUT;
+	FRET(list_changed);
 }
 
 
@@ -3299,9 +3300,10 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 	
 	int				i;
 	neigh_struct	*neigh_ptr;
-	Boolean			neighbor_updated 	= OPC_FALSE;
-	Boolean			hello_required 		= OPC_FALSE;
-			
+	Boolean	neighbor_updated 				= OPC_FALSE;
+	Boolean	hello_required 					= OPC_FALSE;
+	Boolean	update_cmac_children_required 	= OPC_FALSE;	
+	
 	//---------------------------
 	//		LIST UPDATE
 	//---------------------------
@@ -3314,6 +3316,11 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 			op_prg_mem_free(neigh_ptr->cmac_children);
 			op_prg_mem_free(neigh_ptr->savings);
 			
+			//an urgent verification is required
+			if ((neigh_ptr->parent == my_address) && (parent != my_address))
+				update_cmac_children_required = OPC_TRUE;
+			
+			//update
 			neigh_ptr->bidirect			= bidirect;
 			neigh_ptr->sink_dist		= sink_dist;
 			neigh_ptr->ktree_dist		= ktree_dist;
@@ -3324,7 +3331,7 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 			neigh_ptr->savings			= savings;
 			neighbor_updated 			= OPC_TRUE;
 			
-			//one gratuitous hello
+			//is that a gratuitous hello or not?
 			if (next_hello != 0){
 				neigh_ptr->timeout		= op_sim_time() + next_hello + next_hello / 10;			
 				stability_update(neigh_ptr, OPC_TRUE);
@@ -3366,10 +3373,14 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 	//		IS KTREE NODE ?
 	//---------------------------
 	//NB: I must verify for each reception 
-	//the source may have change the list of its ktree children
-	
+	//the source may have change the list of its ktree children	
 	if (update_is_in_ktree_and_dist())
 		hello_required = OPC_TRUE;
+	
+	if (update_cmac_children_required){
+		if (update_current_cmac_children())
+			hello_required = OPC_TRUE;
+	}
 		
 	
 	//-------------------------------------------------
@@ -4497,7 +4508,7 @@ void receive_packet_from_radio(){
 					transmission_time =  SIFS + PROPAGATION_DELAY + (double)MTU_MAX / operational_speed;
 				
 				//Remark: we answer even if a NAV is present -> the CTR should have a larger priority and we should enforce its delivery
-				if (destination == my_address){// && (is_reply_possible(destination , my_current_channel))){
+				if (destination == my_address){
 					
 					//the node becomes privileged
 					is_node_privileged 			= OPC_TRUE;
@@ -4513,11 +4524,16 @@ void receive_packet_from_radio(){
 							debug_print(LOW, DEBUG_CONTROL, "ERROR: we cannot update the list of children for the source of CTR\n");
 						update_is_in_ktree_and_dist();
 					}
+					
+					//Bad CTR -> gratuitous hello to solve inconsistencies
 					if (!my_sink_tree.is_in_ktree){
 						print_neighborhood_table(DEBUG_CONTROL);
-						op_sim_end("Error: I receive a CTR although I am not in the k-tree", "", "", "");
+						debug_print(LOW, DEBUG_CONTROL, "Error: I received a CTR although I am not in the k-tree. I immediately discard this CTR and send one hello\n");
+						generate_hello(0);
+						
+						//exit -> I discard this CTR
+						break;									
 					}
-
 					
 					//Schedules the end of the privileged mode
 					if (slot_privileged_duration > offset){
