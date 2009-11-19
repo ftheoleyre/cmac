@@ -234,7 +234,7 @@
 #define		DIST_SINK_MAX					15	
 
 //MTU in bits
-#define		MTU_MAX								2400.0
+#define		MTU_MAX								(8 * 2400.0)
 
 
 	

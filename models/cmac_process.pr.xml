@@ -309,7 +309,7 @@ The maximum time during which a node keeps to be privileged (after that, it forw
 			</properties>
 		</attribute>
 		<attribute name="CTR_hop_spacing" group="cmac" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="no">
+			<properties type="integer" auto-assign="yes" symbolic-only="no">
 				<default-value value="4"/>
 				<comments>
 <![CDATA[
@@ -950,7 +950,7 @@ void add_frame_timeout(double data_pk_size){
 	timeout_intrpt = op_intrpt_schedule_self(op_sim_time() + 2*SIFS + 2*PROPAGATION_DELAY + (double)data_pk_size/operational_speed, FRAME_TIMEOUT_CODE);
 	
 	//debug
-	debug_print(MAX , DEBUG_TIMEOUT , "adds a timeout for %fus (pk size is %f, speed is %f)\n", 1E6 * (2*SIFS + 2*PROPAGATION_DELAY + (double)data_pk_size/operational_speed), data_pk_size, operational_speed);
+	debug_print(MAX , DEBUG_TIMEOUT , "adds a timeout for %fus (SIFS %f, prop delay %f, pk size is %f, speed is %f)\n", 1E6 * (2*SIFS + 2*PROPAGATION_DELAY + (double)data_pk_size/operational_speed), SIFS, PROPAGATION_DELAY, data_pk_size, operational_speed);
 
 	FOUT;
 }
@@ -2767,7 +2767,7 @@ Boolean update_current_cmac_children(){
 	List			*old_cmac_children, *l1, *l2;
 	
 	//only for cmac!
-	if (MAC_LAYER != CMAC) 
+	if ((MAC_LAYER != CMAC) || (FREEZE_HELLO_DISCOVERY_AFTER_CONVERGENCE && op_sim_time() > TIME_BEFORE_HELLO_CONVERGENCE))
 		FRET(OPC_FALSE);
 	
 	//saves the old list
@@ -3966,7 +3966,7 @@ void generate_ctr(){
 		frame.payload				= NULL;
 		change_next_frame(frame);
 	
-		debug_print(LOW , DEBUG_CONTROL , "CTR generated for the child %d\n", destination);
+		debug_print(LOW , DEBUG_CONTROL , "CTR generated for the child %d (branch %d)\n", destination, ctr_last_branch);
 	}
 	FOUT;
 }
@@ -4214,6 +4214,19 @@ double compute_ack_pk_size(){
 	FRET(ack_pk_size);
 }
 
+//returns the pk size for a CTS
+double compute_cts_pk_size(){
+	FIN(compute_cts_pk_size());
+	
+	Packet			*pkptr;
+	int				cts_pk_size;
+
+	pkptr = op_pk_create_fmt("cmac_cts");
+	cts_pk_size = op_pk_total_size_get(pkptr);
+	op_pk_destroy(pkptr);
+	
+	FRET(cts_pk_size);
+}
 
 
 
@@ -4329,12 +4342,15 @@ void receive_packet_from_radio(){
 					is_reply_received = OPC_TRUE;
 				else if ((frame_type == ACK_PK_TYPE) && (source == last_frame_sent.destination) && (destination == my_address))
 					is_reply_received = OPC_TRUE;
-				else
+				else{
+					debug_print(LOW, DEBUG_CONTROL, "This reply does not correspond (type %s, src %d = %d, dest %d)\n", pk_type_to_str(frame_type, msg, 20), source, last_frame_sent.destination, destination);
 					is_reply_bad = OPC_TRUE;
-						
+				}
 				//We are no longer privileged
-				if (is_reply_received)
+				if (is_reply_received){
+					debug_print(MEDIUM, DEBUG_CONTROL, "The CTR was acknowledged -> I am not anymore privileged\n");
 					is_node_privileged = OPC_FALSE;
+				}
 			break;
 		
 			default:
@@ -4728,9 +4744,10 @@ void interrupt_process(){
 	//verify that the graph is connected just before sending data packets
 	if ((!connectivity_verification) && (op_sim_time() > TIME_START_DATA)){
 		connectivity_verification = OPC_TRUE;
-		
-		if (!cmac_tools_graph_is_connected())
+		tools_fig_generate();
+		if (!cmac_tools_graph_is_connected()){
 			op_sim_end("The graph is not connected", "I stop here the simulation process", "", "");
+		}
 	}	
 	
 	switch (op_intrpt_type()){
@@ -4829,13 +4846,16 @@ void interrupt_process(){
 			
 			//privileged END !
 			//min code -> we should have no data frame to send before ending the privileged mode
-			if (((op_intrpt_code() == PRIVILEGED_MIN_CODE) && (is_frame_buffer_empty())) || (op_intrpt_code() == PRIVILEGED_MAX_CODE)){
+			if (((op_intrpt_code() == PRIVILEGED_MIN_CODE) &&(is_frame_buffer_empty())) || (op_intrpt_code() == PRIVILEGED_MAX_CODE)){
 			
-				debug_print(LOW, DEBUG_CONTROL, "We have to forward the CTR now (ctr scheduled %d, is_priv %d, buffer_size %d)\n", next_frame_to_send.type == CTR_PK_TYPE, (is_node_privileged) , get_frame_buffer_size());
-				
-				//Te node is not anymore privileged (not anymore data or the end of the maximum slot duration)
-				if ((is_node_privileged) && (next_frame_to_send.type != CTR_PK_TYPE))// && (time_start_privileged + slot_privileged_duration >= op_sim_time()))
-					generate_ctr();
+				//I must end my slot only if I am still privileged!
+				if (is_node_privileged)
+					
+					//Te node is not anymore privileged (not anymore data or the end of the maximum slot duration)
+					if ((last_frame_sent.type != CTR_PK_TYPE || !is_reply_to_receive) && (next_frame_to_send.type != CTR_PK_TYPE)){
+						debug_print(LOW, DEBUG_CONTROL, "We have to forward the CTR now (ctr scheduled %d, is_priv %d, buffer_size %d)\n", next_frame_to_send.type == CTR_PK_TYPE, (is_node_privileged) , get_frame_buffer_size());
+						generate_ctr();
+					}
 			}
 			
 			//Returns to the main channel
@@ -5444,7 +5464,9 @@ op_ima_obj_attr_get(op_id_self() ,  "Transmission Power",	&POWER_TX);
 //A ktree node is allowed to send packets only when it is privileged
 strict_privileged_mode = (MAC_LAYER == CMAC);
 
-
+//error
+if (CTR_HOP_SPACING == 0)
+	op_sim_end("You must have CTR_HOP_SPACING > 0", "", "", "");
 
 
 //-----------------------------------------------
@@ -5949,6 +5971,7 @@ if (DEBUG_STATE_MACHINE)
 			<attribute name="Exit Execs" type="textlist">
 				<value-text>
 <![CDATA[
+char	str[20];
 
 
 if (DEBUG_STATE_MACHINE)
@@ -6071,11 +6094,20 @@ if (!is_tx_busy){
 	//Timeout of a reply is required
 	if (is_reply_to_receive){
 
-		//DATA sent -> a ack only is required
-		if ((is_node_privileged) && (nb_channels > 1) && (last_frame_sent.type == DATA_UNICAST_PK_TYPE))
+		//DATA sent -> an ack only is required
+		if (last_frame_sent.type == DATA_UNICAST_PK_TYPE)
 			add_frame_timeout(compute_ack_pk_size());
-		else 
+		
+		//end of my slot -> the destination can reply to my CTR with a DATA packet
+		else if ((nb_channels == 1) && (last_frame_sent.type == CTR_PK_TYPE))
 			add_frame_timeout(MTU_MAX);
+		
+		//RTS -> I must wait a CTS
+		else if (last_frame_sent.type == RTS_PK_TYPE)
+			add_frame_timeout(compute_cts_pk_size());
+
+		else
+			debug_print(LOW, DEBUG_CONTROL, "BUG for pk type %s\n", pk_type_to_str(last_frame_sent.type, str, 20));
 	}
 		
 	//-----------------------------------------------------
