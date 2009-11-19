@@ -19,28 +19,32 @@ MAC_LAYER=`cat $MAC_FILE |  grep "Mac layer id"  |cut -d ":" -f 2`
 KTREE_ALGO=`cat $MAC_FILE |  grep "Ktree algorithm"  |cut -d ":" -f 2`
 
 
-#parameters
+#environment
 NB_NODES=`cat $MAC_FILE |  grep "Number of nodes"  |cut -d ":" -f 2`
 SIM_LENGTH=`cat $MAC_FILE |  grep "X_MAX"  |cut -d ":" -f 2`
 INTER_PK_T=`cat $MAC_FILE |  grep "Inter Packet Time"  |cut -d ":" -f 2`
 DEGREE=`cat $MAC_FILE |  grep "Average degree"  |cut -d ":" -f 2`
+
+#MAC parameters
 NB_CHANNELS=`cat $MAC_FILE |  grep "Number of channels"  |cut -d ":" -f 2`
 NB_BRANCHES=`cat $MAC_FILE |  grep "Number of branches"  |cut -d ":" -f 2`
+CTR_HOPS=`cat $MAC_FILE |  grep "CTR hop spacing"  |cut -d ":" -f 2`
 
-
-#MAC
+#MAC perfs
 DRATIO_DATA=`cat $MAC_FILE |  grep "Delivery Ratio (data)"  |cut -d ":" -f 2`
 DELAY_AVG=`cat $MAC_FILE |  grep "Average Delay (in s)"  |cut -d ":" -f 2`
 DELAY_STDDEV=`cat $MAC_FILE |  grep "Delay Standard Deviation (in s)"  |cut -d ":" -f 2`
 JAIN_DRATIO=`cat $MAC_FILE |  grep "Delivery Ratio Jain Index"  |cut -d ":" -f 2`
 GOODPUT_MBPS=`cat $MAC_FILE |  grep "Goodput (in Mbps)"  |cut -d ":" -f 2`
 
+#Error detection
+NB_PKTS=`cat $MAC_FILE |  grep "Nb packets sent"  |cut -d ":" -f 2`
 
 # stat file (discard bad networks with a null reliability)
-if [ $DRATIO_DATA \> 0.01 ]
+if [ $NB_PKTS \> 0 ]
 then
 	#file to save results
-	FILE_RESULT_AGGREG="$3/nodes=`echo $NB_NODES`_length=`echo $SIM_LENGTH`_algo=`echo $MAC_LAYER`-`echo $KTREE_ALGO`_nbchannels=`echo $NB_CHANNELS`.txt"
+	FILE_RESULT_AGGREG="nodes=`echo $NB_NODES`_length=`echo $SIM_LENGTH`_algo=`echo $MAC_LAYER`-`echo $KTREE_ALGO`_nbchannels=`echo $NB_CHANNELS`_nbbranches=`echo $NB_BRANCHES`_CTRhops=`echo $CTR_HOPS`.txt"
 	echo $FILE_RESULT_AGGREG
 	
 	#all the stats
