@@ -1422,7 +1422,7 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 		
 			ptr->nb_retry++;
 			
-			if ((ptr->nb_retry > MEDIUM_NB_RETRY) && (!my_sink_tree.is_in_ktree)){
+			if ((ptr->nb_retry > MEDIUM_NB_RETRY) && (!my_sink_tree.is_in_ktree) && (MAC_LAYER != IEEE80211)){
 				ptr->time_transmission_min = op_sim_time() + TIME_MAX_PRIVILEGED;
 			}
 			
