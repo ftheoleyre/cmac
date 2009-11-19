@@ -1422,15 +1422,14 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 		
 			ptr->nb_retry++;
 			
-			if ((ptr->nb_retry == MEDIUM_NB_RETRY) && (!my_sink_tree.is_in_ktree)){
+			if ((ptr->nb_retry > MEDIUM_NB_RETRY) && (!my_sink_tree.is_in_ktree)){
 				ptr->time_transmission_min = op_sim_time() + TIME_MAX_PRIVILEGED;
 			}
 			
 			//Verify that we dont have too many retransmissions
 			if (ptr->nb_retry >= MAX_NB_RETRY){
 				debug_print(LOW, DEBUG_DATA , "the unicast frame to %d was not acknowledged and we have too many retransmissions -> DELETED (type %s, id %d)\n",  ptr->destination , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
-				
-				
+								
 				ptr = op_prg_list_remove(unicast_frame_buffer , i);
 				if (ptr->payload != NULL)
 					op_pk_destroy(ptr->payload);
