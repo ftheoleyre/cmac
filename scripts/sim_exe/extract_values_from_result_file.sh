@@ -18,7 +18,6 @@ cat $MAC_FILE
 MAC_LAYER=`cat $MAC_FILE |  grep "Mac layer id"  |cut -d ":" -f 2`
 KTREE_ALGO=`cat $MAC_FILE |  grep "Ktree algorithm"  |cut -d ":" -f 2`
 
-
 #environment
 NB_NODES=`cat $MAC_FILE |  grep "Number of nodes"  |cut -d ":" -f 2`
 SIM_LENGTH=`cat $MAC_FILE |  grep "X_MAX"  |cut -d ":" -f 2`
@@ -44,17 +43,14 @@ NB_PKTS=`cat $MAC_FILE |  grep "Nb packets sent"  |cut -d ":" -f 2`
 if [ $NB_PKTS \> 0 ]
 then
 	#file to save results
-	FILE_RESULT_AGGREG="nodes=`echo $NB_NODES`_length=`echo $SIM_LENGTH`_algo=`echo $MAC_LAYER`-`echo $KTREE_ALGO`_nbchannels=`echo $NB_CHANNELS`_nbbranches=`echo $NB_BRANCHES`_CTRhops=`echo $CTR_HOPS`.txt"
+	FILE_RESULT_AGGREG="$3/nodes=`echo $NB_NODES`_length=`echo $SIM_LENGTH`_algo=`echo $MAC_LAYER`-`echo $KTREE_ALGO`_nbchannels=`echo $NB_CHANNELS`.txt"
 	echo $FILE_RESULT_AGGREG
 	
 	#all the stats
-	echo "$NB_NODES	$SIM_LENGTH	$INTER_PK_T	$DEGREE	$NB_CHANNELS	$NB_BRANCHES	$DRATIO_DATA	$DELAY_AVG	$DELAY_STDDEV	$JAIN_DRATIO	$GOODPUT_MBPS	$SEED" >> $FILE_RESULT_AGGREG
+	echo "$NB_NODES	$SIM_LENGTH	$INTER_PK_T	$DEGREE	$NB_CHANNELS	$NB_BRANCHES	$CTR_HOPS	$DRATIO_DATA	$DELAY_AVG	$DELAY_STDDEV	$JAIN_DRATIO	$GOODPUT_MBPS	$SEED" >> $FILE_RESULT_AGGREG
 fi
 
 
 #delete unused temporary files
 #rm $FILE_OUT
 
-# Parameters list: 
-#NB_NODES=1`
-#SEED=2

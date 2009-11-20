@@ -1,0 +1,121 @@
+
+Parameters are extracted from the file params_grid7x7_load.txt
+Parameters are extracted from the file params_grid7x7_interf.txt
+INTER PK TIMES 0.2 0.175 0.15 0.1250.1 0.095 0.09 0.085 0.08 0.075 0.07 0.065 0.06 0.055 0.05
+Parameters are extracted from the file params_grid7x7_branches.txt
+INTER PK TIMES 0.2 0.175 0.15 0.1250.1 0.095 0.09 0.085 0.08 0.075 0.07 0.065 0.06 0.055 0.05
+Sink Address 404
+INTER PK TIMES 0.08
+Sink Address 404
+Sink Address 404
+MAC_LAYER 1 2
+MAC_LAYER 1
+KTREE ALGO IDS 2 3
+MAC_LAYER 1
+KTREE ALGO IDS 2
+NB_CHANNELS 1
+KTREE ALGO IDS 2
+NB_BRANCHES 4
+NB_CHANNELS 1
+NB_CHANNELS 1
+MAX_PRIV_DURATION 0.01
+NB_BRANCHES 4
+NB_BRANCHES 1 2 3 4 5 6 7
+CTR_HOP_SPACING
+MAX_PRIV_DURATION 0.01
+XMAX 420
+MAX_PRIV_DURATION 0.01
+CTR_HOP_SPACING 1 2 3 4 5 6 7 8
+SIMULATION NAME grid7x7_load
+XMAX 400
+CTR_HOP_SPACING 4
+SIMULATION NAME grid_7x7
+SIMULATION NAME grid7x7_interf
+XMAX 400
+op_runsim -mac_layer 2 -seed 3550551031 -Result_Directory /tmp/debug/grid7x7_load/3550551031 -interpacket_time 0.2 -ktree_algo 2 -max_priv_duration 0.01 -nb_branches 1 -nb_channels 1 -CTR_hop_spacing 1 -X_MAX 420 -sink_address 404 -net_name cmac-grid_7x7 -ef cmac_generic.ef -noprompt -duration 90 -Positions_Method 4  >  /tmp/debug/grid7x7_load/3550551031
+SIMULATION NAME grid_7x7
+op_runsim -mac_layer 1 -seed 850239207 -Result_Directory /tmp/debug/grid7x7_interf/850239207 -interpacket_time 0.2 -ktree_algo 2 -max_priv_duration 0.01 -nb_branches 4 -nb_channels 1 -CTR_hop_spacing 1 -X_MAX 400 -sink_address 404 -net_name cmac-grid_7x7 -ef cmac_generic.ef -noprompt -duration 90 -Positions_Method 4  >  /tmp/debug/grid7x7_interf/850239207
+SIMULATION NAME grid7x7_branches
+SIMULATION NAME grid_7x7
+op_runsim -mac_layer 1 -seed 3517880355 -Result_Directory /tmp/debug/grid7x7_branches/3517880355 -interpacket_time 0.08 -ktree_algo 2 -max_priv_duration 0.01 -nb_branches 1 -nb_channels 1 -CTR_hop_spacing 4 -X_MAX 400 -sink_address 404 -net_name cmac-grid_7x7 -ef cmac_generic.ef -noprompt -duration 90 -Positions_Method 4  >  /tmp/debug/grid7x7_branches/3517880355
+|-----------------------------------------------------------------------------|
+|   ____   _____   _   _  ______  _______                                     |
+|  / __ \ |  __ \ | \ | ||  ____||__   __| Simulation and Model Library       |
+| | |  | || |__) ||  \| || |__      | |    Copyright 1987-2007 by             |
+| | |  | ||  ___/ | . ` ||  __|     | |    OPNET Technologies, Inc.           |
+| | |__| || |     | |\  || |____    | |    as a part of OPNET Release 12.0    |
+|  \____/ |_|     |_| \_||______|   |_|                                       |
+|-----------------------------------------------------------------------------|
+|                Making  Networks  and  Applications  Perform                 |
+|-----------------------------------------------------------------------------|
+|   OPNET Technologies, Inc. / 7255 Woodmont Av. / Bethesda, MD 20814, USA    |
+|   WEB: http://www.opnet.com / TEL: +1.240.497.3000 / FAX: +1.240.497.3001   |
+|-----------------------------------------------------------------------------|
+| Protected by U.S. Patent 6,820,042.                                         |
+|-----------------------------------------------------------------------------|
+| Network Simulation of: cmac-grid_7x7                                        |
+|-----------------------------------------------------------------------------|
+privileged for 0.010000 seconds
+|-----------------------------------------------------------------------------|
+| Simulation terminated by process (cmac_process) at module (top.Campus Network.302.mac), T (60.0027), EV (320317) |
+| The graph is not connected                                                  |
+| I stop here the simulation process                                          |
+|                                                                             |
+|-----------------------------------------------------------------------------|
+|-----------------------------------------------------------------------------|
+| Simulation Completed - Collating Results.                                   |
+| Events: Total (320,416); Average Speed (67,878 events/sec.)                 |
+| Time  : Elapsed (4.7 sec.); Simulated (1 min. 0 sec.)                       |
+|                                                                             |
+|-----------------------------------------------------------------------------|
+../results/grid7x7_load/
+./extract_values_from_result_file.sh ../results/grid7x7_load//3550551031/1258725430_stats-nodes=49-mac=2.txt 3550551031 ../results/grid7x7_load/
+ --------------------------------------------------------------
+|                     SIMULATION PARAMETERS                    |
+ --------------------------------------------------------------
+-------------------------  GENERAL ----------------------------
+Number of nodes                      : 49
+Mac layer id                         : 2
+Mac layer name                       : IEEE 80211
+Ktree algorithm                      : 2
+Duration                             : 60.002706
+RTS                                  : -1
+CTR hop spacing                      : 1
+Inter Packet Time                    : 0.200000
+Sink address                         : 404
+Max privileged duration              : 0.010000
+Number of branches                   : 1
+Number of channels                   : 1
+X_MAX                                : 420.000000
+Y_MAX                                : 400.000000
+Initial Locations                    : 4
+Average degree                       : 3.061224
+
+-----------------------------------------------------------------
+|                          TRAFFIC                               |
+ ----------------------------------------------------------------
+Nb packets sent                      : 0
+Delivery Ratio (data)                : nan
+Goodput (in Mbps)                    : 0.000370
+Goodput (in pps)                     : 0.000000
+
+
+
+--------------------  DELAY ---------------------------------
+Average Delay (in s)                 : nan
+Max Delay (in s)                     : 0.000000
+Delay Confidence Interval plus (in s): nan
+Delay Confidence Interval min (in s) : nan
+Delay Standard Deviation (in s)      : nan
+
+
+
+--------------------  FAIRNESS ---------------------------------
+Delivery Ratio Jain Index            : nan
+
+
+
+--------------------  ROUTE ---------------------------------
+Average route length                : nan
+
+op_runsim -mac_layer 2 -seed 2731389851 -Result_Directory /tmp/debug/grid7x7_load/2731389851 -interpacket_time 0.2 -ktree_algo 3 -max_priv_duration 0.01 -nb_branches 1 -nb_channels 1 -CTR_hop_spacing 1 -X_MAX 420 -sink_address 404 -net_name cmac-grid_7x7 -ef cmac_generic.ef -noprompt -duration 90 -Positions_Method 4  >  /tmp/debug/grid7x7_load/2731389851

@@ -130,7 +130,7 @@ do
 										$CMD
 			
 										#I must move the results in the correct place
-										RES_DIR="../results/$SIMULATION_NAME/$MAC_LAYER/"
+										RES_DIR="../results/$SIMULATION_NAME/"
 										echo $RES_DIR
 										if [ ! -d $RES_DIR ]
 										then
