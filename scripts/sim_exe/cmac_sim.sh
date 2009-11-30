@@ -63,12 +63,13 @@ POS_METHOD=`cat $FILE_PARAMS | grep "^[^#]" | grep Positions_Method | cut -d '='
 SIMULATION_NAME=$TOPO
 echo "SIMULATION NAME" $SIMULATION_NAME
 NET_NAME=`cat $FILE_PARAMS | grep "^[^#]" | grep Net_name | cut -d '=' -f 2`
-echo "SIMULATION NAME" $NET_NAME
+echo "NET NAME" $NET_NAME
 
 #ARGS
 ARGS="-net_name cmac-$NET_NAME -ef cmac_generic.ef -noprompt"
 ARGS="$ARGS -duration $DURATION"
 ARGS="$ARGS -Positions_Method $POS_METHOD"
+
 
 
 
@@ -110,7 +111,6 @@ do
 								for CTR_HOP_SPACING in $CTR_HOP_SPACING_LIST_TMP;
 								do
 							
-							
 										#one random seed
 										SEED=`hexdump -n4 -e\"%u\" /dev/random`
 										RES_TMP_DIR="/tmp/debug/$TOPO/$SEED"
@@ -143,7 +143,7 @@ do
 										#extract the correct stats
 										MAC_FILE="`ls $RES_DIR/$SEED/*stats-nodes*`"
 										CMD="./extract_values_from_result_file.sh $MAC_FILE $SEED $RES_DIR"
-										echo $CMD; $CMD
+										echo $CMD;$CMD
 										#rm -rf $RES_TMP_DIR
 										
 										
