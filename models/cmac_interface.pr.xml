@@ -1057,17 +1057,17 @@ if (my_stat_id == 0){
 	//				PARAMETERS
 	//-------------------------------------------
 	
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 			&RTS);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"mac_layer",		&mac_layer);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ktree_algo",		&ktree_algo);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"sink_address",		&sink_address);
-	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"max_priv_duration",&max_privileged_duration);
-	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"X_MAX",			&X_MAX);
-	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"Y_MAX",			&Y_MAX);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"Positions_Method",	&pos_method);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_branches",		&nb_branches);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_channels",		&nb_channels);
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"CTR_hop_spacing",	&CTR_hop_spacing);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"RTS" , 				&RTS);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"mac_layer",			&mac_layer);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"ktree_algo",			&ktree_algo);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"sink_address",			&sink_address);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"max_priv_duration",	&max_privileged_duration);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"X_MAX",				&X_MAX);
+	op_ima_sim_attr_get(OPC_IMA_DOUBLE , 	"Y_MAX",				&Y_MAX);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"Positions_Method",		&pos_method);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_branches",			&nb_branches);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_channels",			&nb_channels);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"CTR_hop_spacing",		&CTR_hop_spacing);
 
 	
 	
@@ -1200,6 +1200,7 @@ if (my_stat_id == 0){
 	fprintf(pfile, "|                          TRAFFIC                               |\n");
 	fprintf(pfile, " ----------------------------------------------------------------\n");
 	fprintf(pfile, "Nb packets sent                      : %d\n", nb_pk_sent);
+	fprintf(pfile, "Nb packets received                  : %d\n", nb_pk_received);
 	fprintf(pfile, "Delivery Ratio (data)                : %f\n", (double)nb_pk_received / nb_pk_sent);
 	fprintf(pfile, "Goodput (in Mbps)                    : %f\n", (double) nb_bits_received / (op_sim_time() - TIME_START_DATA) * 1e-6);
 	fprintf(pfile, "Goodput (in pps)                     : %f\n", (double) nb_pk_received / (op_sim_time() - TIME_START_DATA));

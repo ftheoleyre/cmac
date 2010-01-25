@@ -52,7 +52,7 @@ typedef struct{
 	double		time_sent;
 	double		time_transmission_min;
 	double		pk_size;
-	int			duration;			//for RTS / CTS (pk_size of the data_frame)
+	int			nav_duration;		//The NAV in usec
 	double		ifs;				//inter frame spacing for this packet type
 	Boolean		released;			//The memory was released (packet destroyed)
 	Packet		*payload;

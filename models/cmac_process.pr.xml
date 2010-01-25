@@ -484,6 +484,9 @@ int	\my_backoff;
 /* The interruption for the backoff (can be stopped by a medium activity) */
 Evhandle	\backoff_intrpt;
 
+/* The distribution law for backoff values */
+Distribution*	\backoff_dist;
+
 /* When did I become privileged ? */
 double	\time_start_privileged;
 
@@ -559,9 +562,6 @@ int	\RTS_PK_SIZE;
 /* transmission power */
 double	\POWER_TX;
 
-/* The distribution lav for backoff values */
-Distribution *	\backoff_dist;
-
 /* the algo I am executing to form the ktree-core */
 int	\KTREE_ALGO;
 
@@ -576,7 +576,6 @@ sink_tree_struct	\my_sink_tree;
 
 /* the address of the sink */
 int	\sink_address;
-
 
 ]]>
 	</state-variables>
@@ -615,8 +614,7 @@ cmac to define the branches that 'collect' the traffic to the sink)
 //				SPECIAL DEBUG
 //-----------------------------------------------
 
-#define		DEBUG_STATE_MACHINE				0
-//(my_address == 206)
+#define		DEBUG_STATE_MACHINE				(my_address == 205)
 
 
 
@@ -950,7 +948,7 @@ void add_frame_timeout(double time){
 	timeout_intrpt = op_intrpt_schedule_self(op_sim_time() + time, FRAME_TIMEOUT_CODE);
 	
 	//debug
-	debug_print(MAX , DEBUG_TIMEOUT , "adds a timeout for %fus (at %f)\n", time * 10e6, op_sim_time() + time);
+	debug_print(MAX , DEBUG_TIMEOUT , "adds a timeout for %f us (at %f)\n", time * 1000000, op_sim_time() + time);
 
 	FOUT;
 }
@@ -1143,59 +1141,59 @@ void delete_timeouted_nav(void * arg, int code){
 
 
 //adds a medium reservation
-void add_nav(int src, double duration , short channel){
-	FIN(add_nav(int src, double duration , short channel));
+void add_nav(int source, double nav_duration , short channel){
+	FIN(add_nav(int source, double nav_duration , short channel));
 	
 	nav_struct	*ptr;
 	int			i;
 	
 	//Deletes timeouts
 	if (op_prg_list_size(my_nav_list) == 0)
-		op_intrpt_schedule_call(op_sim_time() + duration , 0 , delete_timeouted_nav , NULL);
+		op_intrpt_schedule_call(op_sim_time() + nav_duration , 0 , delete_timeouted_nav , NULL);
 	
 	//Updates the entry if one already exists
 	for(i=0 ; i < op_prg_list_size(my_nav_list) ; i++){
 		ptr = op_prg_list_access(my_nav_list , i);
 		
-		if (ptr->address == src){
-			ptr->timeout = op_sim_time() + duration;
+		if (ptr->address == source){
+			ptr->timeout = op_sim_time() + nav_duration;
 			ptr->channel = channel;
 	
-			//debug_print(LOW , DEBUG_BACKOFF , "NAV updated, src %d, duration %fus, channel %d\n", src , duration * 1E6, channel);			
+			//debug_print(LOW , DEBUG_BACKOFF , "NAV updated, src %d, duration %fus, channel %d\n", source , nav_duration * 1E6, channel);			
 			FOUT;
 		}
 	}
 	
 	//Adds one new element
 	ptr = op_prg_mem_alloc(sizeof(nav_struct));
-	ptr->address 	= src;
+	ptr->address 	= source;
 	ptr->channel	= channel;
-	ptr->timeout 	= op_sim_time() + duration;
+	ptr->timeout 	= op_sim_time() + nav_duration;
 	op_prg_list_insert(my_nav_list, ptr , OPC_LISTPOS_TAIL);
 	
-	//debug_print(LOW , DEBUG_BACKOFF , "NAV added, src %d, duration %fus, channel %d\n", src , duration * 1E6, channel);
+	//debug_print(LOW , DEBUG_BACKOFF , "NAV added, src %d, duration %fus, channel %d\n", source , nav_duration * 1E6, channel);
 	FOUT;
 }
 
 
 
 //updates the nav
-void update_nav_time(double transmission_time, int source , short channel , int pk_size){
-	FIN(update_nav_time(double transmission_time, int source , short channel , int pk_size));
+void update_nav_time(int source, double nav_duration, short channel){
+	FIN(update_nav_time(int source, double nav_duration, short channel));
 		
 	//No real reservation
-	if (transmission_time <= 0){
+	if (nav_duration <= 0){
 		//debug_print(LOW , DEBUG_BACKOFF , "NAV ! UPDATED -> src %d, duration %fus, pk_size %d, channel %d\n", source , transmission_time * 1E6 , pk_size, channel);
 		FOUT;
 	}
 
 	//Stores the NAV duration
-	add_nav(source, transmission_time, channel);
+	add_nav(source, nav_duration, channel);
 					
 	//Schedules the end of the NAV	
-	op_intrpt_schedule_self(op_sim_time() + transmission_time , NAV_END_CODE);
+	op_intrpt_schedule_self(op_sim_time() + nav_duration , NAV_END_CODE);
 	
-	//debug_print(LOW , DEBUG_BACKOFF , "NAV -> src %d, duration %fus, pk_size %d, channel %d\n", source , transmission_time * 1E6 , pk_size, channel);
+	//debug_print(LOW , DEBUG_BACKOFF , "NAV -> src %d, nav_duration %fus, channel %d\n", source , nav_duration * 1E6, channel);
 	FOUT;
 }
 
@@ -1408,8 +1406,8 @@ void print_unicast_frame_buffer(int debug_type){
 
 
 //increments the number of retransmissions for the corresponding frame_id
-void increment_nb_rety_unicast_frame_buffer(int id){
-	FIN(increment_nb_rety_unicast_frame_buffer(int id));
+void increment_nb_retry_unicast_frame_buffer(int id){
+	FIN(increment_nb_retry_unicast_frame_buffer(int id));
 	
 	//Frame buffer
 	frame_struct	*ptr;
@@ -1424,6 +1422,7 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 		
 			ptr->nb_retry++;
 			
+			//will try to retransmit this frame later (the destination is perhaps currently privileged)
 			if ((ptr->nb_retry > MEDIUM_NB_RETRY) && (!my_sink_tree.is_in_ktree) && (MAC_LAYER != IEEE80211)){
 				ptr->time_transmission_min = op_sim_time() + TIME_MAX_PRIVILEGED;
 			}
@@ -1435,7 +1434,7 @@ void increment_nb_rety_unicast_frame_buffer(int id){
 				ptr = op_prg_list_remove(unicast_frame_buffer , i);
 				if (ptr->payload != NULL)
 					op_pk_destroy(ptr->payload);
-				op_prg_mem_free(ptr);
+				op_prg_mem_free(ptr);				
 			}
 			else
 				debug_print(LOW, DEBUG_DATA , "the unicast frame to %d was not acknowledged -> RETRANSMISSION (nb retry %d type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
@@ -3173,7 +3172,7 @@ void generate_hello(double next_hello){
 	frame.time_transmission_min	= 0;
 	frame.released				= OPC_FALSE;
 	frame.payload				= NULL;
-	frame.duration				= 0;
+	frame.nav_duration			= 0;
 	frame.power_ratio			= 1;
 	frame.pk_size				= HEADERS_PK_SIZE + SINK_DIST_SIZE + KTREE_DIST_SIZE;
 	frame.next_hello			= next_hello;
@@ -3562,7 +3561,6 @@ Packet* create_packet(frame_struct frame){
 		case DATA_UNICAST_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_frame");
 			op_pk_nfd_set(pk , FIELD_PK_DATA_PAYLOAD , 	op_pk_copy(frame.payload));
-			op_pk_nfd_set(pk , FIELD_PK_DURATION , 		frame.duration);
 			op_pk_nfd_set(pk , FIELD_PK_POWER_RATIO , 	frame.power_ratio);
 		break;
 		case HELLO_PK_TYPE:
@@ -3603,12 +3601,10 @@ Packet* create_packet(frame_struct frame){
 		break;
 		case RTS_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_rts");
-			op_pk_nfd_set(pk , FIELD_PK_DURATION , 		frame.duration);
 			op_pk_nfd_set(pk , FIELD_PK_POWER_RATIO , 	frame.power_ratio);
 		break;
 		case CTS_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_cts");
-			op_pk_nfd_set(pk , FIELD_PK_DURATION, 		frame.duration);
 			op_pk_nfd_set(pk , FIELD_PK_POWER_RATIO, 	frame.power_ratio);
 		break;
 		case CTR_PK_TYPE:
@@ -3617,7 +3613,6 @@ Packet* create_packet(frame_struct frame){
 			op_pk_nfd_set(pk , FIELD_PK_CTR_TSLOT , 	slot_privileged_duration);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 	op_sim_time() - frame.time_added);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_BRANCHID,	ctr_last_branch);
-
 //			debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
 //TAG
 //			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 		0);
@@ -3633,7 +3628,6 @@ Packet* create_packet(frame_struct frame){
 		break;
 		case ACK_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ack");
-			op_pk_nfd_set(pk , FIELD_PK_DURATION , 		frame.duration);
 		break;
 		case SYNC_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_sync");
@@ -3647,11 +3641,12 @@ Packet* create_packet(frame_struct frame){
 	
 	
 	//Common fields
-	op_pk_nfd_set(pk , FIELD_PK_SOURCE, 	frame.source);
-	op_pk_nfd_set(pk , FIELD_PK_DESTINATION,frame.destination);
-	op_pk_nfd_set(pk , FIELD_PK_TYPE,		frame.type);
-	op_pk_nfd_set(pk , FIELD_PK_ID,			frame.frame_id);
-	op_pk_nfd_set(pk , FIELD_PK_ACCEPT,		OPC_TRUE);
+	op_pk_nfd_set(pk , FIELD_PK_SOURCE, 		frame.source);
+	op_pk_nfd_set(pk , FIELD_PK_DESTINATION,	frame.destination);
+	op_pk_nfd_set(pk , FIELD_PK_TYPE,			frame.type);
+	op_pk_nfd_set(pk , FIELD_PK_ID,				frame.frame_id);
+	op_pk_nfd_set(pk , FIELD_PK_ACCEPT,			OPC_TRUE);
+	op_pk_nfd_set(pk , FIELD_PK_NAV_DURATION, 	frame.nav_duration);
 		
 	//returns the frame !
 	FRET(pk);
@@ -3715,8 +3710,8 @@ int get_new_frame_id(){
 //-----------------------------------------------------------
 
 //Generates a RTS
-void generate_rts(int destination , int duration , int data_frame_id , double power_ratio){
-	FIN(generate_rts(int destination , int duration , int data_frame_id , double power_ratio));
+void generate_rts(int destination , int nav_duration , int data_frame_id , double power_ratio){
+	FIN(generate_rts(int destination , int nav_duration , int data_frame_id , double power_ratio));
 	
 	//Packet to send
 	frame_struct		frame;
@@ -3727,7 +3722,7 @@ void generate_rts(int destination , int duration , int data_frame_id , double po
 	frame.type 					= RTS_PK_TYPE;
 	frame.frame_id 				= data_frame_id;
 	frame.nb_retry				= 0;
-	frame.duration				= duration;
+	frame.nav_duration			= nav_duration;
 	frame.power_ratio			= power_ratio;
 	frame.pk_size				= HEADERS_PK_SIZE + DURATION_SIZE;
 	frame.time_added			= op_sim_time();
@@ -3753,8 +3748,8 @@ void generate_rts(int destination , int duration , int data_frame_id , double po
 //-----------------------------------------------------------
 
 //Generates a CTS
-void generate_cts(int destination , int duration, int frame_id , double power_ratio){
-	FIN(generate_cts(int destination , int duration, int frame_id , double power_ratio));
+void generate_cts(int destination , int nav_duration, int frame_id , double power_ratio){
+	FIN(generate_cts(int destination , int nav_duration, int frame_id , double power_ratio));
 	
 	//Packet to send
 	frame_struct		frame;
@@ -3765,7 +3760,7 @@ void generate_cts(int destination , int duration, int frame_id , double power_ra
 	frame.type 					= CTS_PK_TYPE;
 	frame.frame_id 				= frame_id;
 	frame.nb_retry				= 0;
-	frame.duration				= duration;
+	frame.nav_duration			= nav_duration;
 	frame.power_ratio			= power_ratio;
 	frame.pk_size				= HEADERS_PK_SIZE + DURATION_SIZE;
 	frame.time_added			= op_sim_time();
@@ -3790,8 +3785,8 @@ void generate_cts(int destination , int duration, int frame_id , double power_ra
 //-----------------------------------------------------------
 
 //Generates an ACK
-void generate_ack(int destination, int frame_id , int duration , double power_ratio){
-	FIN(generate_ack(int destination, int frame_id , int duration , double power_ratio));
+void generate_ack(int destination, int nav_duration , int frame_id , double power_ratio){
+	FIN(generate_ack(int destination, int nav_duration , int frame_id , double power_ratio));
 	
 	//Packet to send
 	frame_struct		frame;
@@ -3802,12 +3797,12 @@ void generate_ack(int destination, int frame_id , int duration , double power_ra
 	frame.type 					= ACK_PK_TYPE;
 	frame.frame_id 				= frame_id;
 	frame.nb_retry				= 0;
+	frame.nav_duration 			= nav_duration;
 	frame.power_ratio			= power_ratio;
 	frame.pk_size				= HEADERS_PK_SIZE;
 	frame.time_added			= op_sim_time();
 	frame.time_sent				= 0;
 	frame.time_transmission_min	= 0;
-	frame.duration 				= duration;
 	frame.released				= OPC_FALSE;
 	frame.payload				= NULL;
 	
@@ -3845,7 +3840,7 @@ void generate_sync(){
 	frame.type 					= SYNC_PK_TYPE;
 	frame.frame_id 				= frame_id;
 	frame.nb_retry				= 0;
-	frame.duration				= 0;
+	frame.nav_duration			= 0;
 	frame.power_ratio			= 1;
 	frame.pk_size				= HEADERS_PK_SIZE + NB_TIER_SIZE;
 	frame.time_added			= op_sim_time();
@@ -3888,7 +3883,7 @@ void generate_ctr_end(){
 	frame.type 					= CTR_END_PK_TYPE;
 	frame.frame_id 				= frame_id;
 	frame.nb_retry				= 0;
-	frame.duration				= 0;
+	frame.nav_duration			= 0;
 	frame.power_ratio			= 1;
 	frame.pk_size				= HEADERS_PK_SIZE;
 	frame.time_added			= op_sim_time();
@@ -3946,7 +3941,7 @@ void generate_ctr(){
 	//Normal CTR
 	else {
 		//Unavailability of the next hop
-		//update_nav_time(2 * (slot_privileged_duration + MAX_CTR_DELAY_FROM_SINK) , destination , CHANNEL_MAIN_ID , 0);
+		//update_nav_time(destination, 2 * (slot_privileged_duration + MAX_CTR_DELAY_FROM_SINK) , CHANNEL_MAIN_ID , 0);
 	
 		//frame id
 		frame_id = get_new_frame_id();
@@ -3957,7 +3952,7 @@ void generate_ctr(){
 		frame.type 					= CTR_PK_TYPE;
 		frame.frame_id 				= frame_id;
 		frame.nb_retry				= 0;
-		frame.duration				= 0;
+		frame.nav_duration			= compute_data_time(MTU_MAX);
 		frame.power_ratio			= 1;
 		frame.pk_size				= HEADERS_PK_SIZE;
 		frame.time_added			= op_sim_time();
@@ -3974,8 +3969,8 @@ void generate_ctr(){
 
 
 //Generates a CTR-ACK
-void generate_ctr_ack(int destination, int frame_id , int duration_unavailable){
-	FIN(generate_ctr_ack(int destination, int frame_id , int duration_unavailable));
+void generate_ctr_ack(int destination, int frame_id){
+	FIN(generate_ctr_ack(int destination, int frame_id));
 	
 	//Packet to send
 	frame_struct		frame;
@@ -3986,12 +3981,12 @@ void generate_ctr_ack(int destination, int frame_id , int duration_unavailable){
 	frame.type 					= CTR_ACK_PK_TYPE;
 	frame.frame_id 				= frame_id;
 	frame.nb_retry				= 0;
+	frame.nav_duration 			= 0;
 	frame.power_ratio			= 1;
 	frame.pk_size				= HEADERS_PK_SIZE;
 	frame.time_added			= op_sim_time();
 	frame.time_sent				= 0;
 	frame.time_transmission_min	= 0;
-	frame.duration 				= duration_unavailable;
 	frame.released				= OPC_FALSE;
 	frame.payload				= NULL;
 	
@@ -4053,9 +4048,11 @@ void prepare_data_frame(Packet	*payload , int frame_id , int next_hop , double p
 	frame.time_transmission_min	= 0;
 	frame.released				= OPC_FALSE;
 	frame.payload				= payload;
-	frame.duration				= 0;
 	frame.power_ratio			= power_ratio;
 	frame.pk_size				= HEADERS_PK_SIZE + op_pk_total_size_get(payload);
+	frame.nav_duration			= compute_data_time(frame.pk_size) + compute_ack_time();	
+	//NB: this nav duration will be if we need a RTS/CTS or if this is a special case...
+	
 	
 	if (next_hop == ADDR_BROADCAST){
 		frame.type	= DATA_MULTICAST_PK_TYPE;
@@ -4125,7 +4122,7 @@ double compute_rts_time(){
 	pkptr = op_pk_create_fmt("cmac_rts");
 	pk_size = op_pk_total_size_get(pkptr);
 	op_pk_destroy(pkptr);
-	FRET(SIFS + PROPAGATION_DELAY + ((double)pk_size) / operational_speed);
+	FRET(PROPAGATION_DELAY + SIFS + PROPAGATION_DELAY + ((double)pk_size) / operational_speed);
 }
 
 //returns the time for the CTS
@@ -4139,15 +4136,19 @@ double compute_cts_time(){
 	pkptr = op_pk_create_fmt("cmac_cts");
 	pk_size = op_pk_total_size_get(pkptr);
 	op_pk_destroy(pkptr);
-	FRET(SIFS + PROPAGATION_DELAY + ((double)pk_size) / operational_speed);
+	FRET(PROPAGATION_DELAY + SIFS + PROPAGATION_DELAY + ((double)pk_size) / operational_speed);
 }
 
 //returns the time required for a DATA transmission
 double compute_data_time(int data_pk_size){
 	FIN(compute_data_time(int data_pk_size));
 	
+	
+	debug_print(MEDIUM , DEBUG_NODE , "data timeout: %f + %f + %f / %f\n", (double)SIFS , (double)PROPAGATION_DELAY, (double)data_pk_size, (double)operational_speed);
+	
+	
 	//Exchange: SIFS / DATA / SIFS / ACK	
-	FRET(SIFS + PROPAGATION_DELAY + ((double)data_pk_size) / operational_speed);
+	FRET(PROPAGATION_DELAY + SIFS + PROPAGATION_DELAY + ((double)data_pk_size) / operational_speed);
 }
 
 //returns the time for an ack
@@ -4163,10 +4164,10 @@ double compute_ack_time(){
 	ack_pk_size = op_pk_total_size_get(pkptr);
 	op_pk_destroy(pkptr);
 	
-	debug_print(MEDIUM , DEBUG_NODE , "%f + %f + %f / %f\n", (double)SIFS , (double)PROPAGATION_DELAY, (double)ack_pk_size, (double)operational_speed);
-	
+	debug_print(MEDIUM , DEBUG_NODE , "data timeout: %f + %f + %f / %f\n", (double)SIFS , (double)PROPAGATION_DELAY, (double)ack_pk_size, (double)operational_speed);
+
 	//Exchange:  SIFS / ACK	
-	FRET(SIFS + PROPAGATION_DELAY + ((double)ack_pk_size) / operational_speed);
+	FRET(PROPAGATION_DELAY + SIFS + PROPAGATION_DELAY + ((double)ack_pk_size) / operational_speed);
 }
 
 //returns the time for an ack
@@ -4183,7 +4184,7 @@ double compute_ack_ctr_time(){
 	op_pk_destroy(pkptr);
 	
 	//Exchange:  SIFS / ACK	
-	FRET(SIFS + PROPAGATION_DELAY + (double)(pk_size ) / operational_speed);
+	FRET(PROPAGATION_DELAY + SIFS + PROPAGATION_DELAY + (double)(pk_size ) / operational_speed);
 }
 
 
@@ -4231,9 +4232,7 @@ void receive_packet_from_radio(){
 	short			subtree_size;
 	short			*savings_tmp;
 	//RTS / CTS / DATA / ACK for nav
-	int				duration = 0;
-	//transmission time for the flow
-	double			transmission_time;
+	int				nav_duration = 0;
 	//next hello
 	double			next_hello;
 	//Control
@@ -4250,6 +4249,8 @@ void receive_packet_from_radio(){
 	op_pk_nfd_get(frame, FIELD_PK_DESTINATION, 	&destination);
 	op_pk_nfd_get(frame, FIELD_PK_TYPE, 		&frame_type);
 	op_pk_nfd_get(frame, FIELD_PK_ID,			&frame_id);
+	op_pk_nfd_get(frame , FIELD_PK_NAV_DURATION,&nav_duration);
+					
 	
 	//DEBUG
 	if (accepted)
@@ -4328,16 +4329,6 @@ void receive_packet_from_radio(){
 			
 				op_pk_nfd_get(frame, FIELD_PK_POWER_RATIO , &power_ratio);
 				
-				
-				//Duration of the whole exchange
-				transmission_time = 0;
-				if (op_pk_nfd_is_set(frame, FIELD_PK_DURATION)){
-					op_pk_nfd_get(frame , FIELD_PK_DURATION, &duration);
-					if (duration != 0)
-						transmission_time = compute_ack_time() + compute_data_time(duration);
-				}
-				
-					
 				//If NAV & data reception -> drop the packet (I won't be able to acknowledge it !)
 				if ((destination == my_address) || (destination == ADDR_BROADCAST)){
 				 	
@@ -4368,7 +4359,7 @@ void receive_packet_from_radio(){
 					}
 					
 					//else 
-						//printf("frame id %d dropped by %d\n", frame_id , my_address);					
+					//printf("frame id %d dropped by %d\n", frame_id , my_address);					
 					
 					//This frame is marked as seen
 					add_frame_id_seen(source, frame_id);
@@ -4376,13 +4367,11 @@ void receive_packet_from_radio(){
 					//sends an acknowledgement (unicast + n/o nav)
 					debug_print(LOW, DEBUG_CONTROL, "destination %d rep possible %d\n", destination, is_reply_possible(destination , my_current_channel));
 					if ((destination != ADDR_BROADCAST) && (is_reply_possible(destination , my_current_channel))){
-						generate_ack(source , frame_id , duration , power_ratio);
+						generate_ack(source , nav_duration - compute_ack_time(), frame_id , power_ratio);
 						is_reply_to_send 	= OPC_TRUE;
 						debug_print(LOW, DEBUG_CONTROL, "ack because I just received a data (dest %d)\n", destination);
 					}
 				}
-				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_current_channel , duration);
 			
 			break;
 				
@@ -4390,34 +4379,19 @@ void receive_packet_from_radio(){
 			//Deletes the corresponding DATA_PK from the buffer -> it was correctly transmitted
 			case ACK_PK_TYPE:
 			
-				//Duration of the whole exchange
-				transmission_time = 0;
-				if (op_pk_nfd_is_set(frame, FIELD_PK_DURATION)){
-					op_pk_nfd_get(frame, FIELD_PK_DURATION, &duration);
-					if (duration != 0){
-						transmission_time = compute_ack_time() + compute_data_time(duration);
-					//TODO (CLEAN):	op_sim_end("reservation in one ack ! error !\n", "", "", "");
-					}
-				}
-			
 				//Registers the ack
 				if (destination == my_address){
 					del_frame_buffer_with_id(last_frame_sent.frame_id, OPC_TRUE);
-				}
+			}
 				
-				//NAV if a reservation is present
-				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_current_channel , duration);
 			
 			break;
 			
 			//We must generate a CTS
 			case RTS_PK_TYPE:
 			
-				//Duration of the whole exchange
-				op_pk_nfd_get(frame, FIELD_PK_DURATION, 		&duration);
-				op_pk_nfd_get(frame, FIELD_PK_POWER_RATIO, 	&power_ratio);
-				transmission_time = compute_cts_time() + compute_data_time(duration) + compute_ack_time();
+				//Power ratio
+				op_pk_nfd_get(frame, FIELD_PK_POWER_RATIO, 		&power_ratio);
 			
 				//We received a RTS for us -> we have to send now a CTS to accept the connection
 				// -> No other reservation has been done by neighbors
@@ -4425,7 +4399,7 @@ void receive_packet_from_radio(){
 				// -> If we are privileged, our privileged time has not expired
 				//
 				if ((destination == my_address) && (is_reply_possible(destination , my_current_channel)) && (!is_reply_to_receive) && (!is_node_privileged)){
-					generate_cts(source , duration , frame_id , power_ratio);
+					generate_cts(source , nav_duration - compute_cts_time() , frame_id , power_ratio);
 					is_reply_to_send 	= OPC_TRUE;
 				}
 
@@ -4433,19 +4407,11 @@ void receive_packet_from_radio(){
 				else if (destination == my_address)
 					debug_print(LOW , DEBUG_DATA , "no reply authorized: reply_possible (%d), is rep_required (%d), piviledged %d\n" , is_reply_possible(destination , my_current_channel) , is_reply_to_receive , is_node_privileged);
 			
-				//exchange : RTS - CTS - DATA - ACK
-				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_current_channel , duration);
-
 			break;
 			
 			//We can send the DATA -> place it in the next_frame_to_send
 			//The interruption will leave the current state, and we will enter in transmission for the data frame
 			case CTS_PK_TYPE:
-			
-				//Duration of the whole exchange
-				op_pk_nfd_get(frame, FIELD_PK_DURATION, &duration);
-				transmission_time = compute_ack_time() + compute_data_time(duration);				
 			
 				//We received a CTS for us -> we have to send now the data packet
 				//NB: it is unicast because multicast frame are sent in ADDR_BROADCAST, wihtout RTS / CTS
@@ -4464,10 +4430,6 @@ void receive_packet_from_radio(){
 					print_multicast_frame_buffer(DEBUG_CONTROL);
 				}
 			
-				//exchange : RTS - CTS - DATA - ACK
-				else if (destination != my_address)
-					update_nav_time(transmission_time , source , my_current_channel , duration);
-
 			break;
 			
 			//We become privileged node
@@ -4478,13 +4440,16 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_CTR_OFFSET, 	&offset);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_BRANCHID,&branch_id);
 				
-				//Multi-channel -> this ktree node is in privileged mode (using another channel)
+/*				//Multi-channel -> this ktree node is in privileged mode (using another channel)
 				if (nb_channels > 1)
-					transmission_time 		= t_slot;				
+					nav_duration 		= t_slot;	
+				//TODO: reservation du canal durant t_slot -> stupide non ? plutt ne pas lui envoyer de paquet, mais pas 
+				//de rsa du canal entier !
 				//Single channel -> reserves the medium for the reply (which will be sent through this channel)
 				else
-					transmission_time =  SIFS + PROPAGATION_DELAY + (double)MTU_MAX / operational_speed;
-				
+					nav_duration =  SIFS + PROPAGATION_DELAY + (double)MTU_MAX / operational_speed;
+	*/
+			
 				//Remark: we answer even if a NAV is present -> the CTR should have a larger priority and we should enforce its delivery
 				if (destination == my_address){
 					
@@ -4527,13 +4492,13 @@ void receive_packet_from_radio(){
 					
 					//Multi channel case (CTR_ACK -> in F1+F2 if no data)
 					if (nb_channels > 1){
-						generate_ctr_ack(source , frame_id , 0);
+						generate_ctr_ack(source, frame_id);
 						is_reply_to_send 	= OPC_TRUE;
 					}					
 					//No data frame -> ack to send (max power)
 					//No ack if I have already finished my slot -> I will send a CTR which will act as a CTR-ACK
 					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_cmac_child(ctr_last_branch) == ADDR_BROADCAST))){
-						generate_ack(source , frame_id , 0 , 1);
+						generate_ack(source , 0, frame_id , 1);
 						is_reply_to_send 	= OPC_TRUE;
 						debug_print(LOW, DEBUG_CONTROL, "ack for a CTR I just received since I have no data frame to ack passively the CTR\n");
 					}
@@ -4542,30 +4507,25 @@ void receive_packet_from_radio(){
 					
 				}
 				
-				else if (destination != my_address){
-					if (nb_channels == 1)
-						update_nav_time(t_slot , source , channel , 0);
-					else
-					update_nav_time(transmission_time , source , channel , 0);
-				}
 			break;
 		   	
 			case CTR_ACK_PK_TYPE:
-				//A node which sends a CTR-ACK will become unavailable during t_slot
-				//Then, it will send a CTR to indicate that it will privilege receiver
+				//A node which sends a CTR-ACK will become unavailable during t_slot (and then will send a CTR through the main channel)
 				op_pk_nfd_get(frame , FIELD_PK_CTR_CHANNEL, &channel);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_TSLOT, 	&t_slot);
 				
-				//And I will update this only if it comes from the 'normal' channel
-				//If it comes throug the privileged channel -> I already set this NAV (with an higher value since I know that I is busy 2*t_slot)
+				//This node becomes privileged over another channel -> unavailable for the whole slot
+				//When it will come back to the main channel to send a CTR, I will update its re-availability
 				if (is_main_channel_active())
-					update_nav_time(t_slot , source , channel , 0);
-			//TAG
+					update_nav_time(source, t_slot, channel);
 			break;
 			
 			
 			//Nothing to do, we just ignore the packet
-			case CTR_END_PK_TYPE:			
+			case CTR_END_PK_TYPE:	
+			
+			//TODO:  quoi sert ce paquet ????
+			
 			break;
 			
 			
@@ -4632,6 +4592,10 @@ void receive_packet_from_radio(){
 			break;
 		}
 	}
+	
+	//NAV time
+	if (destination != my_address)
+		update_nav_time(source, nav_duration , my_current_channel);
 
 	//This packet became useless -> destroy it !
 	op_pk_destroy(frame);
@@ -5242,7 +5206,6 @@ void end_sim(){
 		//write a xfig file
 		if (my_stat_id == 0)
 			tools_fig_generate();
-
 		
 		//Close common debug files !
 		if (my_stat_id == 0)
@@ -5525,9 +5488,8 @@ my_nav_list					= op_prg_list_create();
 
 //Backoff distribution initialization
 cw 							= MAX_BACKOFF;
-backoff_dist 				= op_dist_load("uniform_int" , 0 , cw);
+backoff_dist 				= op_dist_load("uniform_int", 0, cw);
 backoff_intrpt				= op_ev_current();
-
 	
 //no reservation
 is_reply_to_receive 		= OPC_FALSE;
@@ -6179,9 +6141,9 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 				
 				//Medium reservation if a second packet has to be transmitted
 				if ((time_for_second_data == 0) || (time_for_first_data + time_for_second_data + op_sim_time() >= slot_privileged_duration + time_start_privileged))
-					data_frame.duration = 0;
+					data_frame.nav_duration = compute_ack_time();
 				else
-					data_frame.duration = next_data_frame.pk_size;
+					data_frame.nav_duration = compute_data_time(next_data_frame.pk_size) + compute_ack_time();
 				
 				//Prepare the next transmission
 				change_next_frame(data_frame);
@@ -6207,8 +6169,9 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 		
 		//Generates a new RTS, it will be automatically registered as the new frame to send
 		else{
-
-			generate_rts(data_frame.destination , data_frame.pk_size , data_frame.frame_id , data_frame.power_ratio);
+			
+			double nav_duration = 10e6 * ((double)compute_cts_time() + compute_data_time(data_frame.pk_size) + compute_ack_time());
+			generate_rts(data_frame.destination , (int)nav_duration , data_frame.frame_id , data_frame.power_ratio);
 
 			if (DEBUG >= MAX){
 				print_unicast_frame_buffer(DEBUG_DATA);
@@ -6305,8 +6268,8 @@ if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 		if ((!is_node_privileged) &&     (     (next_frame_to_send.type == RTS_PK_TYPE) || (next_frame_to_send.destination == ADDR_BROADCAST) || ((next_frame_to_send.type == DATA_UNICAST_PK_TYPE) && (next_frame_to_send.pk_size < RTS_PK_SIZE))   )      ){
 		
 			//nex backoff value
-			my_backoff = op_dist_outcome (backoff_dist);
-			debug_print(MAX , DEBUG_BACKOFF , "new backoff %d (condition from backoff state %d %d)\n", my_backoff, IS_FRAME_RECEIVED , IS_BACK_TO_DEFER);
+			my_backoff = (int)op_dist_uniform(cw + 1);
+			debug_print(MAX , DEBUG_BACKOFF , "new backoff %d (condition from backoff state %d %d) (cw(%d) %d)\n", my_backoff, IS_FRAME_RECEIVED , IS_BACK_TO_DEFER, cw >32, cw);
 				
 			//Schedules the backoff interrupt (deletes an eventual old interruption)
 			op_ev_cancel_if_pending(backoff_intrpt);			
@@ -6592,8 +6555,7 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 	//Failed -> we increments the nb_retry for the corresponding data_frame
 	//NB: it is a unicast frame since multicast frame are not acknowledged
 	if ((last_frame_sent.type == DATA_UNICAST_PK_TYPE) || (last_frame_sent.type == RTS_PK_TYPE))
-		increment_nb_rety_unicast_frame_buffer(last_frame_sent.frame_id);
-		
+		increment_nb_retry_unicast_frame_buffer(last_frame_sent.frame_id);
 	debug_print(LOW , DEBUG_TIMEOUT , "the flow to %d is broken for one of my frame (type %s, retry %d , id %d, next type %d, dataok %d, empty %d) (timeout %d bad_reply %d)\n", last_frame_sent.destination , pk_type_to_str(last_frame_sent.type, msg, 100) , last_frame_sent.nb_retry , last_frame_sent.frame_id , next_frame_to_send.type , IS_DATA_OK , is_frame_buffer_empty() , IS_FRAME_TIMEOUT , is_reply_bad);
 	
 	
@@ -6611,11 +6573,10 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 			change_tx_rx_phy(CHANNEL_MAIN_ID);
 	}	
 	
-	//We failed for the DATA packet and we are in the priviledged channel
-	if ((last_frame_sent.type == DATA_UNICAST_PK_TYPE) && (last_frame_sent.nb_retry >= MAX_NB_RETRY) && (nb_channels > 1)){
+	//We are privileged, we have no more data, and the last one failed -> come back to the main channel
+	if ((is_frame_buffer_empty()) && (last_frame_sent.type == DATA_UNICAST_PK_TYPE) && (last_frame_sent.nb_retry >= MAX_NB_RETRY) && (nb_channels > 1)){
 		change_tx_rx_phy(CHANNEL_MAIN_ID);
 	}
-
 }
 
 
@@ -6624,12 +6585,6 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 if ((is_reply_received) || (IS_FRAME_TIMEOUT) || is_reply_bad) {
 	is_reply_to_receive		= OPC_FALSE;
 }
-
-
-
-
-
-
 
 
 if (DEBUG_STATE_MACHINE)

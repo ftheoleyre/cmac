@@ -110,7 +110,7 @@
 #define		STAB_NB										8
 
 //The minimum acceptable stability for one radio link
-#define		STAB_MIN									0.9
+#define		STAB_MIN									0.87
 
 //some specific time values
 #define		TIME_BEFORE_HELLO_CONVERGENCE				59.0
@@ -224,7 +224,7 @@
 
 
 //Preamble + 2*addresses + Type + FCS
-#define		HEADERS_PK_SIZE					(57 + 48*2 + 4 + 32)
+#define		HEADERS_PK_SIZE					(57 + 32*2 + 4 + 16 + 4 + 32)
 #define		NB_TIER_SIZE					4
 #define		DURATION_SIZE					16
 #define		SINK_DIST_SIZE					4
@@ -242,7 +242,7 @@
 #define		FIELD_PK_SOURCE						"source"
 #define		FIELD_PK_DESTINATION				"destination"
 #define		FIELD_PK_ID							"Data Packet ID"	
-#define		FIELD_PK_DURATION					"duration"	
+#define		FIELD_PK_NAV_DURATION				"nav_duration"		//NB: in usec
 #define		FIELD_PK_TYPE						"type"
 #define		FIELD_PK_ACCEPT						"Accept"
 #define		FIELD_PK_POWER_RATIO				"power_ratio"
