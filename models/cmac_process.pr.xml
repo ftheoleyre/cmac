@@ -938,8 +938,8 @@ int addr_to_nodeid(int addr){
 
 //Adds a timeout interruption
 //NB : i have a blocking state -> I do not send any other packet until either I received the reply or the frame timeouts
-void add_frame_timeout(double data_pk_size){
-	FIN(add_frame_timeout(double data_pk_size));
+void add_frame_timeout(double time){
+	FIN(add_frame_timeout(double time));
 
 	//error, the timeout interruption was not canceled !
 	op_ev_cancel_if_pending(timeout_intrpt);
@@ -947,10 +947,10 @@ void add_frame_timeout(double data_pk_size){
 		op_sim_end("A timeout interruption must be canceled when the reply is received" , "Please correct this bug", "" , "");
 
 	//adds a timeout interruption
-	timeout_intrpt = op_intrpt_schedule_self(op_sim_time() + 2*SIFS + 2*PROPAGATION_DELAY + (double)data_pk_size/operational_speed, FRAME_TIMEOUT_CODE);
+	timeout_intrpt = op_intrpt_schedule_self(op_sim_time() + time, FRAME_TIMEOUT_CODE);
 	
 	//debug
-	debug_print(MAX , DEBUG_TIMEOUT , "adds a timeout for %fus (SIFS %f, prop delay %f, pk size is %f, speed is %f)\n", 1E6 * (2*SIFS + 2*PROPAGATION_DELAY + (double)data_pk_size/operational_speed), SIFS, PROPAGATION_DELAY, data_pk_size, operational_speed);
+	debug_print(MAX , DEBUG_TIMEOUT , "adds a timeout for %fus (at %f)\n", time * 10e6, op_sim_time() + time);
 
 	FOUT;
 }
@@ -1019,6 +1019,8 @@ void change_tx_rx_phy(short channel){
 	int		radio_id , chan_id , sub_chan_id;
 	double	old_freq;
 	double	frequency = channel_to_freq(channel);
+	
+	my_current_channel = channel;
 	
 	//------------ TRANSMISSION -----------
 	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , STREAM_TO_RADIO);
@@ -4112,74 +4114,40 @@ void receive_packet_from_up(){
 
 
 
-//returns the time required for a whole exchange RTS / CTS / DATA / ACK (according to the data frame size)
-double compute_rts_cts_data_ack_time(int data_pk_size){
-	FIN(compute_rts_cts_data_ack_time(int data_pk_size));
+//returns the time for the RTS
+double compute_rts_time(){
+	FIN(compute_rts_cts_data_ack_time());
 	
 	//Packet size
 	Packet			*pkptr;
-	int				rts_pk_size , cts_pk_size , ack_pk_size;	
+	int				pk_size;	
 	
-	//to get the size of RTS/CTS/ACK without a constant (if we change the format -> it will be dynamically updated here !)
-	//RTS
 	pkptr = op_pk_create_fmt("cmac_rts");
-	rts_pk_size = op_pk_total_size_get(pkptr);
+	pk_size = op_pk_total_size_get(pkptr);
 	op_pk_destroy(pkptr);
-	
-	//CTS
-	pkptr = op_pk_create_fmt("cmac_cts");
-	cts_pk_size = op_pk_total_size_get(pkptr);
-	op_pk_destroy(pkptr);
-	
-	//ACk pk size
-	pkptr = op_pk_create_fmt("cmac_ack");
-	ack_pk_size = op_pk_total_size_get(pkptr);
-	op_pk_destroy(pkptr);
-	
-	//Exchange: SIFS / RTS / SIFS / CTS / SIFS / DATA / SIFS / ACK	
-	FRET(4 * SIFS + 4 * PROPAGATION_DELAY + ((double)rts_pk_size + (double)cts_pk_size + (double)data_pk_size + (double)ack_pk_size ) / operational_speed);
+	FRET(SIFS + PROPAGATION_DELAY + ((double)pk_size) / operational_speed);
 }
 
-
-
-//returns the time required for a whole exchange CTS / DATA / ACK (according to the data frame size)
-double compute_cts_data_ack_time(int data_pk_size){
-	FIN(compute_cts_data_ack_time(int data_pk_size));
-
-	//Packet size
-	Packet			*pkptr;
-	int				cts_pk_size , ack_pk_size;
-	
-	//to get the size of RTS/CTS/ACK without a constant (if we change the format -> it will be dynamically updated here !)
-	//CTS
-	pkptr = op_pk_create_fmt("cmac_cts");
-	cts_pk_size = op_pk_total_size_get(pkptr);
-	op_pk_destroy(pkptr);
-	
-	//ACk pk size
-	pkptr = op_pk_create_fmt("cmac_ack");
-	ack_pk_size = op_pk_total_size_get(pkptr);
-	op_pk_destroy(pkptr);
-	
-	//Exchange: SIFS / CTS / SIFS / DATA / SIFS / ACK	
-	FRET(3 * SIFS + 3 * PROPAGATION_DELAY + ((double)cts_pk_size + (double)data_pk_size + (double)ack_pk_size ) / operational_speed);
-}
-
-//returns the time required for a whole exchange DATA / ACK (according to the data frame size)
-double compute_data_ack_time(int data_pk_size){
-	FIN(compute_data_ack_time(int data_pk_size));
+//returns the time for the CTS
+double compute_cts_time(){
+	FIN(compute_cts_cts_data_ack_time());
 	
 	//Packet size
 	Packet			*pkptr;
-	int				ack_pk_size;
-
-	//ACk pk size
-	pkptr = op_pk_create_fmt("cmac_ack");
-	ack_pk_size = op_pk_total_size_get(pkptr);
+	int				pk_size;	
+	
+	pkptr = op_pk_create_fmt("cmac_cts");
+	pk_size = op_pk_total_size_get(pkptr);
 	op_pk_destroy(pkptr);
+	FRET(SIFS + PROPAGATION_DELAY + ((double)pk_size) / operational_speed);
+}
+
+//returns the time required for a DATA transmission
+double compute_data_time(int data_pk_size){
+	FIN(compute_data_time(int data_pk_size));
 	
 	//Exchange: SIFS / DATA / SIFS / ACK	
-	FRET(2 * SIFS + 2 * PROPAGATION_DELAY + ( (double)data_pk_size + (double)ack_pk_size ) / operational_speed);
+	FRET(SIFS + PROPAGATION_DELAY + ((double)data_pk_size) / operational_speed);
 }
 
 //returns the time for an ack
@@ -4195,37 +4163,29 @@ double compute_ack_time(){
 	ack_pk_size = op_pk_total_size_get(pkptr);
 	op_pk_destroy(pkptr);
 	
+	debug_print(MEDIUM , DEBUG_NODE , "%f + %f + %f / %f\n", (double)SIFS , (double)PROPAGATION_DELAY, (double)ack_pk_size, (double)operational_speed);
+	
 	//Exchange:  SIFS / ACK	
-	FRET(SIFS + PROPAGATION_DELAY + (double)(ack_pk_size ) / operational_speed);
+	FRET(SIFS + PROPAGATION_DELAY + ((double)ack_pk_size) / operational_speed);
 }
 
-//returns the pk size for an ack
-double compute_ack_pk_size(){
-	FIN(compute_ack_pk_size());
+//returns the time for an ack
+double compute_ack_ctr_time(){
+	FIN(compute_ack_time());
 	
+	//Packet size
 	Packet			*pkptr;
-	int				ack_pk_size;
+	int				pk_size;
 
-	pkptr = op_pk_create_fmt("cmac_ack");
-	ack_pk_size = op_pk_total_size_get(pkptr);
+	//ACk pk size
+	pkptr = op_pk_create_fmt("cmac_ctr_ack");
+	pk_size = op_pk_total_size_get(pkptr);
 	op_pk_destroy(pkptr);
 	
-	FRET(ack_pk_size);
+	//Exchange:  SIFS / ACK	
+	FRET(SIFS + PROPAGATION_DELAY + (double)(pk_size ) / operational_speed);
 }
 
-//returns the pk size for a CTS
-double compute_cts_pk_size(){
-	FIN(compute_cts_pk_size());
-	
-	Packet			*pkptr;
-	int				cts_pk_size;
-
-	pkptr = op_pk_create_fmt("cmac_cts");
-	cts_pk_size = op_pk_total_size_get(pkptr);
-	op_pk_destroy(pkptr);
-	
-	FRET(cts_pk_size);
-}
 
 
 
@@ -4271,7 +4231,7 @@ void receive_packet_from_radio(){
 	short			subtree_size;
 	short			*savings_tmp;
 	//RTS / CTS / DATA / ACK for nav
-	int				duration;
+	int				duration = 0;
 	//transmission time for the flow
 	double			transmission_time;
 	//next hello
@@ -4349,6 +4309,7 @@ void receive_packet_from_radio(){
 				if (is_reply_received){
 					debug_print(MEDIUM, DEBUG_CONTROL, "The CTR was acknowledged -> I am not anymore privileged\n");
 					is_node_privileged = OPC_FALSE;
+					change_tx_rx_phy(CHANNEL_MAIN_ID);
 				}
 			break;
 		
@@ -4373,7 +4334,7 @@ void receive_packet_from_radio(){
 				if (op_pk_nfd_is_set(frame, FIELD_PK_DURATION)){
 					op_pk_nfd_get(frame , FIELD_PK_DURATION, &duration);
 					if (duration != 0)
-						transmission_time = compute_data_ack_time(duration);
+						transmission_time = compute_ack_time() + compute_data_time(duration);
 				}
 				
 					
@@ -4433,8 +4394,10 @@ void receive_packet_from_radio(){
 				transmission_time = 0;
 				if (op_pk_nfd_is_set(frame, FIELD_PK_DURATION)){
 					op_pk_nfd_get(frame, FIELD_PK_DURATION, &duration);
-					if (duration != 0)
-						transmission_time = compute_data_ack_time(duration);
+					if (duration != 0){
+						transmission_time = compute_ack_time() + compute_data_time(duration);
+					//TODO (CLEAN):	op_sim_end("reservation in one ack ! error !\n", "", "", "");
+					}
 				}
 			
 				//Registers the ack
@@ -4442,7 +4405,7 @@ void receive_packet_from_radio(){
 					del_frame_buffer_with_id(last_frame_sent.frame_id, OPC_TRUE);
 				}
 				
-				//NaV if a reservation is present
+				//NAV if a reservation is present
 				else if (destination != my_address)
 					update_nav_time(transmission_time , source , my_current_channel , duration);
 			
@@ -4454,7 +4417,7 @@ void receive_packet_from_radio(){
 				//Duration of the whole exchange
 				op_pk_nfd_get(frame, FIELD_PK_DURATION, 		&duration);
 				op_pk_nfd_get(frame, FIELD_PK_POWER_RATIO, 	&power_ratio);
-				transmission_time = compute_cts_data_ack_time(duration);
+				transmission_time = compute_cts_time() + compute_data_time(duration) + compute_ack_time();
 			
 				//We received a RTS for us -> we have to send now a CTS to accept the connection
 				// -> No other reservation has been done by neighbors
@@ -4482,7 +4445,7 @@ void receive_packet_from_radio(){
 			
 				//Duration of the whole exchange
 				op_pk_nfd_get(frame, FIELD_PK_DURATION, &duration);
-				transmission_time = compute_data_ack_time(duration);				
+				transmission_time = compute_ack_time() + compute_data_time(duration);				
 			
 				//We received a CTS for us -> we have to send now the data packet
 				//NB: it is unicast because multicast frame are sent in ADDR_BROADCAST, wihtout RTS / CTS
@@ -4729,13 +4692,18 @@ void interrupt_process(){
 	FIN(interrupt_process());
 	
 	//control
-	char		msg[100];
+	char		msg[200];
+	char		str[10];
+	int			nb_nodes = get_nb_nodes();
+	int			i;
 	//debug
 	Boolean		old;
 	//reception power 
 	double		new_rx_power;
 	//next hello to generate
 	double		next_hello;
+	//connectivity matrix
+	Boolean		*connectivity;
 	
 	if (DEBUG_STATE_MACHINE)
 		debug_print(MAX , DEBUG_GLOBAL, "type %d (self %d, stat %d , pk %d)\n", op_intrpt_type() , OPC_INTRPT_SELF , OPC_INTRPT_STAT , OPC_INTRPT_STRM);
@@ -4744,9 +4712,24 @@ void interrupt_process(){
 	if ((!connectivity_verification) && (op_sim_time() > TIME_START_DATA)){
 		connectivity_verification = OPC_TRUE;
 		tools_fig_generate();
-		if (!cmac_tools_graph_is_connected()){
-			op_sim_end("The graph is not connected", "I stop here the simulation process", "", "");
+		
+		//initialization of the connectivity matrix
+		connectivity = op_prg_mem_alloc(sizeof(Boolean) * nb_nodes);
+		for(i=1; i<nb_nodes; i++)
+			connectivity[i] = OPC_FALSE;
+	
+		//verify the connectivity
+		if (!cmac_tools_graph_is_connected(connectivity)){
+			strcpy(msg, "");
+			for(i=1; i<nb_nodes; i++)
+				if (!connectivity[i]){
+					snprintf(str, 10, "%d ", nodeid_to_addr(i));
+					strncat(msg, str, 200);
+				}			
+			op_sim_end("The graph is not connected", "I stop here the simulation process", "Disconnected nodes:", msg);
 		}
+		
+		op_prg_mem_free(connectivity);
 	}	
 	
 	switch (op_intrpt_type()){
@@ -6014,10 +5997,11 @@ if (!is_tx_busy){
 	
 	
 	//-----------------------------------------------------
-	//	MULTI_CHANNEL -> COMMUTES
+	//	MULTI_CHANNEL -> SWITCHING
 	//-----------------------------------------------------
 
 	if (nb_channels > 1){
+		debug_print(LOW , DEBUG_CONTROL , "nbchannels %d, last %d expected %d\n", nb_channels, last_frame_sent.type , CTR_PK_TYPE);
 	
 		//CTR sent -> changes to the privileged channel
 		if (last_frame_sent.type == CTR_PK_TYPE){
@@ -6039,12 +6023,8 @@ if (!is_tx_busy){
 			if (is_frame_buffer_empty()){
 				last_frame_sent.nb_retry++;
 				change_next_frame(last_frame_sent);
-			}
-			
+			}			
 		}
-		
-		
-		
 	}
 		
 		
@@ -6095,15 +6075,19 @@ if (!is_tx_busy){
 
 		//DATA sent -> an ack only is required
 		if (last_frame_sent.type == DATA_UNICAST_PK_TYPE)
-			add_frame_timeout(compute_ack_pk_size());
-		
-		//end of my slot -> the destination can reply to my CTR with a DATA packet
-		else if ((nb_channels == 1) && (last_frame_sent.type == CTR_PK_TYPE))
-			add_frame_timeout(MTU_MAX);
+			add_frame_timeout(compute_ack_time());
 		
 		//RTS -> I must wait a CTS
 		else if (last_frame_sent.type == RTS_PK_TYPE)
-			add_frame_timeout(compute_cts_pk_size());
+			add_frame_timeout(compute_cts_time());
+
+		//CTR -> the destination can reply to my CTR directly with a DATA packet
+		else if ((nb_channels == 1) && (last_frame_sent.type == CTR_PK_TYPE))
+			add_frame_timeout(compute_data_time(MTU_MAX));
+		
+		//CTR -> I must wait a DATA packet (the time for the ctr-ack + for the data frame in multichannel)
+		else if ((nb_channels > 1) && (last_frame_sent.type == CTR_PK_TYPE))
+			add_frame_timeout(compute_ack_ctr_time() + compute_data_time(MTU_MAX));
 
 		else
 			debug_print(LOW, DEBUG_CONTROL, "BUG for pk type %s\n", pk_type_to_str(last_frame_sent.type, str, 20));
@@ -6176,13 +6160,13 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 			//first frame
 			frame_ptr			= get_frame_buffer(0);
 			data_frame 			= *frame_ptr;
-			time_for_first_data = compute_rts_cts_data_ack_time(data_frame.pk_size) ;
+			time_for_first_data = compute_rts_time() + compute_cts_time() + compute_data_time(data_frame.pk_size)  + compute_ack_time();
 			
 			//An eventual second frame
 			frame_ptr	= get_frame_buffer(1);
 			if (frame_ptr != NULL){
 				next_data_frame 		= *frame_ptr;
-				time_for_second_data 	= compute_rts_cts_data_ack_time(next_data_frame.pk_size) ;
+				time_for_second_data 	= compute_rts_time() + compute_cts_time() + compute_data_time(data_frame.pk_size)  + compute_ack_time();
 			}
 			else
 				time_for_second_data = 0;
@@ -6254,7 +6238,7 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 
 //The medium becomes free -> we must wait the inter_frame time
 if (!IS_MEDIUM_BUSY){
-	if ((is_node_privileged) && ((next_frame_to_send.type == CTR_PK_TYPE) || (next_frame_to_send.type == CTR_END_PK_TYPE)) )
+	if ((is_node_privileged) && ((next_frame_to_send.type == CTR_ACK_PK_TYPE) || (next_frame_to_send.type == CTR_PK_TYPE) || (next_frame_to_send.type == CTR_END_PK_TYPE)) )
 		next_frame_to_send.ifs = PIFS;
 	else if ((is_node_privileged) && (nb_channels > 1))
 		next_frame_to_send.ifs = 0;
@@ -6626,6 +6610,11 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 		if (nb_channels > 1)
 			change_tx_rx_phy(CHANNEL_MAIN_ID);
 	}	
+	
+	//We failed for the DATA packet and we are in the priviledged channel
+	if ((last_frame_sent.type == DATA_UNICAST_PK_TYPE) && (last_frame_sent.nb_retry >= MAX_NB_RETRY) && (nb_channels > 1)){
+		change_tx_rx_phy(CHANNEL_MAIN_ID);
+	}
 
 }
 

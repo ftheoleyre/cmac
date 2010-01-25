@@ -235,9 +235,11 @@ char* 	print_ktree_cildren(char *msg, int length);
 
 
 //To compute duration for NAV
-double 	compute_rts_cts_data_ack_time(int data_pk_size);
-double 	compute_cts_data_ack_time(int data_pk_size);
-double 	compute_data_ack_time(int data_pk_size);
+double 	compute_rts_time();
+double	compute_cts_time();
+double	compute_data_time(int data_pk_size);
+double 	compute_ack_time();
+double 	compute_ctr_ack_time();
 
 
 //Busy tone

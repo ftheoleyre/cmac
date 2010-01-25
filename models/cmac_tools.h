@@ -50,7 +50,7 @@ int 	freq_to_channel(double freq);
 //graph
 graph_struct **cmac_tools_graph_construct(graph_struct **graph, Objid *mac_ids);
 void 	cmac_tools_vars_get(int **states_ptr, Objid **nodes_ids_ptr, Objid **mac_ids_ptr, pos_struct **positions_ptr);
-Boolean cmac_tools_graph_is_connected();
+Boolean cmac_tools_graph_is_connected(Boolean *connectivity);
 
 
 

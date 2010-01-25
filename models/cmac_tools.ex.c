@@ -245,13 +245,11 @@ void cmac_tools_graph_is_connected_walk(Objid *mac_ids, int id, Boolean *connect
 
 
 //is the graph connected?
-Boolean cmac_tools_graph_is_connected(){
-	FIN(cmac_tools_graph_is_connected());
-
+Boolean cmac_tools_graph_is_connected(Boolean *connectivity){
+	FIN(cmac_tools_graph_is_connected(Boolean *connectivity));
 	int			nb_nodes = get_nb_nodes();
 	int			i;
 	//result
-	Boolean		*connectivity;
 	Boolean		res;
 	//object identification
 	Objid		*node_ids;
@@ -263,9 +261,6 @@ Boolean cmac_tools_graph_is_connected(){
 	cmac_tools_vars_get(&states, &node_ids, &mac_ids, &positions);	
 	
 	//initialization
-	connectivity = op_prg_mem_alloc(sizeof(Boolean) * nb_nodes);
-	for(i=1; i<nb_nodes; i++)
-		connectivity[i] = OPC_FALSE;
 	connectivity[0] = OPC_TRUE;
 		
 	//walk in the graph using radio links
