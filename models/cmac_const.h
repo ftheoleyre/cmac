@@ -103,7 +103,7 @@
 
 //time between 2 hellos
 #define		HELLO_PK_PERIOD								5.0
-#define		HELLO_PK_PERIOD_BEFORE_CONVERGENCE			2.0
+#define		HELLO_PK_PERIOD_BEFORE_CONVERGENCE			5.0
 #define		HELLO_PK_TIMEOUT							3
 
 //the stability metric is averaged over the last MAX_NB hellos

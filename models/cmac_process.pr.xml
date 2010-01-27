@@ -362,6 +362,15 @@ The number of leaves for the k-tree core (in our case, the number of branches st
 				<default-value value="0"/>
 			</properties>
 		</attribute>
+		<attribute name="exponential_backoff" group="cmac" type="integer">
+			<properties type="integer" auto-assign="yes" symbolic-only="yes">
+				<default-value value-symbol="FALSE"/>
+				<symbol-map>
+					<symbol name="FALSE" value="0"/>
+					<symbol name="TRUE" value="1"/>
+				</symbol-map>
+			</properties>
+		</attribute>
 	</simulation-attributes>
 	<attribute-assignments>
 		<assignment attribute-name="Address" type="integer" status="promoted"/>
@@ -484,8 +493,8 @@ int	\my_backoff;
 /* The interruption for the backoff (can be stopped by a medium activity) */
 Evhandle	\backoff_intrpt;
 
-/* The distribution law for backoff values */
-Distribution*	\backoff_dist;
+/* Is the CW static or exponential? */
+int	\EXPONENTIAL_BACKOFF;
 
 /* When did I become privileged ? */
 double	\time_start_privileged;
@@ -545,7 +554,7 @@ int	\sync_last_branch;
 int	\my_branch;
 
 /* The channel used for my current transmissions */
-double	\my_privileged_channel;
+int	\my_privileged_channel;
 
 /* The time during which a node remains privileged */
 double	\slot_privileged_duration;
@@ -614,7 +623,7 @@ cmac to define the branches that 'collect' the traffic to the sink)
 //				SPECIAL DEBUG
 //-----------------------------------------------
 
-#define		DEBUG_STATE_MACHINE				(my_address == 205)
+#define		DEBUG_STATE_MACHINE				(my_address == 405)
 
 
 
@@ -1422,6 +1431,10 @@ void increment_nb_retry_unicast_frame_buffer(int id){
 		
 			ptr->nb_retry++;
 			
+			//exponential backoff only for non-privileged nodes!
+			if ((EXPONENTIAL_BACKOFF) && (cw < MAX_EXPO_BACKOFF) && (!my_sink_tree.is_in_ktree))
+				cw = cw * 2;
+			
 			//will try to retransmit this frame later (the destination is perhaps currently privileged)
 			if ((ptr->nb_retry > MEDIUM_NB_RETRY) && (!my_sink_tree.is_in_ktree) && (MAC_LAYER != IEEE80211)){
 				ptr->time_transmission_min = op_sim_time() + TIME_MAX_PRIVILEGED;
@@ -1434,7 +1447,9 @@ void increment_nb_retry_unicast_frame_buffer(int id){
 				ptr = op_prg_list_remove(unicast_frame_buffer , i);
 				if (ptr->payload != NULL)
 					op_pk_destroy(ptr->payload);
-				op_prg_mem_free(ptr);				
+				op_prg_mem_free(ptr);
+				
+				cw = MAX_BACKOFF;
 			}
 			else
 				debug_print(LOW, DEBUG_DATA , "the unicast frame to %d was not acknowledged -> RETRANSMISSION (nb retry %d type %s, id %d)\n",  ptr->destination , ptr->nb_retry , pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id);
@@ -2117,7 +2132,7 @@ void update_sink_tree_infos_dynamic(){
 	neigh_struct	*neigh_ptr;
 	short			best_ktree_dist , best_sink_dist;
 	int				best_parent;
-
+	
 	//initial best values
 	best_ktree_dist	= DIST_SINK_MAX;
 	best_sink_dist	= DIST_SINK_MAX;
@@ -2125,16 +2140,18 @@ void update_sink_tree_infos_dynamic(){
 	for(i=0 ; i<op_prg_list_size(my_neighborhood_table); i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
 		
-		if 	((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->bidirect) && (neigh_ptr->address == my_sink_tree.parent)){
+		if 	((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->bidirect)){// && (neigh_ptr->address == my_sink_tree.parent)){
 			best_sink_dist	= neigh_ptr->sink_dist + 1;
 			best_parent		= neigh_ptr->address;
 		}
-	}	
-	
+	}
+			
 	//Update the distance to the sink and to the ktree
 	for(i=0 ; i < op_prg_list_size(my_neighborhood_table) ; i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table , i);
 		
+		debug_print(MEDIUM , DEBUG_HELLO , "%d -> %d & %d & %d)\n", neigh_ptr->address, (stability_get(neigh_ptr) > STAB_MIN) , (neigh_ptr->bidirect) , (neigh_ptr->sink_dist < DIST_SINK_MAX));
+			
 		if ((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->bidirect) && (neigh_ptr->sink_dist < DIST_SINK_MAX)){
 			
 			//Distance to the ktree
@@ -2145,7 +2162,7 @@ void update_sink_tree_infos_dynamic(){
 			//Distance to the sink (the parent is the next hop toward the sink)
 			//NB: tree of shortest paths toward the sink (and I try to maintain the same parent)
 			//NB2: if our parent is among the best parents, let keep it!
-			if ((best_sink_dist > neigh_ptr->sink_dist + 1) || ((neigh_ptr->address == my_sink_tree.parent) && (best_sink_dist == neigh_ptr->sink_dist))){
+			if ((best_sink_dist > neigh_ptr->sink_dist + 1) || ((neigh_ptr->address == my_sink_tree.parent) && (best_sink_dist == neigh_ptr->sink_dist) && (best_sink_dist == neigh_ptr->sink_dist + 1))){
 				best_sink_dist = neigh_ptr->sink_dist + 1;
 				best_parent		= neigh_ptr->address;
 			}
@@ -2164,10 +2181,8 @@ void update_sink_tree_infos_dynamic(){
 	if ((my_sink_tree.sink_dist != best_sink_dist) || (my_sink_tree.ktree_dist != best_ktree_dist))
 		debug_print(MEDIUM , DEBUG_HELLO , "Updates the distance to the sink %d (old %d) and to the k=tree %d (old %d)\n", neigh_ptr->address, best_ktree_dist, my_sink_tree.sink_dist, best_sink_dist, my_sink_tree.ktree_dist);
 	
-	if (my_sink_tree.parent	!= best_parent){
-		//printf("%d: parent changed %d -> %d \n", my_address, my_sink_tree.parent, best_parent);
+	if (my_sink_tree.parent	!= best_parent)
 		debug_print(MAX, DEBUG_CONTROL, "parent changed %d -> %d \n", my_sink_tree.parent, best_parent);
-	}
 	
 	//final assignment
 	my_sink_tree.sink_dist 	= best_sink_dist;
@@ -2239,7 +2254,7 @@ void update_sink_tree_infos(){
 	}
 	
 	//data already started
-	if ((op_sim_time() > TIME_START_DATA) && (BLOCK_KTREE_AFTER_START_DATA))
+	if ((BLOCK_KTREE_AFTER_START_DATA) && (op_sim_time() > TIME_START_DATA))
 		FOUT;	
 	
 	//dynamic algo
@@ -2265,23 +2280,46 @@ void update_sink_tree_infos(){
 
 
 //Returns the CMAC child
-int get_cmac_child(short branch_id){
+child_struct *get_cmac_child(short branch_id){
 	FIN(get_cmac_child(short branch_id));	
 	child_struct	*child_ptr;
 	int				i;
+	double			last_polled;
 	
+	//the usual behavior
 	for(i=0; i<op_prg_list_size(my_sink_tree.cmac_children); i++){
 		child_ptr = op_prg_list_access(my_sink_tree.cmac_children , i);
 		
 		if (child_ptr->branch_id == branch_id){
-			debug_print(MAX, DEBUG_CONTROL, "the child for branch %d is %d\n", branch_id, child_ptr->address);
+			debug_print(MAX, DEBUG_CONTROL, "child -> %d for branch %d\n", child_ptr->address, branch_id);
 			print_neighborhood_table(DEBUG_CONTROL);
-			FRET(child_ptr->address);		
+			FRET(child_ptr);		
 		}
 	}
 	
-	debug_print(MAX, DEBUG_CONTROL, "no child for branch %d\n", branch_id);
-	FRET(ADDR_BROADCAST);
+	//if the branch_id does not correspond, I search the oldest polled child
+	last_polled = -1;
+	for(i=0; i<op_prg_list_size(my_sink_tree.cmac_children); i++){
+		child_ptr = op_prg_list_access(my_sink_tree.cmac_children , i);
+		if ((last_polled == -1) || (last_polled > child_ptr->last_polled))
+			last_polled 	= child_ptr->last_polled;
+	}
+	
+	//and I return it! 
+	for(i=0; (last_polled != -1) && (i<op_prg_list_size(my_sink_tree.cmac_children)); i++){
+		child_ptr = op_prg_list_access(my_sink_tree.cmac_children , i);
+		
+		if (last_polled == child_ptr->last_polled){
+			debug_print(MAX, DEBUG_CONTROL, "child -> %d for branch %d (recovery mode for branch_id %d)\n", child_ptr->address, child_ptr->branch_id, branch_id);
+			print_neighborhood_table(DEBUG_CONTROL);
+			FRET(child_ptr);		
+		}
+	}
+	
+	//default case -> no child at all!
+	debug_print(MAX, DEBUG_CONTROL, "child -> none for branch %d\n", branch_id);
+	print_neighborhood_table(DEBUG_CONTROL);
+	FRET(NULL);
 }
 
 
@@ -2429,6 +2467,7 @@ void update_current_cmac_children_maxtree(){
 			child_new = op_prg_mem_alloc(sizeof(child_struct));
 			child_new->address 		= child_saving->address;
 			child_new->branch_id	= i;
+			child_new->last_polled	= op_sim_time();
 			op_prg_list_insert(my_sink_tree.cmac_children, child_new, OPC_LISTPOS_TAIL);
 			
 			debug_print(MAX, DEBUG_KTREE, "The sink is choosing %d for the branch %d\n", child_new->address, child_new->branch_id);
@@ -2463,6 +2502,7 @@ void update_current_cmac_children_maxtree(){
 						child_new = op_prg_mem_alloc(sizeof(child_struct));
 						child_new->address 		= child_saving->address;
 						child_new->branch_id	= child_ptr->branch_id;
+						child_new->last_polled	= op_sim_time();
 						op_prg_list_insert(my_sink_tree.cmac_children, child_new, OPC_LISTPOS_TAIL);
 					
 						debug_print(MAX, DEBUG_KTREE, "node %d was elected child (branch %d, saving %d)\n", child_new->address, child_new->branch_id, child_saving->saving);
@@ -2942,7 +2982,7 @@ void fill_savings_fields(Packet *pk){
 	op_prg_mem_free(sav_list);
 	
 	//debug purpose
-	print_neighborhood_table(DEBUG_HELLO);
+	//print_neighborhood_table(DEBUG_HELLO);
 	
 	FOUT;
 }
@@ -3025,7 +3065,7 @@ void fill_cmac_children_fields(Packet *pk){
 		op_pk_nfd_set_ptr(pk, FIELD_PK_HELLO_CMAC_CHILDREN, list_children_ptr, op_prg_mem_copy_create, op_prg_mem_free, sizeof(child_struct) * nb_cmac_children);
 	}
 	
-	print_neighborhood_table(DEBUG_HELLO);
+	//print_neighborhood_table(DEBUG_HELLO);
 	FOUT;
 }
 
@@ -3247,8 +3287,6 @@ void delete_timeouted_neighbors(void *ptr , int code){
 	}
 	
 	//Next verification
-	if (op_sim_time() > older_entry)
-		printf("toto error sur timeout\n");	
 	if (op_prg_list_size(my_neighborhood_table) != 0)
 		op_intrpt_schedule_call(older_entry , NEIGHBOR_TIMEOUT_CODE , delete_timeouted_neighbors , NULL);
 	
@@ -3369,6 +3407,11 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 		debug_print(MEDIUM , DEBUG_HELLO, "neighbor %d added (sink %d, ktree %d)\n", source, sink_dist , ktree_dist);
 	}
 	
+	//-------------------------------------------------
+	//		INFOS ABOUT THE TREE ROOTED AT THE SINK
+	//-------------------------------------------------
+	update_sink_tree_infos();
+	
 	//---------------------------
 	//		IS KTREE NODE ?
 	//---------------------------
@@ -3380,13 +3423,7 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 	if (update_cmac_children_required){
 		if (update_current_cmac_children())
 			hello_required = OPC_TRUE;
-	}
-		
-	
-	//-------------------------------------------------
-	//		INFOS ABOUT THE TREE ROOTED AT THE SINK
-	//-------------------------------------------------
-	update_sink_tree_infos();
+	}		
 	
 	//I changed by ktree node status or my distance to sink / ktree
 	if (hello_required){
@@ -3907,12 +3944,12 @@ void generate_ctr(){
 	//Packet to send
 	frame_struct	frame;
 	//info
-	int				destination;
+	child_struct	*dest_child;
 	int				frame_id;
 	
 	//Main channel
 	change_tx_rx_phy(CHANNEL_MAIN_ID);
-	
+		
 	//Destination
 	if (is_sink){
 		if (++ctr_last_branch >= get_nb_branches())
@@ -3920,39 +3957,45 @@ void generate_ctr(){
 		
 		//If several available channels, get one for this branch (round robin when the branch changes)
 		if (nb_channels > 1){
-			my_privileged_channel = 1 + ctr_last_branch % (nb_channels - 1);
-			debug_print(LOW, DEBUG_CONTROL, "SINK: %d (max %d) -> channel %d\n", ctr_last_branch, nb_channels, my_privileged_channel);
+			my_privileged_channel = 1 + (ctr_last_branch % (nb_channels - 1));
+			debug_print(LOW, DEBUG_CONTROL,"SINK-CTR: branch %d -> channel %d (nb channels %d)\n", ctr_last_branch, my_privileged_channel, nb_channels);
 		}
 		else
-			my_privileged_channel = 0;
+			my_privileged_channel = 0;		
 		
-		
-		destination = get_cmac_child(ctr_last_branch);	
+		dest_child = get_cmac_child(ctr_last_branch);	
 	}
 	else
-		destination = get_cmac_child(ctr_last_branch);
+		dest_child = get_cmac_child(ctr_last_branch);
 	
 	//No more ktree children
-	if (destination == ADDR_BROADCAST){
+	if (dest_child == NULL){
 		is_node_privileged = OPC_FALSE;
 		FOUT;
 	}
 	
-	//Normal CTR
+	//Generates the CTR
 	else {
 		//Unavailability of the next hop
 		//update_nav_time(destination, 2 * (slot_privileged_duration + MAX_CTR_DELAY_FROM_SINK) , CHANNEL_MAIN_ID , 0);
 	
 		//frame id
 		frame_id = get_new_frame_id();
+		dest_child->last_polled		= op_sim_time();
+
+		//multichannel -> the destination will have to send a CTR_ACK
+		if (nb_channels > 1)
+			frame.nav_duration	= compute_ctr_ack_time();
+		//single channel -> the CTR is acknowledged pasively by a data packet
+		else
+			frame.nav_duration	= compute_data_time(MTU_MAX);
 	
 		//Next frame to send
 		frame.source 				= my_address;
-		frame.destination 			= destination;
+		frame.destination 			= dest_child->address;
 		frame.type 					= CTR_PK_TYPE;
 		frame.frame_id 				= frame_id;
 		frame.nb_retry				= 0;
-		frame.nav_duration			= compute_data_time(MTU_MAX);
 		frame.power_ratio			= 1;
 		frame.pk_size				= HEADERS_PK_SIZE;
 		frame.time_added			= op_sim_time();
@@ -3962,7 +4005,7 @@ void generate_ctr(){
 		frame.payload				= NULL;
 		change_next_frame(frame);
 	
-		debug_print(LOW , DEBUG_CONTROL , "CTR generated for the child %d (branch %d)\n", destination, ctr_last_branch);
+		debug_print(LOW , DEBUG_CONTROL , "CTR generated for the child %d (branch %d)\n", dest_child->address, ctr_last_branch);
 	}
 	FOUT;
 }
@@ -4171,8 +4214,8 @@ double compute_ack_time(){
 }
 
 //returns the time for an ack
-double compute_ack_ctr_time(){
-	FIN(compute_ack_time());
+double compute_ctr_ack_time(){
+	FIN(compute_ctr_ack_time());
 	
 	//Packet size
 	Packet			*pkptr;
@@ -4267,26 +4310,28 @@ void receive_packet_from_radio(){
 		//---------------------------------------------------------------------------
 		//Verify that if we waited a reply, this frame is a valid reply
 		//i.e. it does not come from another node, or it presents a bad type....
-		switch(last_frame_sent.type){		
+		if (is_reply_to_receive)
+			switch(last_frame_sent.type)
+			{		
 
 			case RTS_PK_TYPE:
 				if ((frame_type == CTS_PK_TYPE) && (destination == my_address) && (source == last_frame_sent.destination))
 					is_reply_received = OPC_TRUE;
-				else
+				else 
 					is_reply_bad = OPC_TRUE;
 			break;
 			
 			case CTS_PK_TYPE:
 				if ((frame_type == DATA_UNICAST_PK_TYPE) && (destination == my_address) && (source == last_frame_sent.destination))
 					is_reply_received = OPC_TRUE;
-				else
+				else 
 					is_reply_bad = OPC_TRUE;
 			break;
 			
 			case DATA_UNICAST_PK_TYPE:
 				if ((frame_type == ACK_PK_TYPE) && (destination == my_address) && (source == last_frame_sent.destination))
 					is_reply_received = OPC_TRUE;
-				else
+				else 
 					is_reply_bad = OPC_TRUE;
 			break;
 			
@@ -4302,7 +4347,7 @@ void receive_packet_from_radio(){
 					is_reply_received = OPC_TRUE;
 				else if ((frame_type == ACK_PK_TYPE) && (source == last_frame_sent.destination) && (destination == my_address))
 					is_reply_received = OPC_TRUE;
-				else{
+				else {
 					debug_print(LOW, DEBUG_CONTROL, "This reply does not correspond (type %s, src %d = %d, dest %d)\n", pk_type_to_str(frame_type, msg, 20), source, last_frame_sent.destination, destination);
 					is_reply_bad = OPC_TRUE;
 				}
@@ -4317,7 +4362,7 @@ void receive_packet_from_radio(){
 			default:
 				is_reply_bad = OPC_TRUE;
 			break;
-		}
+			}
 
 		
 		//---------------------------------------------------------------------------
@@ -4365,8 +4410,13 @@ void receive_packet_from_radio(){
 					add_frame_id_seen(source, frame_id);
 					
 					//sends an acknowledgement (unicast + n/o nav)
-					debug_print(LOW, DEBUG_CONTROL, "destination %d rep possible %d\n", destination, is_reply_possible(destination , my_current_channel));
-					if ((destination != ADDR_BROADCAST) && (is_reply_possible(destination , my_current_channel))){
+					Boolean rep_possible = is_reply_possible(destination , my_current_channel);
+					debug_print(LOW, DEBUG_CONTROL, "destination %d rep possible %d\n", destination, rep_possible);
+					if (!rep_possible){
+						print_nav_list(DEBUG_CONTROL);
+					}
+					
+					if ((destination != ADDR_BROADCAST) && (rep_possible)){
 						generate_ack(source , nav_duration - compute_ack_time(), frame_id , power_ratio);
 						is_reply_to_send 	= OPC_TRUE;
 						debug_print(LOW, DEBUG_CONTROL, "ack because I just received a data (dest %d)\n", destination);
@@ -4440,15 +4490,11 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_CTR_OFFSET, 	&offset);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_BRANCHID,&branch_id);
 				
-/*				//Multi-channel -> this ktree node is in privileged mode (using another channel)
+				//Multichannel -> this ktree node is in privileged mode (using another channel)
+				//Thus, it will be unreachable during this timeslot
+				//R: if it comes back before, he will send a CTR which will update automatically its NAV
 				if (nb_channels > 1)
-					nav_duration 		= t_slot;	
-				//TODO: reservation du canal durant t_slot -> stupide non ? plutt ne pas lui envoyer de paquet, mais pas 
-				//de rsa du canal entier !
-				//Single channel -> reserves the medium for the reply (which will be sent through this channel)
-				else
-					nav_duration =  SIFS + PROPAGATION_DELAY + (double)MTU_MAX / operational_speed;
-	*/
+					update_nav_time(source, t_slot , channel);	
 			
 				//Remark: we answer even if a NAV is present -> the CTR should have a larger priority and we should enforce its delivery
 				if (destination == my_address){
@@ -4497,7 +4543,7 @@ void receive_packet_from_radio(){
 					}					
 					//No data frame -> ack to send (max power)
 					//No ack if I have already finished my slot -> I will send a CTR which will act as a CTR-ACK
-					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_cmac_child(ctr_last_branch) == ADDR_BROADCAST))){
+					else if ((is_frame_buffer_empty()) && ((slot_privileged_duration - slot_privileged_offset > 0) || (get_cmac_child(ctr_last_branch) == NULL))){
 						generate_ack(source , 0, frame_id , 1);
 						is_reply_to_send 	= OPC_TRUE;
 						debug_print(LOW, DEBUG_CONTROL, "ack for a CTR I just received since I have no data frame to ack passively the CTR\n");
@@ -5389,10 +5435,10 @@ op_ima_sim_attr_get(OPC_IMA_INTEGER , "mac_layer",				&MAC_LAYER);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "ktree_algo",				&KTREE_ALGO);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_branches",			&NB_BRANCHES);
 op_ima_sim_attr_get(OPC_IMA_INTEGER , "sink_address",			&sink_address);
+op_ima_sim_attr_get(OPC_IMA_INTEGER , "exponential_backoff",	&EXPONENTIAL_BACKOFF);
 
 if (nb_channels == 0)
-	op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",			&nb_channels);
-
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , "nb_channels",		&nb_channels);
 
 //log directory name
 if (op_ima_sim_attr_exists("Result_Directory")){
@@ -5488,7 +5534,6 @@ my_nav_list					= op_prg_list_create();
 
 //Backoff distribution initialization
 cw 							= MAX_BACKOFF;
-backoff_dist 				= op_dist_load("uniform_int", 0, cw);
 backoff_intrpt				= op_ev_current();
 	
 //no reservation
@@ -5985,7 +6030,11 @@ if (!is_tx_busy){
 			if (is_frame_buffer_empty()){
 				last_frame_sent.nb_retry++;
 				change_next_frame(last_frame_sent);
-			}			
+				debug_print(MAX, DEBUG_CONTROL, "privileged -> I switched and I will send now ctr-ack\n");
+			}
+			else
+				debug_print(MAX, DEBUG_CONTROL, "privileged -> I switched and I will send now a data frame\n");
+			
 		}
 	}
 		
@@ -6049,7 +6098,7 @@ if (!is_tx_busy){
 		
 		//CTR -> I must wait a DATA packet (the time for the ctr-ack + for the data frame in multichannel)
 		else if ((nb_channels > 1) && (last_frame_sent.type == CTR_PK_TYPE))
-			add_frame_timeout(compute_ack_ctr_time() + compute_data_time(MTU_MAX));
+			add_frame_timeout(compute_ctr_ack_time() + compute_data_time(MTU_MAX));
 
 		else
 			debug_print(LOW, DEBUG_CONTROL, "BUG for pk type %s\n", pk_type_to_str(last_frame_sent.type, str, 20));
@@ -6216,7 +6265,15 @@ if (!IS_MEDIUM_BUSY){
 	debug_print(MEDIUM, DEBUG_BACKOFF, "self interrupt, ifs %f\n", next_frame_to_send.ifs);
 	op_intrpt_schedule_self(op_sim_time() + next_frame_to_send.ifs , DEFER_CODE);
 }
-
+else{
+	debug_print(MEDIUM, DEBUG_BACKOFF, 
+		"IS MED BUSY %d = %d | %d | %d\n",
+		IS_MEDIUM_BUSY,
+		(is_rx_busy),
+		(is_tx_busy),
+		(get_nav_main_channel() >= op_sim_time()));
+	print_nav_list(DEBUG_CONTROL);
+	}
 
 
 
@@ -6579,6 +6636,8 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 	}
 }
 
+if (is_reply_received)
+	cw = MAX_BACKOFF;
 
 
 //The medium is no longer reserved for this flow

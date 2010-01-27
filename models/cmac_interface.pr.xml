@@ -1031,6 +1031,7 @@ double		max_privileged_duration;
 int			sink_address, pos_method;
 double		X_MAX, Y_MAX;
 int			nb_branches, nb_channels, CTR_hop_spacing;
+int			EXPONENTIAL_BACKOFF;
 //degree
 List 		**neigh_table_ptr;
 Objid		node_id, mac_id;
@@ -1068,6 +1069,7 @@ if (my_stat_id == 0){
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_branches",			&nb_branches);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"nb_channels",			&nb_channels);
 	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"CTR_hop_spacing",		&CTR_hop_spacing);
+	op_ima_sim_attr_get(OPC_IMA_INTEGER , 	"exponential_backoff",	&EXPONENTIAL_BACKOFF);
 
 	
 	
@@ -1156,7 +1158,7 @@ if (my_stat_id == 0){
 	//-------------------------------------------
 	//					WRITING
 	//-------------------------------------------
-	snprintf(filename , 100, "%s/%d_stats-nodes=%d-mac=%d.txt", get_log_dir(), timestamp, nb_nodes, mac_layer);
+	snprintf(filename , 100, "%s/%d_stats-nodes=%d-mac=%d-bo=%d.txt", get_log_dir(), timestamp, nb_nodes, mac_layer, EXPONENTIAL_BACKOFF);
 	pfile = fopen(filename , "w");
 
 	if (pfile == NULL){
@@ -1178,6 +1180,7 @@ if (my_stat_id == 0){
 	fprintf(pfile, "Duration                             : %f\n", op_sim_time());
 	fprintf(pfile, "RTS                                  : %d\n", RTS);
 	fprintf(pfile, "CTR hop spacing                      : %d\n", CTR_hop_spacing);
+	fprintf(pfile, "Exponential backoff                  : %d\n", EXPONENTIAL_BACKOFF);
 	fprintf(pfile, "Inter Packet Time                    : %f\n", inter_pk_time);
 	fprintf(pfile, "Sink address                         : %d\n", sink_address);
 	fprintf(pfile, "Max privileged duration              : %f\n", max_privileged_duration);

@@ -84,6 +84,7 @@ typedef struct{
 typedef struct{
 	int		address;
 	short	branch_id;
+	double	last_polled;
 } child_struct;
 
 typedef struct{
