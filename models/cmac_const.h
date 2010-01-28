@@ -127,7 +127,7 @@
 
 
 //the 
-#define		PRIVILEGED_MIN_TIME_RATIO		0.9
+#define		PRIVILEGED_MIN_TIME_RATIO		0.3
 
 
 
@@ -156,7 +156,7 @@
 //-----------------------------------------------
 
 #define		CHANNEL_MAIN_ID					0
-
+#define		CHANNEL_RESERVED				-1
 
 
 

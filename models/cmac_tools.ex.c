@@ -234,7 +234,7 @@ void cmac_tools_graph_is_connected_walk(Objid *mac_ids, int id, Boolean *connect
 		neigh_ptr = op_prg_list_access(*neigh_table_ptr, i);
 		
 		//this node is part of the largest connected component
-		if ((!connectivity[addr_to_nodeid(neigh_ptr->address)]) && (stability_get(neigh_ptr) > STAB_MIN)){
+		if ((!connectivity[addr_to_nodeid(neigh_ptr->address)]) && (stability_get(neigh_ptr) >= STAB_MIN)){
 			connectivity[addr_to_nodeid(neigh_ptr->address)] = OPC_TRUE;
 			cmac_tools_graph_is_connected_walk(mac_ids, addr_to_nodeid(neigh_ptr->address), connectivity);
 		}
