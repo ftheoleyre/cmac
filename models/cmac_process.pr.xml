@@ -784,6 +784,8 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 //		   	INTERRUPTION CODES
 //-----------------------------------------------
 
+//Nothing happened, this is just an interruption to bypass unforced states
+#define		NOTHING_CODE					0
 
 //A frame has timeouted -> no ACK/CTS received
 #define		FRAME_TIMEOUT_CODE				1
@@ -3600,6 +3602,7 @@ Packet* create_packet(frame_struct frame){
 	
 	char	msg[100];
 	Packet	*pk;
+	Boolean	cancel_transmission = OPC_FALSE;
 
 	switch(frame.type){
 		case DATA_MULTICAST_PK_TYPE:
@@ -3656,12 +3659,15 @@ Packet* create_packet(frame_struct frame){
 			pk = op_pk_create_fmt("cmac_ctr");
 			op_pk_nfd_set(pk , FIELD_PK_CTR_CHANNEL, 	my_privileged_channel);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_TSLOT , 	slot_privileged_duration);
-			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 	op_sim_time() - frame.time_added);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_BRANCHID,	ctr_last_branch);
-//			debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
-//TAG
-//			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 		0);
+			debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
+			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 	op_sim_time() - frame.time_added);
 		
+			//the offset is too large, discard this CTR!
+			if (op_sim_time() - frame.time_added > slot_privileged_duration){
+				debug_print(MEDIUM, DEBUG_CONTROL, "CTR to cancel (too late) - TODO?\n");
+			//	cancel_transmission = OPC_TRUE;
+			}
 		break;
 		case CTR_ACK_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_ctr_ack");
@@ -3693,6 +3699,12 @@ Packet* create_packet(frame_struct frame){
 	op_pk_nfd_set(pk , FIELD_PK_ACCEPT,			OPC_TRUE);
 	op_pk_nfd_set(pk , FIELD_PK_NAV_DURATION, 	frame.nav_duration);
 		
+	//the transmission is not anymore valid
+	if (cancel_transmission){
+		op_pk_destroy(pk);
+		pk = OPC_NIL;
+	}
+	
 	//returns the frame !
 	FRET(pk);
 }
@@ -3918,8 +3930,6 @@ void generate_ctr_end(){
 	//info
 	int				frame_id;
 	
-	printf("CTR-END\n");
-	
 	//frame id
 	frame_id = get_new_frame_id();
 	//Next frame to send
@@ -3956,6 +3966,7 @@ void generate_ctr(){
 	int				frame_id;
 	
 	//Main channel
+	debug_print(LOW, DEBUG_CONTROL,"The main channel is used for all CTR\n");
 	change_tx_rx_phy(CHANNEL_MAIN_ID);
 		
 	//Destination
@@ -3979,6 +3990,7 @@ void generate_ctr(){
 	
 	//No more ktree children
 	if (dest_child == NULL){
+		debug_print(LOW, DEBUG_CONTROL,"CTR useless: no child\n");
 		is_node_privileged = OPC_FALSE;
 		FOUT;
 	}
@@ -3999,6 +4011,12 @@ void generate_ctr(){
 		else
 			frame.nav_duration	= compute_data_time(MTU_MAX);
 	
+		//offset -> the time at which the new slot begins (some time can have been saved and can be used by the next hop)
+	//	if (is_sink)
+			frame.time_added = op_sim_time();
+	//	else
+	//		frame.time_added = time_start_privileged + slot_privileged_duration - slot_privileged_offset;
+		
 		//Next frame to send
 		frame.source 				= my_address;
 		frame.destination 			= dest_child->address;
@@ -4007,13 +4025,12 @@ void generate_ctr(){
 		frame.nb_retry				= 0;
 		frame.power_ratio			= 1;
 		frame.pk_size				= HEADERS_PK_SIZE;
-		frame.time_added			= op_sim_time();
 		frame.time_sent				= 0;
 		frame.time_transmission_min	= 0;
 		frame.released				= OPC_FALSE;
 		frame.payload				= NULL;
 		change_next_frame(frame);
-	
+
 		debug_print(LOW , DEBUG_CONTROL , "CTR generated for the child %d (branch %d)\n", dest_child->address, ctr_last_branch);
 	}
 	FOUT;
@@ -4358,6 +4375,7 @@ void receive_packet_from_radio(){
 							)
 						){
 				
+					debug_print(MAX, DEBUG_CONTROL, "The CTR was acknowledged and the destination has no more data to send\n");
 					change_tx_rx_phy(CHANNEL_MAIN_ID);
 					is_reply_received = OPC_TRUE;
 				}
@@ -4505,6 +4523,7 @@ void receive_packet_from_radio(){
 				//R: if it comes back before, he will send a CTR which will update automatically its NAV
 				if (nb_channels > 1)
 					update_nav_time(source, t_slot , channel);	
+				//	update_nav_time(source, t_slot - offset , channel);	
 			
 				//Remark: we answer even if a NAV is present -> the CTR should have a larger priority and we should enforce its delivery
 				if (destination == my_address){
@@ -4873,8 +4892,10 @@ void interrupt_process(){
 			}
 			
 			//Returns to the main channel
-			if (op_intrpt_code() == MAIN_CHANNEL_RETURN_CODE)			
+			if (op_intrpt_code() == MAIN_CHANNEL_RETURN_CODE){
+				debug_print(MEDIUM, DEBUG_CONTROL, "I have to switch back to my main channel\n");
 				change_tx_rx_phy(CHANNEL_MAIN_ID);
+			}
 		
 			
 			
@@ -5921,47 +5942,47 @@ if (!is_tx_busy){
 	is_tx_busy = OPC_TRUE;
 	frame_pk = create_packet(next_frame_to_send);
 	
+	//for any reason, the packet can have been canceled
+	if (frame_pk != OPC_NIL){
 	
-	//The reply was sent (if it was a reply!)
-	//is_reply_required = OPC_TRUE;
-	
-	// -----  SPECIAL ACTIONS  -----
+		// -----  SPECIAL ACTIONS  -----
 
 	
-	if (next_frame_to_send.destination == ADDR_BROADCAST)
-		print_nav_list(DEBUG_HELLO);
+		if (next_frame_to_send.destination == ADDR_BROADCAST)
+			print_nav_list(DEBUG_HELLO);
 	
-	switch (next_frame_to_send.type){
+		switch (next_frame_to_send.type){
 	
-		//Increases power (to 10W, that is enormous and all the nodes will get it)
-		//If a node does not receive the SYNC it is not a problem: the branch will not expand to the network extremities
-		case SYNC_PK_TYPE:
+			//Increases power (to 10W, that is enormous and all the nodes will get it)
+			//If a node does not receive the SYNC it is not a problem: the branch will not expand to the network extremities
+			case SYNC_PK_TYPE:
 	
-			if (is_sync_direct_antenna)	
-				change_antenna_direction(STREAM_TO_DIRECT_SYNC , sync_last_branch);
-			else
-				change_tx_power(1000 , STREAM_TO_RADIO);
-		break;
+				if (is_sync_direct_antenna)	
+					change_antenna_direction(STREAM_TO_DIRECT_SYNC , sync_last_branch);
+				else
+					change_tx_power(1000 , STREAM_TO_RADIO);
+			break;
 		
-		case HELLO_PK_TYPE:
-			is_hello_to_send = OPC_FALSE;
-		break;
+			case HELLO_PK_TYPE:
+				is_hello_to_send = OPC_FALSE;
+			break;
+		}
+	
+		// -----  TRANSMISSSION  -----
+		if ((next_frame_to_send.type == SYNC_PK_TYPE) && (is_sync_direct_antenna))
+			op_pk_send(frame_pk , STREAM_TO_DIRECT_SYNC);
+		else 
+			op_pk_send(frame_pk , STREAM_TO_RADIO);
+	
+		//Registers the frame as sent (if a reply is required: ACK/CTS/...)
+		last_frame_sent = next_frame_to_send;
+		last_frame_sent.released = OPC_FALSE;
+		set_next_frame_null();
+		is_reply_to_send = OPC_FALSE;
 	}
-	
-	
-	
-	// -----  TRANSMISSSION  -----
-	if ((next_frame_to_send.type == SYNC_PK_TYPE) && (is_sync_direct_antenna))
-		op_pk_send(frame_pk , STREAM_TO_DIRECT_SYNC);
-	else 
-		op_pk_send(frame_pk , STREAM_TO_RADIO);
-
-	
-	//Registers the frame as sent (if a reply is required: ACK/CTS/...)
-	last_frame_sent = next_frame_to_send;
-	last_frame_sent.released = OPC_FALSE;
-	set_next_frame_null();
-	is_reply_to_send = OPC_FALSE;
+	//the transmission was canceled => self-interrupt to directly exit the transition STATE
+	else
+		op_intrpt_schedule_self(op_sim_time(), NOTHING_CODE);
 }
 //else -> nothing, we just stay in this state while the transmission and keep to treat other interrupts
 
@@ -6033,6 +6054,7 @@ if (!is_tx_busy){
 	
 		//CTR sent -> changes to the privileged channel
 		if (last_frame_sent.type == CTR_PK_TYPE){
+			debug_print(LOW, DEBUG_CONTROL, "CTR sent, go to the privileged channel for the reply\n");
 			change_tx_rx_phy(my_privileged_channel );
 			
 			if (op_ev_valid(main_channel_return_intrpt))
@@ -6046,6 +6068,7 @@ if (!is_tx_busy){
 		if ((last_frame_sent.type == CTR_ACK_PK_TYPE) && (is_main_channel_active()) && (last_frame_sent.nb_retry == 0)){
 		
 			//Channel change
+			debug_print(MEDIUM, DEBUG_CONTROL, "the CTR-ACK was sent\n");
 			change_tx_rx_phy(my_privileged_channel);
 			
 			//sends a CTR-END through the privileged channel if no data frame to send
@@ -6059,8 +6082,10 @@ if (!is_tx_busy){
 			
 		}
 		//CTR-ACK sent over the privileged channel -> changes to the main channel
-		else if ((last_frame_sent.type == CTR_ACK_PK_TYPE) && (!is_main_channel_active()))
+		else if ((last_frame_sent.type == CTR_ACK_PK_TYPE) && (!is_main_channel_active())){
+			debug_print(LOW, DEBUG_CONTROL,"no more data and CTR-ACK sent\n");
 			change_tx_rx_phy(CHANNEL_MAIN_ID);
+		}
 	
 		//We must now send a CTR for our child
 		if ((last_frame_sent.type == CTR_END_PK_TYPE) && (last_frame_sent.nb_retry == 0)){
@@ -6191,9 +6216,12 @@ if (next_frame_to_send.type == NO_PK_TYPE){
 	if (is_node_privileged){
 	
 		//Buffer empty -> I will lose my priviledged status
-		if ((PRIVILEGED_MEDIUM_LIMIT) || (PRIVILEGED_HIGH_LIMIT))
-			generate_ctr();
-
+		if ((PRIVILEGED_MEDIUM_LIMIT) || (PRIVILEGED_HIGH_LIMIT)){
+			if (nb_channels > 1)
+				generate_ctr_end();
+			else
+				generate_ctr();
+		}
 		else if ((is_frame_buffer_empty()) && (!PRIVILEGED_MEDIUM_LIMIT))
 			op_sim_end("We should not be in this state if we have nothing to send", "and we cannot end the priviledge mode" , "" , "");
 			
@@ -6296,7 +6324,7 @@ if (!IS_MEDIUM_BUSY){
 	debug_print(MEDIUM, DEBUG_BACKOFF, "self interrupt, ifs %f\n", next_frame_to_send.ifs);
 	op_intrpt_schedule_self(op_sim_time() + next_frame_to_send.ifs , DEFER_CODE);
 }
-else{
+/*else{
 	debug_print(MEDIUM, DEBUG_BACKOFF, 
 		"IS MED BUSY %d = %d | %d | %d\n",
 		IS_MEDIUM_BUSY,
@@ -6305,7 +6333,7 @@ else{
 		(get_nav_main_channel() >= op_sim_time()));
 	print_nav_list(DEBUG_CONTROL);
 	}
-
+*/
 
 
 if (DEBUG_STATE_MACHINE){
@@ -6467,7 +6495,7 @@ if ((op_ev_valid(backoff_intrpt)) && (IS_MEDIUM_BUSY)){
 	
 	//Stores the remaining backoff
 	my_backoff = ceil((op_ev_time(backoff_intrpt) - op_sim_time()) / SLOT_BACKOFF);
-	debug_print(MEDIUM, DEBUG_BACKOFF, "%f - %f / %f\n", op_ev_time(backoff_intrpt) , op_sim_time() , SLOT_BACKOFF);
+	//debug_print(MEDIUM, DEBUG_BACKOFF, "%f - %f / %f\n", op_ev_time(backoff_intrpt) , op_sim_time() , SLOT_BACKOFF);
 
 	//disable the previous backoff interrupt (the backoff must not be decremented during medium activity)
 	op_ev_cancel(backoff_intrpt);
@@ -6657,12 +6685,15 @@ if ((is_reply_bad) || (IS_FRAME_TIMEOUT)){
 		change_next_frame(last_frame_sent);
 		
 		//Failed -> go to the main channel
-		if (nb_channels > 1)
+		if (nb_channels > 1){
+			debug_print(MEDIUM, DEBUG_CONTROL, "Failure for the CTR -> we come back to the main channel\n");
 			change_tx_rx_phy(CHANNEL_MAIN_ID);
-	}	
+		}	
+	}
 	
 	//We are privileged, we have no more data, and the last one failed -> come back to the main channel
 	if ((is_frame_buffer_empty()) && (last_frame_sent.type == DATA_UNICAST_PK_TYPE) && (last_frame_sent.nb_retry >= MAX_NB_RETRY) && (nb_channels > 1)){
+		debug_print(MEDIUM, DEBUG_CONTROL, "Failure for the DATA although I am privileged on a dedicated channel -> we come back to the main channel\n");
 		change_tx_rx_phy(CHANNEL_MAIN_ID);
 	}
 }
