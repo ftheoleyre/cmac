@@ -4878,8 +4878,10 @@ void interrupt_process(){
 		case OPC_INTRPT_REMOTE:
 		
 			// One of receiver channels is changing its status. Update the channel status flag (with power = 0)
-			if (op_intrpt_code() - CHANNEL_RELEASED_CODE == my_current_channel)
+			if (op_intrpt_code() - CHANNEL_RELEASED_CODE == my_current_channel){
 				is_rx_busy = OPC_FALSE;
+				debug_print(MAX, DEBUG_RADIO, "I have been notified that the channel is now free\n");
+			}
 
 		break;
 
