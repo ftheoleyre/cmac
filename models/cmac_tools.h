@@ -37,8 +37,7 @@ typedef struct{
 
 //-------------------------  FREQUENCIES  -----------------------------------
 
-
-
+int 	get_nb_of_channels();
 double 	channel_to_freq(int channel);
 int 	freq_to_channel(double freq);
 

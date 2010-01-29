@@ -1,0 +1,535 @@
+<?xml version="1.0"?>
+<process-model model-name="cmac_monitor" mt-safe="yes" code-language="C" tv-in-db="yes" tv-in-tb="yes">
+<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
+<attribute-assignments>
+<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
+<assignment attribute-name="doc file" type="string" status="hidden"/>
+<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="0"/>
+<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
+<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
+<assignment attribute-name="priority" type="integer" status="hidden"/>
+<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
+<assignment attribute-name="subqueue" type="compound" status="hidden">
+<sub-object>
+<attribute creation-mechanics="EMA" name="count" type="integer" value="1"/>
+<attribute creation-mechanics="EMA" name="list" type="object list">
+<object-list>
+<sub-object/>
+</object-list>
+</attribute>
+</sub-object>
+</assignment>
+<assignment attribute-name="super priority" type="toggle" status="hidden"/>
+</attribute-assignments>
+<interfaces>
+<interface promoted-name="begsim intrpt" type="toggle" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
+<attribute-names>
+<![CDATA[
+begsim intrpt
+]]>
+</attribute-names>
+<properties type="toggle" auto-assign="no" symbolic-only="no">
+<default-value value="0"/>
+</properties>
+</interface>
+</interfaces>
+<state-variables>
+<![CDATA[
+/* If we sense a signal below this threshold, we consider it is only noise */
+/* (and it does not impact our transmissions)                              */
+double	\rx_power_threshold;
+
+/* My address */
+int	\my_monitor_address;
+
+/* Auto-address assignment handle. Used while      */
+/* auto-address and destination address selection. */
+OmsT_Aa_Address_Handle	\oms_aa_handle;
+
+/* id of the mac process */
+Objid	\mac_objid;
+
+/* The table of all the channels states */
+Boolean*	\channel_state_table;
+
+/* Infos about the MAC layer */
+mac_info*	\mac_current_channel_ptr;
+
+]]>
+</state-variables>
+<header-block>
+<![CDATA[
+
+#include <math.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
+
+#include "oms_pr.h"
+#include "oms_tan.h"
+#include "oms_bgutil.h"
+#include "wlan_support.h"
+#include "oms_auto_addr_support.h"
+#include "oms_dist_support.h"
+#include "oms_dim_stat_support.h"
+#include "bridge_header.h"
+#include "jammers.h"	
+#include "prg_mapping.h"
+#include <prg_geo.h>
+#include "apptrack.h" 
+
+
+#include "cmac_const.h"
+#include "cmac_process.h"
+#include "cmac_tools.h"
+#include "cmac_monitor.h"
+
+
+
+#define	NB_CHANNELS_ATTACHED_TO_MONITOR	13
+]]>
+</header-block>
+<function-block>
+<![CDATA[
+
+//returns my address
+int get_monitor_my_address(){
+	FIN(get_monitor_my_address());
+	FRET(my_monitor_address);
+}
+
+
+//updates the channel state in the global table
+void channel_states_table_update(int channel , int state){
+	FIN(channel_states_table_update(int channel , int state));
+
+	//debug_print_monitor(DEBUG, DEBUG_ACTIVITY , "channel %d: %d->%d\n" , channel , channel_state_table[channel] , state);
+	channel_state_table[channel] = state;
+	
+	FOUT;
+}
+
+]]>
+</function-block>
+<states initial-state-id="11">
+<state id="9" x="450" y="90">
+<attribute name="name" type="string" value="DISCARD"/>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+Packet 	*pkptr;
+//temp values
+int		channel;
+int		type;
+double	current_rx_power;
+
+
+
+type = op_intrpt_type();
+switch(type){
+
+	//Frame arrived -> useless, just discard it
+	case OPC_INTRPT_STRM :
+		pkptr = op_pk_get(op_intrpt_strm());
+		op_pk_destroy(pkptr);
+	break;
+	
+	//This is channel stat change
+	case OPC_INTRPT_STAT : 
+		channel = op_intrpt_stat();
+		current_rx_power = op_stat_local_read (channel);
+			
+		//update the state of channels table
+		channel_states_table_update(channel , current_rx_power > rx_power_threshold);
+	
+		//notify the MAC process of this release
+		if ((current_rx_power <= rx_power_threshold) && 
+			(channel == *(mac_current_channel_ptr->current_channel)) &&
+			(*(mac_current_channel_ptr->channel_status_notif))){		
+				op_intrpt_schedule_remote(op_sim_time() , CHANNEL_RELEASED_CODE + channel , mac_objid);
+				*(mac_current_channel_ptr->channel_status_notif) = OPC_FALSE;
+			}
+	break;
+
+}
+
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="11" x="90" y="90">
+<attribute name="name" type="string" value="INIT"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
+<![CDATA[
+int		nb_channels;
+int		num_chann , num_statwires;
+//control
+int		i, j;
+//Object identification
+Objid	chann_objid;
+Objid	params_attr_objid;
+Objid	mac_params_comp_attr_objid;
+Objid	sub_chann_objid;
+Objid	tx_id , rx_id;
+Objid	stat_rx_objid;
+//Channels parameters
+double	bandwidth;
+int		nb_radio;
+double	POWER_TX;
+
+
+//---------------------------------------------------
+//				IDENTIIFICATION
+//---------------------------------------------------
+
+
+//Initialization
+nb_channels = get_nb_of_channels();
+
+// wlan dispatch process
+mac_objid = op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_PROC , 0);
+op_ima_obj_attr_get (mac_objid, "Wireless LAN Parameters", &mac_params_comp_attr_objid);
+params_attr_objid = op_topo_child (mac_params_comp_attr_objid, OPC_OBJTYPE_GENERIC, 0);
+
+//parameters
+op_ima_obj_attr_get (params_attr_objid, "Packet Reception-Power Threshold", &rx_power_threshold);
+
+//verification
+if (op_topo_assoc_count(op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STATWIRE) < nb_channels)
+	op_sim_end("You have more channels than statwires", "You must modify you node model", "", "");
+
+
+
+
+
+
+
+//---------------------------------------------------
+//    NB OF CHANNELS ATTACHED TO MONITOR PROCESS
+//    i.e. depends directly on the node model
+//---------------------------------------------------
+
+num_statwires = op_topo_assoc_count (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STATWIRE);
+if (num_statwires != NB_CHANNELS_ATTACHED_TO_MONITOR){
+	char	msg[500];
+	snprintf(msg, 500, "%d != %d" , num_statwires, NB_CHANNELS_ATTACHED_TO_MONITOR);
+	op_sim_end("The number of statwires is different in the monitor process and in the node model", msg, "" , "");
+}
+	
+
+
+//-----------------------------------------------
+//				DATA RADIO
+//-----------------------------------------------
+
+op_ima_obj_attr_get(mac_objid ,  "Transmission Power",	&POWER_TX);
+
+
+//For 80211a
+if (channel_to_freq(0) > 5000)
+	bandwidth = BANDWIDTH_MHZ_80211A;
+//For 802.11bg
+else
+	bandwidth = BANDWIDTH_MHZ_80211BG;
+
+
+
+//----- TRANSMISSION ----
+
+nb_radio = op_topo_assoc_count(op_id_self() , OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX);
+
+for (i=0; i<nb_radio ; i++){
+
+	tx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_OUT, OPC_OBJTYPE_RATX, i);
+	if (tx_id == OPC_OBJID_INVALID)
+		op_sim_end("No attached transmitter\n", "" , "" , "");
+
+	//Channels nb
+	op_ima_obj_attr_get (tx_id, "channel", &chann_objid);
+
+	//id access
+	sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RATXCH, 0);
+
+	//Frequency + bandwidth
+	op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth);
+	op_ima_obj_attr_set (sub_chann_objid, "power", 			POWER_TX);
+
+	if (nb_radio < get_nb_of_channels())
+		op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	channel_to_freq(i));
+	else
+		op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	0);
+}
+
+//----- RECEPTION ----
+
+nb_radio = op_topo_assoc_count(op_id_self() , OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX);
+
+for (i=0; i<nb_radio ; i++){
+
+	rx_id = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_RARX, i);
+	if (rx_id == OPC_OBJID_INVALID)
+		op_sim_end("No attached receiver\n", "" , "" , "");
+
+
+	//Nb channels
+	op_ima_obj_attr_get (rx_id, "channel", &chann_objid);
+	num_chann = op_topo_child_count (chann_objid, OPC_OBJTYPE_RARXCH);
+	
+
+	//Frequency + bandwidth of the first received
+	for (j = 0; j < num_chann; j++){ 	
+		//Id
+		sub_chann_objid = op_topo_child (chann_objid, OPC_OBJTYPE_RARXCH, j);
+	
+		//Frequency + bandwidth
+		op_ima_obj_attr_set (sub_chann_objid, "bandwidth", 		bandwidth);
+		if (nb_radio < get_nb_of_channels())
+			op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	channel_to_freq(i));
+		else
+			op_ima_obj_attr_set (sub_chann_objid, "min frequency", 	0);
+
+		//Reception power threshold
+		op_ima_obj_state_set (sub_chann_objid, &rx_power_threshold);
+	}
+}
+
+
+
+
+//---------------------------------------------------
+//			FREQ FOR STATWIRES
+//---------------------------------------------------
+
+//configures the statwire associated to the channel i
+for (i = 0; i < NB_CHANNELS_ATTACHED_TO_MONITOR; i++){
+	stat_rx_objid = op_topo_assoc (op_id_self(), OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STATWIRE, i);
+	op_ima_obj_attr_set (stat_rx_objid, "high threshold trigger", rx_power_threshold);
+}
+
+//---------------------------------------------------
+//			MEMORY SHARING
+//---------------------------------------------------
+
+channel_state_table = op_prg_mem_alloc(sizeof(Boolean) * nb_channels);
+for(i=0 ; i<nb_channels ; i++)
+	channel_state_table[i] = 0;
+op_ima_obj_state_set(op_id_self() , channel_state_table);
+
+]]>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+//---------------------------------------------------
+//			COM WITH THE MAC PROCESS
+//---------------------------------------------------
+
+
+//the current channel of the mac process
+mac_current_channel_ptr = op_ima_obj_state_get(mac_objid);
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="12" x="210" y="90">
+<attribute name="name" type="string" value="Init2"/>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+
+]]>
+</value-text>
+</attribute>
+</state>
+<state id="13" x="330" y="90">
+<attribute name="name" type="string" value="wait"/>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
+<![CDATA[
+List*				proc_record_handle_list_ptr;
+int					record_handle_list_size;
+OmsT_Pr_Handle		process_record_handle;
+Objid				mac_module_objid;
+double				ne_address = OPC_DBL_UNDEF;
+int					instrm_from_mac , outstrm_to_mac;
+
+
+/* Obtain the MAC layer information for the local MAC	*/
+/* process from the model-wide registry.				*/
+proc_record_handle_list_ptr = op_prg_list_create ();
+oms_pr_process_discover (op_id_self(), proc_record_handle_list_ptr,
+	"node objid",	OMSC_PR_OBJID,		op_topo_parent(op_id_self()),
+	"protocol", 	OMSC_PR_STRING,		"mac",
+	OPC_NIL);
+ 
+/* If the MAC process regostered itself, then there	*/
+/* must be a valid match							*/
+record_handle_list_size = op_prg_list_size (proc_record_handle_list_ptr);
+	
+if (record_handle_list_size !=  1)
+	{
+	/* An error should be created if there are more	*/
+	/* than one WLAN-MAC process in the local node,	*/
+	/* or if no match is found.						*/
+	op_sim_end ("Error: either zero or several WLAN MAC processes found in the interface", "", "", "");
+	}
+else
+	{
+	/*	Obtain a handle on the process record.	*/
+	process_record_handle = (OmsT_Pr_Handle) op_prg_list_remove (proc_record_handle_list_ptr, 0);
+ 
+	/* Obtain the module objid for the WLAN MAC module. 		*/
+	oms_pr_attr_get (process_record_handle, "module objid", OMSC_PR_OBJID, &mac_module_objid);
+ 
+	/* Obtain the stream numbers connected to and from the	*/
+	/* WLAN MAC layer process.								*/
+	oms_tan_neighbor_streams_find (op_id_self(), mac_module_objid, &instrm_from_mac, &outstrm_to_mac);
+ 
+	/* Obtain the address handle maintained by the MAC process.	*/
+	oms_pr_attr_get (process_record_handle, "address",             OMSC_PR_NUMBER,  &ne_address);
+	oms_pr_attr_get (process_record_handle, "auto address handle", OMSC_PR_POINTER, &oms_aa_handle);
+ 
+	/* Set the variable to indicate the MAC address of the	*/
+	/* associated MAC layer process.						*/
+	my_monitor_address = (int) ne_address;
+	}
+
+]]>
+</value-text>
+</attribute>
+</state>
+</states>
+<transitions>
+<transition source-state-id="11" destination-state-id="12" label-x="142" label-y="74">
+<path-point x="117" y="89"/>
+<path-point x="185" y="90"/>
+<attribute name="name" type="string" value="tr_12"/>
+<attribute name="color" type="color" value="gray3"/>
+</transition>
+<transition source-state-id="12" destination-state-id="13" label-x="272" label-y="90">
+<path-point x="236" y="89"/>
+<path-point x="302" y="90"/>
+<attribute name="name" type="string" value="tr_4"/>
+</transition>
+<transition source-state-id="13" destination-state-id="9" label-x="394" label-y="91">
+<path-point x="357" y="91"/>
+<path-point x="425" y="90"/>
+<attribute name="name" type="string" value="tr_3"/>
+</transition>
+<transition source-state-id="9" destination-state-id="9" label-x="470" label-y="53">
+<path-point x="461" y="71"/>
+<path-point x="473" y="35"/>
+<path-point x="518" y="85"/>
+<path-point x="453" y="89"/>
+<attribute name="name" type="string" value=" "/>
+</transition>
+</transitions>
+<local-statistics>
+<statistic name="End-to-End Delay (seconds)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+End-to-end delay of packets received by the traffic sink in this node.
+]]>
+</description>
+</statistic>
+<statistic name="Traffic Received (bits)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Traffic received (in bits) by the traffic sink in this node.
+]]>
+</description>
+</statistic>
+<statistic name="Traffic Received (bits/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Traffic received (in bits/sec) by the traffic sink in this node.
+]]>
+</description>
+</statistic>
+<statistic name="Traffic Received (packets)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Traffic received (in packets) by the traffic sink in this node.
+]]>
+</description>
+</statistic>
+<statistic name="Traffic Received (packets/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Traffic received (in packets/sec) by the traffic sink in this node.
+]]>
+</description>
+</statistic>
+</local-statistics>
+<global-statistics>
+<statistic name="End-to-End Delay (seconds)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+End-to-end delay of packets received by traffic sinks across all nodes.
+]]>
+</description>
+</statistic>
+<statistic name="Traffic Received (bits)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Traffic received (in bits) by the traffic sinks across all nodes.
+]]>
+</description>
+</statistic>
+<statistic name="Traffic Received (bits/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Traffic received (in bits/sec) by the traffic sinks across all nodes.
+]]>
+</description>
+</statistic>
+<statistic name="Traffic Received (packets)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Traffic received (in packets) by the traffic sinks across all nodes.
+]]>
+</description>
+</statistic>
+<statistic name="Traffic Received (packets/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
+<![CDATA[
+Traffic received (in packets/sec) by the traffic sinks across all nodes.
+]]>
+</description>
+</statistic>
+</global-statistics>
+<comments>
+<![CDATA[
+General Process Description: 
+---------------------------- 
+The sink process model accepts packets from any number of sources and discards them regardless of their content or format.
+ 
+ICI Interfaces: 
+-------------- 
+None 
+
+Packet Formats: 
+--------------- 
+None 
+
+Statistic Wires: 
+---------------- 
+None 
+
+Process Registry: 
+----------------- 
+Not Applicable
+
+Restrictions: 
+------------- 
+None
+]]>
+</comments>
+</process-model>

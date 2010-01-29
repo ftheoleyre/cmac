@@ -159,6 +159,10 @@
 #define		CHANNEL_RESERVED				-1
 
 
+//bandwidth
+#define		BANDWIDTH_MHZ_80211A			20
+#define		BANDWIDTH_MHZ_80211BG			22
+
 
 
 //-----------------------------------------------

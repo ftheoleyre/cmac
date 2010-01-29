@@ -11,9 +11,29 @@
 #include 	"cmac_tools.h"
 
 
-//-----------------------------------------------------------------------------
-//						FREQUENCIES
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
+//
+//							CHANNELS CONVERSION
+//
+//------------------------------------------------------------------------
+
+//returns the nb of channels
+int get_nb_of_channels(){
+	FIN(get_nb_of_channels());
+	
+	//static values case
+	//802.11bg
+	//FRET(3);
+	//802.11a
+	//FRET(13);
+	
+	//simulation parameter
+	int nb;
+	op_ima_sim_attr_get(OPC_IMA_INTEGER, "nb_channels", &nb);
+	
+	FRET(nb);
+}
+
 
 
 //list of channels and their associated frequency
@@ -31,8 +51,8 @@ double channel_to_freq(int channel){
 		default :
 			op_sim_end("Error, this channel number is unknown", "","","");
 	}
-
-/*	//802.11a
+/*
+	//802.11a
 	switch(channel){
 		case 0 :
 			FRET(5170);
@@ -66,6 +86,8 @@ double channel_to_freq(int channel){
 */
 	FRET(-1);
 }
+
+
 
 //returns the channel nb associated to a given frequency
 int freq_to_channel(double freq){

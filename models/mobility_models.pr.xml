@@ -1,0 +1,1009 @@
+<?xml version="1.0"?>
+<process-model model-name="mobility_models" code-language="C" tv-in-db="yes" tv-in-tb="yes">
+	<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
+	<simulation-attributes>
+		<attribute name="X_MAX" group="mobility" type="double">
+			<properties type="double" units="meters" auto-assign="no" symbolic-only="no">
+				<default-value value="1,500"/>
+				<comments>
+<![CDATA[
+X_MAX is either:
+-the x length of the rectangle (default mobility model)
+-the diameter of the disk (random disk model)
+-the size of the cell (in the grid model)
+]]>
+				</comments>
+			</properties>
+		</attribute>
+		<attribute name="Y_MAX" group="mobility" type="double">
+			<properties type="double" units="meters" auto-assign="no" symbolic-only="no">
+				<default-value value="300"/>
+			</properties>
+		</attribute>
+		<attribute name="Mobility_Model" group="mobility" type="integer">
+			<properties type="integer" units="no unit" auto-assign="no" symbolic-only="yes">
+				<default-value value-symbol="No mobility"/>
+				<symbol-map>
+					<symbol name="No mobility" value="0"/>
+					<symbol name="Random waypoint" value="1"/>
+					<symbol name="Random direction" value="2"/>
+					<symbol name="Boundless smooth" value="3"/>
+					<symbol name="City" value="4"/>
+				</symbol-map>
+			</properties>
+		</attribute>
+		<attribute name="Min_Speed" group="mobility" type="double">
+			<properties type="double" units="m/s" auto-assign="no" symbolic-only="no">
+				<default-value value="0.0"/>
+			</properties>
+		</attribute>
+		<attribute name="Max_Speed" group="mobility" type="double">
+			<properties type="double" units="m/s" auto-assign="no" symbolic-only="no">
+				<default-value value="5.0"/>
+			</properties>
+		</attribute>
+		<attribute name="Conf_File-Positions" group="execution" type="string">
+			<properties type="string" auto-assign="no" symbolic-only="no">
+				<default-value value=""/>
+				<comments>
+<![CDATA[
+file in which I should extract the position and states of each node (if this string is empty, I generate automatically one topology and assign states dynamically)
+]]>
+				</comments>
+			</properties>
+		</attribute>
+		<attribute name="Positions_Method" group="mobility" type="integer">
+			<properties type="integer" units="no unit" auto-assign="no" symbolic-only="yes">
+				<default-value value-symbol="Fixed"/>
+				<symbol-map>
+					<symbol name="Fixed" value="0"/>
+					<symbol name="Random rectangle" value="1"/>
+					<symbol name="Random disk" value="2"/>
+					<symbol name="Configuration file" value="3"/>
+					<symbol name="Regular grid" value="4"/>
+				</symbol-map>
+				<comments>
+<![CDATA[
+Fixed: the positions are not changed at all
+Random rectangle: XMAX and YMAX, random positions
+Random Disk: XMAX is the radius, with a disk center on XMAX,XMAX
+Configuration file: positions directly extracted from one file
+Regular grid: nodes are positioned on a grid, according to their name. Each cell in the grid has a size XMAX * XMAX
+]]>
+				</comments>
+			</properties>
+		</attribute>
+	</simulation-attributes>
+	<attribute-assignments>
+		<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
+		<assignment attribute-name="doc file" type="string" status="hidden"/>
+		<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="0"/>
+		<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
+		<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
+		<assignment attribute-name="priority" type="integer" status="hidden"/>
+		<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
+		<assignment attribute-name="subqueue" type="compound" status="hidden">
+			<sub-object>
+				<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+				<attribute creation-mechanics="Model" name="list" type="object list">
+					<object-list>
+						<sub-object/>
+					</object-list>
+				</attribute>
+			</sub-object>
+		</assignment>
+		<assignment attribute-name="super priority" type="toggle" status="hidden"/>
+	</attribute-assignments>
+	<state-variables>
+<![CDATA[
+/* distribution used to chose a random direction */
+Distribution *	\direction_dist;
+
+/* the objid of the node containing the current mobility process */
+Objid	\node_id;
+
+/* the objid of the current process */
+Objid	\process_id;
+
+/* the objid of the network containing the current mobility process */
+Objid	\net_id;
+
+double	\XMAX;
+
+double	\YMAX;
+
+int	\node_addr;
+
+double	\TRANSMISSION_RANGE;
+
+int	\num_nodes;
+
+double	\my_avg_speed;
+
+double	\distance_to_cover;
+
+/* In m/s */
+double	\SPEED_MAX;
+
+double	\direction_angle;
+
+/* The distance to cover during each MVT_STEP */
+double	\step_range;
+
+/* Maximum distance, which a mobile can cover in a row */
+double	\DISTANCE_LIMIT;
+
+Distribution *	\uniform_double_x;
+
+Distribution *	\uniform_double_y;
+
+int	\PAUSE;
+
+double	\x_target;
+
+double	\y_target;
+
+Distribution *	\my_avg_speed_dist;
+
+FILE*	\mobility_file;
+
+int	\MOBILITY_MODEL;
+
+int	\my_address;
+
+/* in m/s */
+double	\SPEED_MIN;
+
+short	\mobile;
+
+/* my _node unique id */
+int	\my_mob_node_id;
+
+/* the method to determine node's positions */
+int	\POSITION_METHOD;
+
+]]>
+	</state-variables>
+	<temporary-variables>
+<![CDATA[
+double         	pause_time;
+double         	r,e,f;
+]]>
+	</temporary-variables>
+	<header-block>
+<![CDATA[
+/*
+ *  mobility_models.c
+ *  
+ *  Created by Fabrice Theoleyre on 29/09/09.
+ *  Copyright 2009 CNRS / LIG. All rights reserved.
+ *
+ */
+
+
+///////////////////////////////////////////////////////////////
+// WAYPOINT MOBILITY HEADER BLOCK
+//
+// Declaration of every constant, type, library, global 
+// variables... used by the mobility process
+///////////////////////////////////////////////////////////////
+
+
+
+//////////////////////// INCLUDE ////////////////////////////// 
+
+#include 	<math.h>
+#include	<oms_dist_support.h>
+#include 	<stdio.h>
+#include	<stdlib.h>
+#include 	<malloc.h>
+#include 	<opnet.h>
+#include 	<string.h>
+#include	<time.h>
+
+#include	"mobility_models.h"
+
+
+
+///////////////// CONSTANTS DEFINITION ////////////////////////
+
+#define 	PI	 				3.141592654
+
+#define		LOW_MOBILITY		1
+#define		HIGH_MOBILITY		2
+
+//to determine node's positions
+#define		POS_FIXED			0
+#define		POS_RANDOM_RECT		1
+#define		POS_RANDOM_DISK		2
+#define		POS_CONFILE			3
+#define		POS_GRID			4
+
+//mobiltiy models
+#define		NO_MOBILITY			0
+#define		RANDOM_WAYPOINT		1
+#define		RANDOM_DIRECTION	2
+#define		BOUNDLESS			3
+#define		CITY				4
+#define		MOBILITY_ONE_SHOT	5		//cannot be called directly
+
+#define		XMIN				0
+#define		YMIN				0
+#define		PAUSE_TIME			0
+#define 	MVT_STEP        	5
+
+#define		DEBUG_POSITIONS		0
+
+//the radio range in meters (found empirically...)
+#define		PHYSIC_RADIO_RANGE	21
+
+
+
+///////////////// TRANSITION CODES ////////////////////////////
+
+#define 	MOVE_CODE        	0
+#define 	START_PAUSE_CODE 	1
+#define 	END_PAUSE_CODE   	2
+#define 	STAT_CODE        	3
+
+
+#define 	MOVE          	((op_intrpt_type () == OPC_INTRPT_SELF) && (op_intrpt_code() == MOVE_CODE))
+#define 	START_PAUSE   	(PAUSE == 1)
+#define 	KEEP_MOVING   	(PAUSE == 0)
+#define 	END_PAUSE     	((op_intrpt_type () == OPC_INTRPT_SELF) && (op_intrpt_code() == END_PAUSE_CODE))
+#define 	STATS         	((op_intrpt_type () == OPC_INTRPT_SELF) && (op_intrpt_code() == STAT_CODE))
+#define 	FIX           	(MOBILE == 0) 
+#define 	MOBIL        	(MOBILE == 1)
+#define		ENDSIM_MOB		(op_intrpt_type() == OPC_INTRPT_ENDSIM)
+
+
+///////////////// GLOBAL VARIABLES ////////////////////////////
+
+
+typedef struct{
+	double x;
+	double y;
+	}Position;
+
+
+int	mob_node_id = 0;
+]]>
+	</header-block>
+	<states initial-state-id="0">
+		<state id="0" x="90" y="210">
+			<attribute name="name" type="string" value="init"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
+<![CDATA[
+char	filename[500];
+int		i, counter;
+FILE	*pfile;
+char	msg[200], line[500];
+double	x_pos , y_pos , x_center , y_center, future_time, future_x, future_y;
+//Grid coordinates
+int		x_int , y_int ;
+//temp
+char	name[100];
+int		address;
+
+
+
+
+// init Objids
+process_id = op_id_self();
+node_id = op_topo_parent (process_id);
+net_id = op_topo_parent(node_id);
+
+// Load Mobility parameters
+op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"X_MAX"      		, &XMAX);
+op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"Y_MAX"      		, &YMAX);
+
+//To determine if that node is an high speed node or not (we have 2 classes of nodes)
+op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"Max_Speed"			, &SPEED_MAX);
+op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"Min_Speed"			, &SPEED_MIN);
+op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"Mobility_Model"	, &MOBILITY_MODEL);
+op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"Positions_Method"	, &POSITION_METHOD);
+
+
+
+//----------------------------------------------
+//			TOPOLOGY EXTRACTED FROM A FILE
+//----------------------------------------------
+my_mob_node_id = mob_node_id++;
+if (POSITION_METHOD == POS_CONFILE){
+
+	//file which contains the node's positions
+	op_ima_sim_attr_get(OPC_IMA_STRING , ARG_CONF_FILE_POSITIONS, filename);
+	pfile = fopen(filename , "r");
+	if (pfile == NULL){
+		snprintf(msg, 200, "File %s does not exist", filename);
+		op_sim_end("Error to extract node's positions", msg, "", "");
+	}
+	
+	//gets the correct value for the current node
+	for(i=0 ; i< my_mob_node_id+1 ; i++){
+		future_time = 0;
+		
+		//save the line in a string since some of the records can be not present:
+		//I would like to read one single line if it the case
+		strncpy(line, "", 500);
+		fgets(line, 500, pfile);
+		if (sscanf(line, "%lf	%lf %lf %lf %lf\n", &x_pos , &y_pos, &future_time, &future_x, &future_y) < 2){
+			snprintf(msg , 200 , "the file %s contains an invalid position for node %d", filename, i);
+			op_sim_end("ERROR" , msg , "", "");
+		}
+	}
+	
+	// Set the current position of the node
+	op_ima_obj_attr_set(node_id , "x position" , x_pos);
+	op_ima_obj_attr_set(node_id , "y position" , y_pos);
+	
+	// If we have to schedule one change in the future
+	if (future_time != 0){
+		
+		//error
+		if (MOBILITY_MODEL != NO_MOBILITY)
+			op_sim_end("You schedule one movement for this node in the future in your configuration file", "although you choose also one mobility model", "please choose only one of these two methods", "else, you will obtain inconsistent results");
+		MOBILITY_MODEL = MOBILITY_ONE_SHOT;
+		
+		//I schedule the movement
+		op_intrpt_schedule_self(future_time, END_PAUSE_CODE);
+	}
+
+}
+
+
+//----------------------------------------------
+//			RANDOM RECTANGULAR
+//----------------------------------------------
+if (POSITION_METHOD == POS_RANDOM_RECT){
+	
+	// Pick a random location on a rectangle
+	uniform_double_x = op_dist_load ("uniform", XMIN, XMAX);
+	x_pos = op_dist_outcome(uniform_double_x);
+	uniform_double_y = op_dist_load ("uniform", YMIN, YMAX);
+	y_pos = op_dist_outcome(uniform_double_y);
+	
+	// Sets this position for the node
+	op_ima_obj_attr_set(node_id,"x position",x_pos);
+	op_ima_obj_attr_set(node_id,"y position",y_pos);
+}
+
+
+//----------------------------------------------
+//			RANDOM DISK
+//----------------------------------------------
+//NB: XMIN=YMIN=0 since I must create a disk of radius XMAX/2 and not (XMAX-XMIN)/2
+if (POSITION_METHOD == POS_RANDOM_DISK){
+	
+	// Pick a random location on a rectangle
+	uniform_double_x = op_dist_load ("uniform", XMIN, XMAX);
+
+	//incorrect initial position
+	x_pos = 2 * XMAX;
+	y_pos = 2 * XMAX;
+	
+	//center
+	x_center = (XMAX - 0) /2;
+	y_center = (XMAX - 0) /2;
+		
+	//is the location inside the disk centered on 0 and with a radius XMAX?
+	//NB distance from 0 is just sqrt(X^2+Y^2) !
+	counter = 0;
+	while (   pow(  pow(x_pos - x_center, 2) + pow(y_pos - y_center, 2) , 0.5) > XMAX/2){
+		x_pos = op_dist_outcome(uniform_double_x);
+		y_pos = op_dist_outcome(uniform_double_x);
+		
+		counter++;
+		if (counter++ > 1000){
+			snprintf(msg, 200, "radius %f" , XMAX/2);
+			op_sim_end("it appear that the node cannot be located inside the disk", msg, "", "");
+		}
+	}
+	
+	// Sets this position for the node
+	op_ima_obj_attr_set(node_id,"x position",x_pos);
+	op_ima_obj_attr_set(node_id,"y position",y_pos);
+	
+//	printf("%d in ( %.1f , %.1f )\n", node_id, x_pos, y_pos);
+
+}
+
+
+//----------------------------------------------
+//			REGULAR GRID
+//----------------------------------------------
+// this creates a regular grid based on the name of the node:
+// last two numbers mean the y position, the first (eventually two) numbers are the x position
+// For instance, 504 means the node with position (5;4) in the grid
+if (POSITION_METHOD == POS_GRID){
+	op_ima_obj_attr_get_str((node_id), "name", 100, name);
+	address = atoi(name);
+
+	y_int = address /  100;
+	x_int = address - y_int * 100;
+
+	x_pos = (double)x_int * XMAX;
+	y_pos = (double)y_int * XMAX;
+	
+	op_ima_obj_attr_set(node_id , "x position" , x_pos);
+	op_ima_obj_attr_set(node_id , "y position" , y_pos);
+	
+}
+
+
+
+//----------------------------------------------
+//		SPECIAL CASE if ONE SINK EXISTS
+//----------------------------------------------
+
+//The sink should be placed on the center of the simulation area
+Objid mac_id = op_id_from_name(node_id, OPC_OBJTYPE_PROC, "mac"); 
+if (((POSITION_METHOD == POS_RANDOM_DISK) || (POSITION_METHOD == POS_RANDOM_RECT)) && (mac_id != OPC_OBJID_INVALID)){
+	Boolean *is_sink_ptr = op_ima_obj_svar_get(mac_id, "is_sink");
+	if (*is_sink_ptr == OPC_TRUE){
+		op_ima_obj_attr_set(node_id , "x position" , (double)XMAX/2);
+		op_ima_obj_attr_set(node_id , "y position" , (double)XMAX/2);
+	}
+}
+
+
+
+
+
+//----------------------------------------------
+//			MOBILITY OR NOT ?
+//----------------------------------------------
+
+// Be careful: when I extract the positions from a configuration file, 
+// I have perhaps already scheduled one movement
+// Normally, I did already all the required verifications
+
+//no need to move
+if (MOBILITY_MODEL == NO_MOBILITY)
+	mobile = 0;
+
+//the movement was already scheduled
+else if (MOBILITY_MODEL == MOBILITY_ONE_SHOT){
+	mobile = 1;
+}
+
+//other cases
+else{
+	//this scenario is mobile
+	mobile = 1;
+	
+	/* Read the number of nodes in the network */
+	num_nodes = op_topo_object_count (OPC_OBJTYPE_NDMOB);
+		
+	// Compute DISTANCE_LIMIT
+	DISTANCE_LIMIT = sqrt((XMAX - XMIN)*(XMAX - XMIN)+(YMAX - YMIN)*(YMAX - YMIN));
+	// initialize distributions for random movement
+	direction_dist = op_dist_load ("uniform", -1, 1);
+
+	// Init avg speed
+	my_avg_speed_dist 	= op_dist_load("uniform",SPEED_MIN,SPEED_MAX);
+	my_avg_speed 		= (double)op_dist_outcome(my_avg_speed_dist);
+
+		
+	// Schedule the end of the initial pause time
+	op_intrpt_schedule_self(op_sim_time( )+ op_dist_uniform(1) , END_PAUSE_CODE);
+}
+
+
+
+]]>
+				</value-text>
+			</attribute>
+			<attribute name="status" type="toggle" value="1"/>
+		</state>
+		<state id="4" x="210" y="150">
+			<attribute name="name" type="string" value="Init_Mvt"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
+<![CDATA[
+double	x , y , x_pos , y_pos;
+char	msg[200];
+
+
+
+
+// Initiate the movement.
+// 1. Determine the avg speed of the current node.
+// 2. Determine the length of the distance, which the node
+//    has to cover in his next run.
+// 3. Given these two values, plus the movement step in time,
+//    then compute the distance to cover during each simulation 
+//    step (state variable "step_range")
+// 4. Determine a direction to follow.
+
+op_prg_odb_bkpt("Mobile_Init");
+
+// Reset the PAUSE flag
+PAUSE = 0;
+
+// init the distribution which will chose a uniformly distributed 
+// average speed between 0 and SPEED_LIMIT meters per second
+my_avg_speed_dist=op_dist_load("uniform",SPEED_MIN,SPEED_MAX);
+my_avg_speed = (double)op_dist_outcome(my_avg_speed_dist);
+
+
+switch (MOBILITY_MODEL) {
+  		
+	case MOBILITY_ONE_SHOT:
+		//nothing to do
+		
+	break;
+	
+	case RANDOM_WAYPOINT : // Random walk mobility model : Init_Mvt state
+	      
+			// Pick a target position
+			x_target = x = op_dist_outcome(uniform_double_x);
+			y_target = y = op_dist_outcome(uniform_double_y);
+
+			// Read the current position
+			op_ima_obj_attr_get(node_id,"x position",&x_pos);
+			op_ima_obj_attr_get(node_id,"y position",&y_pos);
+
+			// Compute the distance to cover for the next mvt
+			distance_to_cover = sqrt((x-x_pos)*(x-x_pos) + (y-y_pos)*(y-y_pos));
+
+			// Step range
+			step_range      = MVT_STEP*my_avg_speed;
+			// Angle
+			if(x != x_pos)
+				{
+					direction_angle =  atan((y-y_pos)/(x-x_pos));///op_dist_outcome (one) * PI;
+					if(direction_angle < 0)
+						direction_angle = (direction_angle*(-1));
+					if(x_target > x_pos && y_target > y_pos)
+						direction_angle =  direction_angle;
+					else if(x_target > x_pos && y_target < y_pos)
+							direction_angle =  (direction_angle*(-1));
+						else if(x_target < x_pos && y_target > y_pos)
+								{
+									direction_angle =  PI - direction_angle;
+								}
+							else if(x_target < x_pos && y_target < y_pos)
+								{
+									direction_angle =  direction_angle - PI;
+								}
+				}
+		else if(y != y_pos)
+			direction_angle =  (y>y_pos?0.5*PI:-0.5*PI);
+		else
+			direction_angle =  0;
+
+        break;
+		   
+   
+   case RANDOM_DIRECTION : // Random direction mobility model : Init_Mvt state
+		   
+   		   		// Pick a target position
+		   		//x = op_dist_outcome(uniform_double_x);
+				//y = op_dist_outcome(uniform_double_y);
+				
+				//pick a random direction angle betwen 0 and 2*PI
+				r = op_dist_uniform(2);
+		   		direction_angle = r*PI;
+
+				// Step range
+				step_range      = MVT_STEP*my_avg_speed;
+
+				// Read the current position
+				op_ima_obj_attr_get(node_id,"x position",&x_pos);
+				op_ima_obj_attr_get(node_id,"y position",&y_pos);
+				
+		     // End of Random direction mobility model : Init_Mvt state
+
+			 break ;
+
+   case BOUNDLESS : // Boundless mobility model : Init_Mvt state
+		   
+	   			// Read the current position
+	   			op_ima_obj_attr_get(node_id,"x position",&x_pos);
+				op_ima_obj_attr_get(node_id,"y position",&y_pos);
+
+				// Step range
+				step_range     = MVT_STEP*my_avg_speed;
+
+				// Angle
+				r=op_dist_uniform(2);
+				direction_angle=r*PI;
+
+				snprintf(msg, 200 ,"direction angle = %f*PI", direction_angle);
+
+			// End of Boundless mobility model : Init_Mvt state
+           
+		   break ;
+
+   case CITY :	   //city mobility model : Init_Mvt state
+	   
+		       // Pick a target position
+		   		x_target=x= op_dist_outcome(uniform_double_x);
+				y_target=y= op_dist_outcome(uniform_double_y);
+				
+				// Step range
+		   		step_range      = MVT_STEP*my_avg_speed;
+
+				// Read the current position
+				op_ima_obj_attr_get(node_id,"x position",&x_pos);
+				op_ima_obj_attr_get(node_id,"y position",&y_pos);
+		        x_pos=(int)x_pos;
+		        y_pos=(int)y_pos;
+		   
+		        direction_dist=op_dist_load ("uniform_int", -12, 12);
+		   		e = 1 + (int)op_dist_outcome (direction_dist);
+		        f = 1 + (int)op_dist_outcome (direction_dist);
+		        //pick a random x_target inside the simulation area
+		   		x_target=x_pos+ (int) step_range*e;
+		        if (x_target<0)
+					x_target = x_target*(-1);
+		        
+		        //pick a random x_target inside the simulation area
+		        y_target=y_pos+(int) step_range*f;
+		       	if (y_target<0)
+					y_target = y_target*(-1);
+		   
+		   		while (x_target>XMAX || x_target<XMIN || y_target>YMAX || y_target<YMIN)
+					{					   
+					    e=1+(int)op_dist_outcome (direction_dist);
+						f=1+(int)op_dist_outcome (direction_dist);
+						
+						x_target=x_pos+ (int) step_range*e;
+						if (x_target<0)
+							x_target = x_target*(-1);
+		   
+						y_target=y_pos+(int) step_range*f;
+						if (y_target<0)
+							y_target = y_target*(-1);
+						
+					 }
+		   		
+		        //End of city mobility model : Init_Mvt state		   			   
+        break ;
+ }
+]]>
+				</value-text>
+			</attribute>
+			<attribute name="status" type="toggle" value="1"/>
+		</state>
+		<state id="5" x="390" y="150">
+			<attribute name="name" type="string" value="Move"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
+<![CDATA[
+char	msg[150];
+double	x_pos , y_pos , x , y, future_time, future_x, future_y;
+//to extract positions from a file
+int		i;
+char	filename[200], line[500];
+FILE	*pfile;
+
+
+op_prg_odb_bkpt("Mobile_Move");
+
+/* Move a step_range ahead and decrease the lenght of distance_to_cover*/
+// Get the current position of the node
+op_ima_obj_attr_get(node_id,"x position",&x_pos);
+op_ima_obj_attr_get(node_id,"y position",&y_pos);
+
+
+
+
+
+switch (MOBILITY_MODEL) {
+  
+	case MOBILITY_ONE_SHOT:
+		
+		//file which contains the node's positions
+		op_ima_sim_attr_get(OPC_IMA_STRING , ARG_CONF_FILE_POSITIONS, filename);
+		pfile = fopen(filename , "r");
+		if (pfile == NULL){
+			snprintf(msg, 200, "File %s does not exist", filename);
+			op_sim_end("Error to extract node's positions", msg, "", "");
+		}
+	
+		//gets the correct value for the current node
+		for(i=0 ; i< my_mob_node_id+1 ; i++){
+			
+			//be careful -> only the searched line needs to have at least 5 records!
+			strncpy(line, "", 500);
+			fgets(line, 500, pfile);
+			if ((i == my_mob_node_id) && (sscanf(line, "%lf %lf %lf %lf %lf\n", &x_pos , &y_pos, &future_time, &future_x, &future_y) < 5)){
+				snprintf(msg , 200 , "the file %s contains an invalid position for node %d", filename, i);
+				op_sim_end("ERROR" , msg , "", "");
+			}
+		}
+	
+		// Set the current position of the node
+		op_ima_obj_attr_set(node_id , "x position" , future_x);
+		op_ima_obj_attr_set(node_id , "y position" , future_y);
+		
+		//debug
+		printf("node %d changed its position from %f/%f to %f/%f\n", my_mob_node_id, x_pos, y_pos, future_x, future_y);
+	
+	break;
+	
+	case RANDOM_WAYPOINT : 
+		// Trace
+		x_pos = (double) x_pos;
+		y_pos = (double) y_pos;
+		snprintf(msg , 200 , "Target  position  |X axis: %f   |Y axis: %f", x_target, y_target);
+		snprintf(msg , 200 , "Current position  |X axis: %f   |Y axis: %f", x_pos, y_pos);
+
+		// Compute the new x and y position according to the STEP_DIST and the current direction (angle)
+		x= x_pos+ (double) step_range*cos(direction_angle);
+		y= y_pos+ (double) step_range*sin(direction_angle);
+
+		// Make sure the new position is inside the grid
+		while((y < YMIN) || (YMAX < y) || (x < XMIN) || (XMAX < x))	{
+
+			// Compute a random new direction
+			direction_angle= op_dist_outcome(direction_dist)*PI;
+			//Compute the new x and y position according to the STEP_DIST and the current direction (angle)
+			x= x_pos+ (double) step_range*cos(direction_angle);
+			y= y_pos+ (double) step_range*sin(direction_angle);
+
+		}
+
+		// set the new position of the node
+		op_ima_obj_attr_set(node_id, "x position",x);
+		op_ima_obj_attr_set(node_id, "y position",y);
+
+		// Decrease the value of the distance to cover
+		distance_to_cover = distance_to_cover-step_range;
+
+		// Check if target reached or not
+		if(distance_to_cover < step_range){
+			// Set the pause flag to 1		
+			PAUSE = 1;
+			// Set avg speed to 0
+			my_avg_speed = 0;
+
+			// Schedule an interrupt for the end of the next pause state
+			op_intrpt_schedule_self(op_sim_time()+PAUSE_TIME,END_PAUSE_CODE);
+			sprintf(msg,"Target position reached: Enter Pause state\n\t\t- Distance to cover = %f\n\t\t- Pause time = %f",distance_to_cover,pause_time);
+				}
+		else{
+			sprintf(msg,"Target position not reached yet: Keep on moving\n\t\t- Distance still to cover = %f",distance_to_cover);
+			op_intrpt_schedule_self(op_sim_time()+MVT_STEP,MOVE_CODE);
+		}
+
+	// End of Random walk mobility model : Mvt state 	   
+	break;
+		   
+   
+
+   case RANDOM_DIRECTION :
+		   			
+		// Trace
+		x_pos = (double) x_pos;
+		y_pos = (double) y_pos;
+
+		sprintf(msg,"Current position  |X axis: %f   |Y axis: %f", x_pos, y_pos);
+
+		// Compute the new x and y position according to the STEP_DIST and the current direction (angle)
+		x= x_pos+ (double) step_range*cos(direction_angle);
+		y= y_pos+ (double) step_range*sin(direction_angle);
+
+		// Make sure the new position is inside the grid
+		while((y < YMIN) || (YMAX < y) || (x < XMIN) || (XMAX < x)){
+
+			// Compute a random new direction
+			r=op_dist_uniform(2);
+			direction_angle=r*PI;
+
+			// Compute the new x and y position according to the STEP_DIST and the current direction (angle)
+			x= x_pos+ (double) step_range*cos(direction_angle);
+			y= y_pos+ (double) step_range*sin(direction_angle);
+		}
+
+		// set the new position of the node
+		op_ima_obj_attr_set(node_id, "x position",x);
+		op_ima_obj_attr_set(node_id, "y position",y);
+
+		// Check if target reached or not
+		if((x == XMAX) || (x == XMIN) || (y == YMAX) || (y == YMIN)){
+			// Set the pause flag to 1		
+			PAUSE = 1;
+			// Set avg speed to 0
+			my_avg_speed = 0;
+
+			// Schedule an interrupt for the end of the next pause state
+			op_intrpt_schedule_self(op_sim_time()+PAUSE_TIME,END_PAUSE_CODE);
+		}
+		else
+			op_intrpt_schedule_self(op_sim_time()+MVT_STEP,MOVE_CODE);
+
+
+	// End of Random direction mobility model : Mvt state	break ;
+	break;
+		
+	case BOUNDLESS :
+						
+		// Trace
+        op_ima_obj_attr_get(node_id, "x position",&x_pos);
+		op_ima_obj_attr_get(node_id, "y position",&y_pos);
+			
+		//Chooses a new direction
+		direction_dist=op_dist_load("normal",direction_angle,0.001*PI);
+		direction_angle = op_dist_outcome(direction_dist);
+		
+		//Keeps the direction_angle between 0 and 2*PI
+		if (direction_angle < 0)
+			direction_angle += 2*PI;
+		if (direction_angle > 2*PI)
+			direction_angle -= 2*PI;
+
+		//Chooses a new speed
+		my_avg_speed_dist = op_dist_load("normal",my_avg_speed,0.01);
+		my_avg_speed = (double)op_dist_outcome(my_avg_speed_dist);
+		if (my_avg_speed < SPEED_MIN)
+			my_avg_speed = SPEED_MIN;
+		if (my_avg_speed > SPEED_MAX)
+			my_avg_speed = SPEED_MAX;
+		
+		// Compute the new x and y position according to the STEP_DIST and the current direction (angle)
+		x= x_pos+ (double) step_range*cos(direction_angle);
+		y= y_pos+ (double) step_range*sin(direction_angle);
+		
+		//A node out of limits reappear on the next side
+		if (x < XMIN)
+			x = XMAX;
+		if (x > XMAX)
+			x = XMIN;
+		if (y < YMIN)
+			y = YMAX;
+		if (y > YMAX)
+			y = YMIN;
+
+		op_ima_obj_attr_set(node_id, "x position",x);
+		op_ima_obj_attr_set(node_id, "y position",y);
+		op_intrpt_schedule_self(op_sim_time()+MVT_STEP,MOVE_CODE);
+
+					
+	//End of Boundless mobility model
+	break ;
+
+   case CITY : 
+		x_pos = (int) x_pos;
+		y_pos = (int) y_pos;
+		
+		sprintf(msg,"Target  position  |X axis: %f   |Y axis: %f", x_target, y_target);
+		sprintf(msg,"Current position  |X axis: %f   |Y axis: %f", x_pos, y_pos);
+		
+		
+		if ( x_pos!= x_target)		{
+			if ( x_target>x_pos )
+				x_pos= x_pos+ (int) step_range;
+			else
+				x_pos= x_pos- (int) step_range;
+				
+			// set the new position of the node
+			op_ima_obj_attr_set(node_id, "x position",x_pos);
+			op_ima_obj_attr_set(node_id, "y position",y_pos);
+		
+			op_intrpt_schedule_self(op_sim_time()+MVT_STEP,MOVE_CODE);
+				
+		} 
+			
+		else if (y_pos!=y_target){
+			if ( y_target<y_pos )      	  
+				y_pos= y_pos-(int) step_range;
+			else
+				y_pos= y_pos+ (int) step_range;
+				  							 
+			// set the new position of the node
+			op_ima_obj_attr_set(node_id, "x position",x_pos);
+			op_ima_obj_attr_set(node_id, "y position",y_pos);
+		
+			op_intrpt_schedule_self(op_sim_time()+MVT_STEP,MOVE_CODE);
+		}
+		else {
+			//Set the pause flag to 1		
+		   	PAUSE = 1;
+		
+			//Set avg speed to 0
+			my_avg_speed = 0;
+		
+			// set the new position of the node
+			op_ima_obj_attr_set(node_id, "x position",x_pos);
+			op_ima_obj_attr_set(node_id, "y position",y_pos);
+		
+			//Schedule an interrupt for the end of the next pause state
+			op_intrpt_schedule_self(op_sim_time()+PAUSE_TIME,END_PAUSE_CODE);
+			}
+
+		//End of city mobility model : Mvt state
+					   
+	break ;
+}
+]]>
+				</value-text>
+			</attribute>
+			<attribute name="status" type="toggle" value="1"/>
+		</state>
+		<state id="6" x="630" y="150">
+			<attribute name="name" type="string" value="idle"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
+<![CDATA[
+// If there still a distance to cover (distance_to_cover > 0)
+// then schedule an interrupt for the next movement after a
+// MVT_STEP sec period of time.
+// Else, schedule an interrupt to enter the Pause state now.
+
+
+]]>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="8" x="150" y="330">
+			<attribute name="name" type="string" value="OFF"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
+<![CDATA[
+
+]]>
+				</value-text>
+			</attribute>
+		</state>
+	</states>
+	<transitions>
+		<transition source-state-id="4" destination-state-id="5" label-x="302" label-y="147">
+			<path-point x="233" y="148"/>
+			<path-point x="370" y="145"/>
+			<attribute name="name" type="string" value="tr_9"/>
+		</transition>
+		<transition source-state-id="5" destination-state-id="6" label-x="519" label-y="161">
+			<path-point x="407" y="161"/>
+			<path-point x="630" y="161"/>
+			<attribute name="name" type="string" value="tr_10"/>
+		</transition>
+		<transition source-state-id="6" destination-state-id="5" label-x="511" label-y="121">
+			<path-point x="624" y="135"/>
+			<path-point x="400" y="135"/>
+			<attribute name="name" type="string" value="tr_11"/>
+			<attribute name="condition" type="string" value="MOVE"/>
+		</transition>
+		<transition source-state-id="0" destination-state-id="6" label-x="327" label-y="234">
+			<path-point x="98" y="222"/>
+			<path-point x="172" y="216"/>
+			<path-point x="527" y="221"/>
+			<path-point x="629" y="165"/>
+			<attribute name="name" type="string" value="tr_12"/>
+			<attribute name="condition" type="string" value="mobile"/>
+		</transition>
+		<transition source-state-id="6" destination-state-id="4" label-x="435" label-y="54">
+			<path-point x="635" y="128"/>
+			<path-point x="680" y="77"/>
+			<path-point x="382" y="80"/>
+			<path-point x="214" y="127"/>
+			<attribute name="name" type="string" value="tr_15"/>
+			<attribute name="condition" type="string" value="END_PAUSE"/>
+		</transition>
+		<transition source-state-id="8" destination-state-id="8" label-x="159" label-y="367">
+			<path-point x="145" y="340"/>
+			<path-point x="172" y="393"/>
+			<path-point x="216" y="351"/>
+			<path-point x="152" y="321"/>
+			<attribute name="name" type="string" value="tr_24"/>
+			<attribute name="condition" type="string" value="default"/>
+		</transition>
+		<transition source-state-id="0" destination-state-id="8" label-x="148" label-y="273">
+			<path-point x="93" y="218"/>
+			<path-point x="145" y="326"/>
+			<attribute name="name" type="string" value="tr_26"/>
+			<attribute name="condition" type="string" value="!mobile"/>
+		</transition>
+		<transition source-state-id="6" destination-state-id="6" label-x="712" label-y="167">
+			<path-point x="648" y="161"/>
+			<path-point x="690" y="206"/>
+			<path-point x="702" y="139"/>
+			<path-point x="650" y="147"/>
+			<attribute name="name" type="string" value="tr_30"/>
+			<attribute name="condition" type="string" value="ENDSIM_MOB"/>
+		</transition>
+	</transitions>
+</process-model>

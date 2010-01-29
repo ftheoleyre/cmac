@@ -508,6 +508,15 @@ Evhandle	\timeout_intrpt;
 /* The interruption which triggers a return to the main channel */
 Evhandle	\main_channel_return_intrpt;
 
+/* The channel I am currently using (used by the monitor process) */
+short	\my_current_channel_for_monitor;
+
+/* The object id of the monitor process */
+Objid	\monitor_objid;
+
+/* Has the next channel status change to be notified (multichannel case) */
+Boolean	\my_channel_status_notif;
+
 /* the debug level for the simulations */
 int	\DEBUG;
 
@@ -586,6 +595,9 @@ sink_tree_struct	\my_sink_tree;
 /* the address of the sink */
 int	\sink_address;
 
+/* The information I am sharing with other processes */
+mac_info*	\my_mac_info;
+
 ]]>
 </state-variables>
 <header-block>
@@ -602,6 +614,7 @@ int	\sink_address;
 #include	"cmac_process.h"
 #include	"cmac_tools.h"
 #include	"cmac_interface.h"
+#include	"cmac_monitor.h"
 
 
 
@@ -632,19 +645,27 @@ cmac to define the branches that 'collect' the traffic to the sink)
 //				STREAM & STAT
 //-----------------------------------------------
 
-#define		STREAM_TO_UP					5
-#define		STREAM_FROM_UP					5
-
+//PHY
 #define		STREAM_TO_RADIO					0
 #define		STREAM_FROM_RADIO				0
 
-#define		STREAM_TO_DIRECT_SYNC			2
+//APP layer
+#define		STREAM_TO_UP					1
+#define		STREAM_FROM_UP					1
 
+//For the monitor process connection
+#define		MONITOR_OUTPUT_STREAM			2
+#define		MONITOR_INPUT_STREAM			2
 
+//SYNC case
+#define		STREAM_TO_DIRECT_SYNC			3
+
+//Statistics wires
 #define		STAT_FROM_RX					0
 #define		STAT_FROM_TX					1
 
 #define		STAT_FROM_TX_DIREC_SYNC			2
+
 
 
 
@@ -1028,9 +1049,18 @@ void change_tx_rx_phy(short channel){
 
 	int		radio_id , chan_id , sub_chan_id;
 	double	old_freq;
-	double	frequency = channel_to_freq(channel);
+	double	frequency;
+	//to update the status of my channel (bug in OPNET)
+	int		*channel_state_table;
+	char	msg[500], temp[500];
+	int		i;
 	
-	my_current_channel = channel;
+	//nothing todo!
+	if (channel == my_current_channel)
+		FOUT;
+
+	my_current_channel 	= channel;
+	frequency			= channel_to_freq(channel);	
 	
 	//------------ TRANSMISSION -----------
 	radio_id 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_RATX , STREAM_TO_RADIO);
@@ -1048,7 +1078,33 @@ void change_tx_rx_phy(short channel){
 
 	if (frequency != old_freq)
 		debug_print(LOW , DEBUG_RADIO , "channel changed %d (%f Hz) -> %d (%f Hz)\n", freq_to_channel(old_freq), old_freq , channel, frequency);
+					
+	//the parent is no more frozen on the privileged channel
+	if ((old_freq!= CHANNEL_MAIN_ID) && (frequency == CHANNEL_MAIN_ID))
+		flush_nav_time(old_freq);
 	
+	
+	//--------- Updates the channel status --------- 
+	if (monitor_objid != OPC_OBJID_INVALID){
+		channel_state_table = op_ima_obj_state_get(monitor_objid);
+	
+		if (is_rx_busy != channel_state_table[channel]){
+			my_current_channel_for_monitor = channel;
+			debug_print(DEBUG , DEBUG_RADIO , "BUG avoided: channel status before (%d) and after (%d) channel change are different !\n", is_rx_busy , channel_state_table[channel]);
+			my_channel_status_notif = OPC_TRUE;
+		}
+		else
+			my_current_channel_for_monitor = -1;	
+	
+		//status of all channels: for debug purpose
+		strcpy(msg, "");
+		for(i=0 ; i<nb_channels ; i++){
+			snprintf(temp , 500 , "%d(%d)", i , channel_state_table[i]);
+			strncat(msg , temp , 500);
+		}
+		strncat(msg , "\n", 500);
+		debug_print(DEBUG , DEBUG_RADIO, msg);
+	}
 	FOUT;
 }
 
@@ -1186,6 +1242,29 @@ void add_nav(int source, double nav_duration , short channel){
 }
 
 
+//removes all the NAVs for this channel (we are no more privileged, and we should remove them)
+void flush_nav_time(short channel){
+	FIN(flush_nav_time(short channel));
+	
+	int				i;
+	nav_struct		*ptr;
+	
+	//Walks in the list
+	for(i= op_prg_list_size(my_nav_list)-1 ; i>= 0 ; i--){
+		ptr = op_prg_list_access(my_nav_list , i);
+		
+		//Timeouted entry !
+		if (ptr->channel == channel){
+			debug_print(LOW , DEBUG_BACKOFF , "NAV from %d deleted (priv channel)\n", ptr->address);
+			
+			ptr = op_prg_list_remove(my_nav_list , i);
+			op_prg_mem_free(ptr);
+		}
+	}
+	
+	
+	FOUT;
+}
 
 //updates the nav
 void update_nav_time(int source, double nav_duration, short channel){
@@ -1235,7 +1314,7 @@ Boolean is_reply_possible(int addr , short channel){
 	nav_struct	*ptr;
 	
 	//a privileged nodes has all the rights!
-	if (is_node_privileged)
+	if (!is_main_channel_active())
 		FRET(OPC_TRUE);	
 	
 	//others must look at their NAV
@@ -3665,7 +3744,7 @@ Packet* create_packet(frame_struct frame){
 		
 			//the offset is too large, discard this CTR!
 			if (op_sim_time() - frame.time_added > slot_privileged_duration){
-				debug_print(MEDIUM, DEBUG_CONTROL, "CTR to cancel (too late) - TODO?\n");
+				debug_print(MEDIUM, DEBUG_CONTROL, "CTR to cancel (too late) - TODO? - nb retries %d\n",frame.nb_retry);
 			//	cancel_transmission = OPC_TRUE;
 			}
 		break;
@@ -4518,11 +4597,12 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_CTR_OFFSET, 	&offset);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_BRANCHID,&branch_id);
 				
-				//Multichannel -> this ktree node is in privileged mode (using another channel)
-				//Thus, it will be unreachable during this timeslot
-				//R: if it comes back before, he will send a CTR which will update automatically its NAV
-				if (nb_channels > 1)
+				//Multichannel -> this ktree node is in privileged mode (it will be unreachable during this timeslot)
+				//I flush other entries for this channel since they are surely obsolete (i.e. the previous timeslot has finished)
+				if (nb_channels > 1){
+					flush_nav_time(channel);	
 					update_nav_time(source, t_slot , channel);	
+				}
 				//	update_nav_time(source, t_slot - offset , channel);	
 			
 				//Remark: we answer even if a NAV is present -> the CTR should have a larger priority and we should enforce its delivery
@@ -4794,6 +4874,15 @@ void interrupt_process(){
 				break;
 			}	
 		break;
+		
+		case OPC_INTRPT_REMOTE:
+		
+			// One of receiver channels is changing its status. Update the channel status flag (with power = 0)
+			if (op_intrpt_code() - CHANNEL_RELEASED_CODE == my_current_channel)
+				is_rx_busy = OPC_FALSE;
+
+		break;
+
 		
 		//Change in the medium state
 		case OPC_INTRPT_STAT :
@@ -5346,6 +5435,8 @@ int		nb_radio;
 //Channels
 int		num_chann;
 Objid	chann_objid;
+Objid	monitor_id;
+Objid	strm_id;
 Objid	sub_chann_objid;
 Objid	tx_id , rx_id;
 double	bandwidth, frequency;
@@ -5462,10 +5553,22 @@ op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
 my_address = atoi(str);
 op_ima_obj_attr_set (op_id_self(), "Address", my_address);
 
+	
+	
+//-----------------------------------------------
+//		  		 CHANNEL MONITOR
+//-----------------------------------------------
 
+my_current_channel_for_monitor = -1;
 
+//memory sharing with the channel monitoring process
+strm_id = op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_IN, OPC_OBJTYPE_STRM , MONITOR_OUTPUT_STREAM);
+monitor_id = op_topo_assoc(strm_id , OPC_TOPO_ASSOC_IN , OPC_OBJTYPE_PROC , 0);
+op_ima_obj_state_set(monitor_id , &my_current_channel_for_monitor);
 
+//channel_busy_after_switch	= OPC_TRUE;
 
+	
 //-----------------------------------------------
 //		  		 PARAMETERS
 //-----------------------------------------------
@@ -5635,6 +5738,26 @@ if (DEBUG > NO){
 		
 }
 
+//-----------------------------------------------
+//		  	 COM WITH OTHER PROCESSES
+//-----------------------------------------------
+
+//objid of the monitor process
+strm_id = op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_IN , OPC_OBJTYPE_STRM , MONITOR_INPUT_STREAM);
+monitor_objid = op_topo_assoc(strm_id , OPC_TOPO_ASSOC_IN , OPC_OBJTYPE_PROC ,0);
+
+//recovered error
+if ((my_address == 0) && (monitor_objid == OPC_OBJID_INVALID)){
+	printf("No monitor process was identified, that's not blocking!\n");
+	printf("However, we will surely create collisions if we switch our channel (OPNET bug)\n");
+}
+	
+//shared infos
+my_mac_info = op_prg_mem_alloc(sizeof(mac_info));
+my_mac_info->address 				= my_address;
+my_mac_info->current_channel 		= &my_current_channel;
+my_mac_info->channel_status_notif 	= &my_channel_status_notif;
+op_ima_obj_state_set(op_id_self(), my_mac_info);
 
 
 
@@ -5660,13 +5783,18 @@ subchann_params_attr_objid = op_topo_child (chann_params_comp_attr_objid, OPC_OB
 op_ima_obj_attr_get (subchann_params_attr_objid, "Bandwidth", 				&bandwidth);	
 op_ima_obj_attr_get (subchann_params_attr_objid, "Min frequency", 			&frequency);	
 
-
-
-
+	
 
 //-----------------------------------------------
 //				DATA RADIO
 //-----------------------------------------------
+
+//For 80211a
+if (channel_to_freq(0) > 5000)
+	bandwidth = BANDWIDTH_MHZ_80211A;
+//For 802.11bg
+else
+	bandwidth = BANDWIDTH_MHZ_80211BG;
 
 
 //----- TRANSMISSION ----
@@ -6090,7 +6218,7 @@ if (!is_tx_busy){
 		//We must now send a CTR for our child
 		if ((last_frame_sent.type == CTR_END_PK_TYPE) && (last_frame_sent.nb_retry == 0)){
 			debug_print(MAX, DEBUG_CONTROL, "the transmission of the CTR-END is fnished, let now propagate the CTR\n");
-			generate_ctr();		
+			generate_ctr();
 		}
 	}
 		
@@ -6155,7 +6283,6 @@ if (!is_tx_busy){
 		//CTR -> I must wait a DATA packet (the time for the ctr-ack + for the data frame in multichannel)
 		else if ((nb_channels > 1) && (last_frame_sent.type == CTR_PK_TYPE))
 			add_frame_timeout(compute_ctr_ack_time() + compute_data_time(MTU_MAX));
-
 		else
 			debug_print(LOW, DEBUG_CONTROL, "BUG for pk type %s\n", pk_type_to_str(last_frame_sent.type, str, 20));
 	}
@@ -6820,7 +6947,7 @@ if (DEBUG_STATE_MACHINE)
 <attribute name="name" type="string" value="tr_329"/>
 <attribute name="condition" type="string" value="default"/>
 </transition>
-<transition source-state-id="56" destination-state-id="41" label-x="307" label-y="205">
+<transition source-state-id="56" destination-state-id="41" label-x="279" label-y="223">
 <path-point x="497" y="255"/>
 <path-point x="282" y="224"/>
 <path-point x="439" y="106"/>

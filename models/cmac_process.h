@@ -39,6 +39,18 @@ extern int nb_channels;
 
 
 //-----------------------------------------------
+//					MAC INFOS
+//-----------------------------------------------
+
+typedef struct{
+	int		address;
+	short	*current_channel;
+	Boolean	*channel_status_notif;
+}mac_info;
+
+
+
+//-----------------------------------------------
 //					FRAME
 //-----------------------------------------------
 
@@ -241,6 +253,12 @@ double	compute_cts_time();
 double	compute_data_time(int data_pk_size);
 double 	compute_ack_time();
 double 	compute_ctr_ack_time();
+
+//NAV management
+void 	flush_nav_time(short channel);
+void 	update_nav_time(int source, double nav_duration, short channel);
+void 	add_nav(int source, double nav_duration , short channel);
+void 	delete_timeouted_nav(void * arg, int code);
 
 
 //Busy tone
