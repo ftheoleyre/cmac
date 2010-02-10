@@ -98,7 +98,7 @@ phase
 		<assignment attribute-name="priority" type="integer" status="hidden"/>
 		<assignment attribute-name="user id" type="integer" status="hidden"/>
 	</attribute-assignments>
-	<node-modules base-id="249">
+	<node-modules base-id="263">
 		<module type="proc" id="0" x="246" y="200">
 			<module-attributes>
 				<attribute name="name" type="string" value="mac"/>
@@ -141,7 +141,7 @@ phase
 				<attribute name="process model" type="typed file" spectype="9" value="cmac_interface"/>
 			</module-attributes>
 		</module>
-		<module type="rarx" id="219" x="154" y="292">
+		<module type="rarx" id="219" x="108" y="246">
 			<module-attributes>
 				<attribute name="name" type="string" value="wlan_port_rx0"/>
 				<attribute name="channel" type="compound">
@@ -191,7 +191,7 @@ become idle.
 				</attribute>
 			</module-attributes>
 		</module>
-		<module type="ratx" id="228" x="338" y="292">
+		<module type="ratx" id="228" x="384" y="246">
 			<module-attributes>
 				<attribute name="name" type="string" value="wlan_port_tx0"/>
 				<attribute name="channel" type="compound">
@@ -265,12 +265,382 @@ become idle.
 				<attribute name="process model" type="typed file" spectype="9" value="cmac_source"/>
 			</module-attributes>
 		</module>
+		<module type="rarx" id="249" x="154" y="522">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx0"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,170"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="250" x="154" y="476">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx1"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="proc" id="251" x="246" y="430">
+			<module-attributes>
+				<attribute name="name" type="string" value="monitor"/>
+				<attribute name="process model" type="typed file" spectype="9" value="cmac_monitor"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="252" x="154" y="430">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx2"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="253" x="154" y="384">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx3"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="254" x="154" y="338">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx4"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="255" x="292" y="338">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx5"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="256" x="338" y="338">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx6"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="257" x="384" y="338">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx7"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="258" x="384" y="384">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx8"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="259" x="384" y="430">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx9"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="260" x="384" y="476">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx10"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="261" x="384" y="522">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx11"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
+		<module type="rarx" id="262" x="338" y="522">
+			<module-attributes>
+				<attribute name="name" type="string" value="rx12"/>
+				<attribute name="channel" type="compound">
+					<sub-object>
+						<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+						<attribute creation-mechanics="Model" name="list" type="object list">
+							<object-list>
+								<sub-object>
+									<attribute creation-mechanics="Model" name="data rate" type="double" value="1,000,000"/>
+									<attribute creation-mechanics="Model" name="packet formats" type="string" value="unformatted,all formatted"/>
+									<attribute creation-mechanics="Model" name="bandwidth" type="double" value="20,000"/>
+									<attribute creation-mechanics="Model" name="min frequency" type="double" value="5,200"/>
+									<attribute creation-mechanics="Model" name="spreading code" type="toggle double" value="disabled"/>
+									<attribute creation-mechanics="Model" name="processing gain" type="toggle double" value="disabled"/>
+								</sub-object>
+							</object-list>
+						</attribute>
+					</sub-object>
+				</attribute>
+				<attribute name="modulation" type="typed file" spectype="21" value="dpsk"/>
+				<attribute name="ragain model" type="typed file" spectype="10" value="NONE"/>
+				<attribute name="power model" type="typed file" spectype="10" value="wlan_power"/>
+				<attribute name="ber model" type="typed file" spectype="10" value="wlan_ber"/>
+				<attribute name="error model" type="typed file" spectype="10" value="wlan_error"/>
+				<attribute name="ecc model" type="typed file" spectype="10" value="wlan_ecc"/>
+			</module-attributes>
+		</module>
 	</node-modules>
-	<node-connections base-id="63">
+	<node-connections base-id="92">
 		<connection type="strm" id="0" src-module-id="0" dest-module-id="228">
 			<connection-path>
 				<path-entry x="249" y="212"/>
-				<path-entry x="325" y="291"/>
+				<path-entry x="371" y="245"/>
 			</connection-path>
 			<connection-attributes>
 				<attribute name="name" type="string" value="strm_3"/>
@@ -280,7 +650,7 @@ become idle.
 		</connection>
 		<connection type="strm" id="1" src-module-id="219" dest-module-id="0">
 			<connection-path>
-				<path-entry x="166" y="300"/>
+				<path-entry x="120" y="254"/>
 				<path-entry x="248" y="212"/>
 			</connection-path>
 			<connection-attributes>
@@ -311,7 +681,7 @@ become idle.
 			<connection-attributes>
 				<attribute name="name" type="string" value="strm_12"/>
 				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
-				<attribute name="dest stream" type="enumerated" value="dest stream [5]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [1]"/>
 			</connection-attributes>
 		</connection>
 		<connection type="strm" id="5" src-module-id="0" dest-module-id="206">
@@ -321,29 +691,14 @@ become idle.
 			</connection-path>
 			<connection-attributes>
 				<attribute name="name" type="string" value="strm_13"/>
-				<attribute name="src stream" type="enumerated" value="src stream [5]"/>
+				<attribute name="src stream" type="enumerated" value="src stream [1]"/>
 				<attribute name="dest stream" type="enumerated" value="dest stream [0]"/>
 				<attribute name="color" type="color" value="red"/>
 			</connection-attributes>
 		</connection>
-		<connection type="stat" id="44" src-module-id="228" dest-module-id="0">
-			<connection-path>
-				<path-entry x="338" y="285"/>
-				<path-entry x="300" y="246"/>
-				<path-entry x="245" y="194"/>
-			</connection-path>
-			<connection-attributes>
-				<attribute name="name" type="string" value="txstat_11Mbps"/>
-				<attribute name="submodule" type="enumerated" value="channel [0]"/>
-				<attribute name="src stat" type="enumerated" value="radio transmitter.busy"/>
-				<attribute name="dest stat" type="enumerated" value="instat [1]"/>
-				<attribute name="rising edge trigger" type="toggle" value="0"/>
-				<attribute name="color" type="color" value="#550000"/>
-			</connection-attributes>
-		</connection>
 		<connection type="stat" id="55" src-module-id="219" dest-module-id="0">
 			<connection-path>
-				<path-entry x="162" y="281"/>
+				<path-entry x="116" y="235"/>
 				<path-entry x="237" y="205"/>
 			</connection-path>
 			<connection-attributes>
@@ -379,7 +734,7 @@ become idle.
 			</connection-path>
 			<connection-attributes>
 				<attribute name="name" type="string" value="strm_5"/>
-				<attribute name="src stream" type="enumerated" value="2"/>
+				<attribute name="src stream" type="enumerated" value="src stream [3]"/>
 				<attribute name="dest stream" type="enumerated" value="0"/>
 			</connection-attributes>
 		</connection>
@@ -405,6 +760,407 @@ become idle.
 				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
 				<attribute name="dest stream" type="enumerated" value="dest stream [1]"/>
 				<attribute name="color" type="color" value="#5500FF"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="63" src-module-id="228" dest-module-id="0">
+			<connection-path>
+				<path-entry x="380" y="241"/>
+				<path-entry x="245" y="195"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="txstat_11Mbps"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio transmitter.busy"/>
+				<attribute name="dest stat" type="enumerated" value="instat [1]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="64" src-module-id="249" dest-module-id="251">
+			<connection-path>
+				<path-entry x="154" y="520"/>
+				<path-entry x="241" y="434"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_0"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [0]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="65" src-module-id="250" dest-module-id="251">
+			<connection-path>
+				<path-entry x="148" y="472"/>
+				<path-entry x="242" y="427"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_1"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [1]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="66" src-module-id="252" dest-module-id="251">
+			<connection-path>
+				<path-entry x="148" y="426"/>
+				<path-entry x="245" y="434"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_2"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [2]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="67" src-module-id="253" dest-module-id="251">
+			<connection-path>
+				<path-entry x="148" y="380"/>
+				<path-entry x="244" y="428"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_3"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [3]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="68" src-module-id="254" dest-module-id="251">
+			<connection-path>
+				<path-entry x="148" y="334"/>
+				<path-entry x="248" y="433"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_4"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [4]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="69" src-module-id="255" dest-module-id="251">
+			<connection-path>
+				<path-entry x="286" y="334"/>
+				<path-entry x="247" y="429"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_5"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [5]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="70" src-module-id="256" dest-module-id="251">
+			<connection-path>
+				<path-entry x="332" y="334"/>
+				<path-entry x="242" y="426"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_6"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [6]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="71" src-module-id="257" dest-module-id="251">
+			<connection-path>
+				<path-entry x="378" y="334"/>
+				<path-entry x="246" y="421"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_7"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [7]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="72" src-module-id="258" dest-module-id="251">
+			<connection-path>
+				<path-entry x="378" y="380"/>
+				<path-entry x="240" y="426"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_8"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [8]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="73" src-module-id="259" dest-module-id="251">
+			<connection-path>
+				<path-entry x="378" y="426"/>
+				<path-entry x="243" y="435"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_9"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [9]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="74" src-module-id="260" dest-module-id="251">
+			<connection-path>
+				<path-entry x="378" y="472"/>
+				<path-entry x="248" y="433"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_10"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [10]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="75" src-module-id="261" dest-module-id="251">
+			<connection-path>
+				<path-entry x="378" y="518"/>
+				<path-entry x="246" y="431"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_11"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [11]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="stat" id="76" src-module-id="262" dest-module-id="251">
+			<connection-path>
+				<path-entry x="332" y="518"/>
+				<path-entry x="248" y="432"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="rxstat_12"/>
+				<attribute name="submodule" type="enumerated" value="channel [0]"/>
+				<attribute name="src stat" type="enumerated" value="radio receiver.received power (W)"/>
+				<attribute name="dest stat" type="enumerated" value="instat [12]"/>
+				<attribute name="rising edge trigger" type="toggle" value="0"/>
+				<attribute name="falling edge trigger" type="toggle" value="0"/>
+				<attribute name="low threshold trigger" type="toggle double" value="0.0"/>
+				<attribute name="high threshold trigger" type="toggle double" value="2E-13"/>
+				<attribute name="color" type="color" value="#550000"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="77" src-module-id="249" dest-module-id="251">
+			<connection-path>
+				<path-entry x="158" y="526"/>
+				<path-entry x="253" y="434"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_15"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [0]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="78" src-module-id="250" dest-module-id="251">
+			<connection-path>
+				<path-entry x="161" y="478"/>
+				<path-entry x="245" y="433"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_16"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [1]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="79" src-module-id="253" dest-module-id="251">
+			<connection-path>
+				<path-entry x="148" y="375"/>
+				<path-entry x="242" y="425"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_17"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [3]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="80" src-module-id="254" dest-module-id="251">
+			<connection-path>
+				<path-entry x="165" y="341"/>
+				<path-entry x="245" y="422"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_18"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [4]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="81" src-module-id="255" dest-module-id="251">
+			<connection-path>
+				<path-entry x="299" y="340"/>
+				<path-entry x="252" y="424"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_19"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [5]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="82" src-module-id="256" dest-module-id="251">
+			<connection-path>
+				<path-entry x="348" y="347"/>
+				<path-entry x="240" y="435"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_20"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [6]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="83" src-module-id="257" dest-module-id="251">
+			<connection-path>
+				<path-entry x="386" y="343"/>
+				<path-entry x="255" y="423"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_21"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [7]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="84" src-module-id="258" dest-module-id="251">
+			<connection-path>
+				<path-entry x="390" y="391"/>
+				<path-entry x="252" y="428"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_22"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [8]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="85" src-module-id="259" dest-module-id="251">
+			<connection-path>
+				<path-entry x="382" y="438"/>
+				<path-entry x="250" y="433"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_23"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [9]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="86" src-module-id="260" dest-module-id="251">
+			<connection-path>
+				<path-entry x="378" y="487"/>
+				<path-entry x="244" y="432"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_24"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [10]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="87" src-module-id="261" dest-module-id="251">
+			<connection-path>
+				<path-entry x="374" y="535"/>
+				<path-entry x="273" y="445"/>
+				<path-entry x="246" y="429"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_25"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [11]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="88" src-module-id="262" dest-module-id="251">
+			<connection-path>
+				<path-entry x="345" y="516"/>
+				<path-entry x="254" y="432"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_26"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [12]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="89" src-module-id="252" dest-module-id="251">
+			<connection-path>
+				<path-entry x="158" y="419"/>
+				<path-entry x="243" y="428"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_27"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [2]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="90" src-module-id="0" dest-module-id="251">
+			<connection-path>
+				<path-entry x="242" y="201"/>
+				<path-entry x="239" y="418"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_28"/>
+				<attribute name="src stream" type="enumerated" value="src stream [2]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [13]"/>
+			</connection-attributes>
+		</connection>
+		<connection type="strm" id="91" src-module-id="251" dest-module-id="0">
+			<connection-path>
+				<path-entry x="245" y="423"/>
+				<path-entry x="247" y="200"/>
+			</connection-path>
+			<connection-attributes>
+				<attribute name="name" type="string" value="strm_29"/>
+				<attribute name="src stream" type="enumerated" value="src stream [0]"/>
+				<attribute name="dest stream" type="enumerated" value="dest stream [2]"/>
 			</connection-attributes>
 		</connection>
 	</node-connections>

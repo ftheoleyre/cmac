@@ -109,7 +109,6 @@ if (op_sim_time() > TIME_START_DATA){
 ]]>
 				</value-text>
 			</attribute>
-			<attribute name="Exit Execs" type="textlist"/>
 		</state>
 	</states>
 	<transitions>

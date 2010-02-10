@@ -290,9 +290,9 @@ int		address;
 
 
 // init Objids
-process_id = op_id_self();
-node_id = op_topo_parent (process_id);
-net_id = op_topo_parent(node_id);
+process_id 	= op_id_self();
+node_id 	= op_topo_parent (process_id);
+net_id 		= op_topo_parent(node_id);
 
 // Load Mobility parameters
 op_ima_sim_attr_get(OPC_IMA_DOUBLE, 	"X_MAX"      		, &XMAX);

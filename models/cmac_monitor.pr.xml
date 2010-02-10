@@ -1,39 +1,39 @@
 <?xml version="1.0"?>
 <process-model model-name="cmac_monitor" mt-safe="yes" code-language="C" tv-in-db="yes" tv-in-tb="yes">
-<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
-<attribute-assignments>
-<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
-<assignment attribute-name="doc file" type="string" status="hidden"/>
-<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="0"/>
-<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
-<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
-<assignment attribute-name="priority" type="integer" status="hidden"/>
-<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
-<assignment attribute-name="subqueue" type="compound" status="hidden">
-<sub-object>
-<attribute creation-mechanics="EMA" name="count" type="integer" value="1"/>
-<attribute creation-mechanics="EMA" name="list" type="object list">
-<object-list>
-<sub-object/>
-</object-list>
-</attribute>
-</sub-object>
-</assignment>
-<assignment attribute-name="super priority" type="toggle" status="hidden"/>
-</attribute-assignments>
-<interfaces>
-<interface promoted-name="begsim intrpt" type="toggle" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
-<attribute-names>
+	<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
+	<attribute-assignments>
+		<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
+		<assignment attribute-name="doc file" type="string" status="hidden"/>
+		<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="0"/>
+		<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
+		<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
+		<assignment attribute-name="priority" type="integer" status="hidden"/>
+		<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
+		<assignment attribute-name="subqueue" type="compound" status="hidden">
+			<sub-object>
+				<attribute creation-mechanics="EMA" name="count" type="integer" value="1"/>
+				<attribute creation-mechanics="EMA" name="list" type="object list">
+					<object-list>
+						<sub-object/>
+					</object-list>
+				</attribute>
+			</sub-object>
+		</assignment>
+		<assignment attribute-name="super priority" type="toggle" status="hidden"/>
+	</attribute-assignments>
+	<interfaces>
+		<interface promoted-name="begsim intrpt" type="toggle" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
+			<attribute-names>
 <![CDATA[
 begsim intrpt
 ]]>
-</attribute-names>
-<properties type="toggle" auto-assign="no" symbolic-only="no">
-<default-value value="0"/>
-</properties>
-</interface>
-</interfaces>
-<state-variables>
+			</attribute-names>
+			<properties type="toggle" auto-assign="no" symbolic-only="no">
+				<default-value value="0"/>
+			</properties>
+		</interface>
+	</interfaces>
+	<state-variables>
 <![CDATA[
 /* If we sense a signal below this threshold, we consider it is only noise */
 /* (and it does not impact our transmissions)                              */
@@ -56,8 +56,8 @@ Boolean*	\channel_state_table;
 mac_info*	\mac_current_channel_ptr;
 
 ]]>
-</state-variables>
-<header-block>
+	</state-variables>
+	<header-block>
 <![CDATA[
 
 #include <math.h>
@@ -93,8 +93,8 @@ mac_info*	\mac_current_channel_ptr;
 
 #define	NB_CHANNELS_ATTACHED_TO_MONITOR	13
 ]]>
-</header-block>
-<function-block>
+	</header-block>
+	<function-block>
 <![CDATA[
 
 //returns my address
@@ -115,12 +115,12 @@ void channel_states_table_update(int channel , int state){
 }
 
 ]]>
-</function-block>
-<states initial-state-id="11">
-<state id="9" x="450" y="90">
-<attribute name="name" type="string" value="DISCARD"/>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+	</function-block>
+	<states initial-state-id="11">
+		<state id="9" x="450" y="90">
+			<attribute name="name" type="string" value="DISCARD"/>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 Packet 	*pkptr;
 //temp values
@@ -159,13 +159,13 @@ switch(type){
 }
 
 ]]>
-</value-text>
-</attribute>
-</state>
-<state id="11" x="90" y="90">
-<attribute name="name" type="string" value="INIT"/>
-<attribute name="Enter Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="11" x="90" y="90">
+			<attribute name="name" type="string" value="INIT"/>
+			<attribute name="Enter Execs" type="textlist">
+				<value-text>
 <![CDATA[
 int		nb_channels;
 int		num_chann , num_statwires;
@@ -322,10 +322,10 @@ for(i=0 ; i<nb_channels ; i++)
 op_ima_obj_state_set(op_id_self() , channel_state_table);
 
 ]]>
-</value-text>
-</attribute>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 //---------------------------------------------------
 //			COM WITH THE MAC PROCESS
@@ -335,23 +335,23 @@ op_ima_obj_state_set(op_id_self() , channel_state_table);
 //the current channel of the mac process
 mac_current_channel_ptr = op_ima_obj_state_get(mac_objid);
 ]]>
-</value-text>
-</attribute>
-</state>
-<state id="12" x="210" y="90">
-<attribute name="name" type="string" value="Init2"/>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="12" x="210" y="90">
+			<attribute name="name" type="string" value="Init2"/>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 
 ]]>
-</value-text>
-</attribute>
-</state>
-<state id="13" x="330" y="90">
-<attribute name="name" type="string" value="wait"/>
-<attribute name="Exit Execs" type="textlist">
-<value-text>
+				</value-text>
+			</attribute>
+		</state>
+		<state id="13" x="330" y="90">
+			<attribute name="name" type="string" value="wait"/>
+			<attribute name="Exit Execs" type="textlist">
+				<value-text>
 <![CDATA[
 List*				proc_record_handle_list_ptr;
 int					record_handle_list_size;
@@ -402,110 +402,110 @@ else
 	}
 
 ]]>
-</value-text>
-</attribute>
-</state>
-</states>
-<transitions>
-<transition source-state-id="11" destination-state-id="12" label-x="142" label-y="74">
-<path-point x="117" y="89"/>
-<path-point x="185" y="90"/>
-<attribute name="name" type="string" value="tr_12"/>
-<attribute name="color" type="color" value="gray3"/>
-</transition>
-<transition source-state-id="12" destination-state-id="13" label-x="272" label-y="90">
-<path-point x="236" y="89"/>
-<path-point x="302" y="90"/>
-<attribute name="name" type="string" value="tr_4"/>
-</transition>
-<transition source-state-id="13" destination-state-id="9" label-x="394" label-y="91">
-<path-point x="357" y="91"/>
-<path-point x="425" y="90"/>
-<attribute name="name" type="string" value="tr_3"/>
-</transition>
-<transition source-state-id="9" destination-state-id="9" label-x="470" label-y="53">
-<path-point x="461" y="71"/>
-<path-point x="473" y="35"/>
-<path-point x="518" y="85"/>
-<path-point x="453" y="89"/>
-<attribute name="name" type="string" value=" "/>
-</transition>
-</transitions>
-<local-statistics>
-<statistic name="End-to-End Delay (seconds)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+				</value-text>
+			</attribute>
+		</state>
+	</states>
+	<transitions>
+		<transition source-state-id="11" destination-state-id="12" label-x="142" label-y="74">
+			<path-point x="117" y="89"/>
+			<path-point x="185" y="90"/>
+			<attribute name="name" type="string" value="tr_12"/>
+			<attribute name="color" type="color" value="gray3"/>
+		</transition>
+		<transition source-state-id="12" destination-state-id="13" label-x="272" label-y="90">
+			<path-point x="236" y="89"/>
+			<path-point x="302" y="90"/>
+			<attribute name="name" type="string" value="tr_4"/>
+		</transition>
+		<transition source-state-id="13" destination-state-id="9" label-x="394" label-y="91">
+			<path-point x="357" y="91"/>
+			<path-point x="425" y="90"/>
+			<attribute name="name" type="string" value="tr_3"/>
+		</transition>
+		<transition source-state-id="9" destination-state-id="9" label-x="470" label-y="53">
+			<path-point x="461" y="71"/>
+			<path-point x="473" y="35"/>
+			<path-point x="518" y="85"/>
+			<path-point x="453" y="89"/>
+			<attribute name="name" type="string" value=" "/>
+		</transition>
+	</transitions>
+	<local-statistics>
+		<statistic name="End-to-End Delay (seconds)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 End-to-end delay of packets received by the traffic sink in this node.
 ]]>
-</description>
-</statistic>
-<statistic name="Traffic Received (bits)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+		<statistic name="Traffic Received (bits)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 Traffic received (in bits) by the traffic sink in this node.
 ]]>
-</description>
-</statistic>
-<statistic name="Traffic Received (bits/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+		<statistic name="Traffic Received (bits/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 Traffic received (in bits/sec) by the traffic sink in this node.
 ]]>
-</description>
-</statistic>
-<statistic name="Traffic Received (packets)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+		<statistic name="Traffic Received (packets)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 Traffic received (in packets) by the traffic sink in this node.
 ]]>
-</description>
-</statistic>
-<statistic name="Traffic Received (packets/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+		<statistic name="Traffic Received (packets/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 Traffic received (in packets/sec) by the traffic sink in this node.
 ]]>
-</description>
-</statistic>
-</local-statistics>
-<global-statistics>
-<statistic name="End-to-End Delay (seconds)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+	</local-statistics>
+	<global-statistics>
+		<statistic name="End-to-End Delay (seconds)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 End-to-end delay of packets received by traffic sinks across all nodes.
 ]]>
-</description>
-</statistic>
-<statistic name="Traffic Received (bits)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+		<statistic name="Traffic Received (bits)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 Traffic received (in bits) by the traffic sinks across all nodes.
 ]]>
-</description>
-</statistic>
-<statistic name="Traffic Received (bits/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+		<statistic name="Traffic Received (bits/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 Traffic received (in bits/sec) by the traffic sinks across all nodes.
 ]]>
-</description>
-</statistic>
-<statistic name="Traffic Received (packets)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+		<statistic name="Traffic Received (packets)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 Traffic received (in packets) by the traffic sinks across all nodes.
 ]]>
-</description>
-</statistic>
-<statistic name="Traffic Received (packets/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-<description>
+			</description>
+		</statistic>
+		<statistic name="Traffic Received (packets/sec)" group="Traffic Sink" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+			<description>
 <![CDATA[
 Traffic received (in packets/sec) by the traffic sinks across all nodes.
 ]]>
-</description>
-</statistic>
-</global-statistics>
-<comments>
+			</description>
+		</statistic>
+	</global-statistics>
+	<comments>
 <![CDATA[
 General Process Description: 
 ---------------------------- 
@@ -531,5 +531,5 @@ Restrictions:
 ------------- 
 None
 ]]>
-</comments>
+	</comments>
 </process-model>
