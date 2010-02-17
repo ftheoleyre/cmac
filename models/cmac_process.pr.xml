@@ -3048,7 +3048,7 @@ void fill_savings_fields(Packet *pk){
 		//first child: the subtree size
 		else if (i == 0){
 			sav_ptr = op_prg_list_access(sav_list, i);
-			saving_field[i] = my_sink_tree.subtree_size;//sav_ptr->saving + 1;		
+			saving_field[i] = my_sink_tree.subtree_size + sav_ptr->saving;		
 		}
 		//for other children, I just forward their savings without any modification
 		else if (op_prg_list_size(sav_list) > i){
