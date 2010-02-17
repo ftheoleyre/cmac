@@ -4353,7 +4353,7 @@ void receive_packet_from_radio(){
 	//is the frame valid
 	int				accepted;
 	//Pk fields
-	int				source , destination;
+	uint32_t		source, destination;
 	short			frame_type;
 	int				frame_id;
 	int				next_hop;
@@ -4388,11 +4388,12 @@ void receive_packet_from_radio(){
 	//Some pk fields
 	op_pk_nfd_get(frame, FIELD_PK_ACCEPT,		&accepted);
 	op_pk_nfd_get(frame, FIELD_PK_SOURCE, 		&source);
-	op_pk_nfd_get(frame, FIELD_PK_DESTINATION, 	&destination);
+	op_pk_nfd_get(frame, FIELD_PK_DESTINATION,	&destination);
 	op_pk_nfd_get(frame, FIELD_PK_TYPE, 		&frame_type);
 	op_pk_nfd_get(frame, FIELD_PK_ID,			&frame_id);
 	op_pk_nfd_get(frame , FIELD_PK_NAV_DURATION,&nav_duration);
-					
+		
+	printf("%d\n", sizeof(int));
 	
 	//DEBUG
 	if (accepted)
@@ -4694,6 +4695,8 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_NEXT, 	&next_hello);
 			
 				if (destination != ADDR_BROADCAST){
+					op_pk_print(frame);
+					printf("Addr %d incorrect\n", destination);
 					op_sim_end("An hello is sent in unicast" , "not in ADDR_BROADCAST", "please correct the bug", "");
 				}
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_SINK_DIST, 	&sink_dist);
@@ -4920,6 +4923,7 @@ void interrupt_process(){
 				default :
 					snprintf(msg, 100, "We are not configured to handle the stat from the line %d\n", op_intrpt_stat());
 					op_sim_end(msg, "" , "" , "");
+				break;
 			}
 		break;
 		
@@ -5554,9 +5558,16 @@ if (cmac_timestamp == 0)
 op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
 my_address = atoi(str);
 op_ima_obj_attr_set (op_id_self(), "Address", my_address);
-
-	
-	
+//errors
+if (my_address == ADDR_BROADCAST){
+	snprintf(str, 300,"the address %d", ADDR_BROADCAST);
+	op_sim_end("A node cannot have", str, "it is dedicated to", "broadcast");
+}
+if (my_address == ADDR_INVALID){
+	snprintf(str, 300, "the address %d", ADDR_INVALID);
+	op_sim_end("A node cannot have", str, "it is dedicated to", "unknown addresses");
+}
+			   
 //-----------------------------------------------
 //		  		 CHANNEL MONITOR
 //-----------------------------------------------
