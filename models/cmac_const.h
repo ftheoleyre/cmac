@@ -35,8 +35,8 @@
 //-----------------------------------------------
 
 //mac layer names
-#define		CMAC										1
-#define		IEEE80211									2
+#define		CMAC							1
+#define		IEEE80211						2
 
 //debug
 #define		LOG_SUFFIX_NODES				"nodes"
@@ -44,7 +44,6 @@
 //ktree algo
 #define		KTREE_ALGO_SYNC					1
 #define		KTREE_ALGO_MAXTREE				2
-//#define		KTREE_ALGO_NONE					0
 #define		KTREE_ALGO_STATIC				3
 
 

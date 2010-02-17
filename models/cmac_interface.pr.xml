@@ -1015,7 +1015,7 @@ int			i, j;
 //Goodput / Dratio
 pk_info		*elem;
 int			nb_pk_received = 0;
-int			nb_bits_received;
+int			nb_bits_received = 0;
 int			*tab_pk_rec;
 int			*tab_pk_sent;
 int			nb_pk_sent = 0;
