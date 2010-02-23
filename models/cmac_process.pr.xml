@@ -12,7 +12,7 @@
 							<attribute creation-mechanics="Model" name="list" type="object list">
 								<object-list>
 									<sub-object>
-										<attribute creation-mechanics="Model" name="Channel Settings" type="compound" spectype="0">
+										<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
 											<sub-object>
 												<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
 												<attribute creation-mechanics="Model" name="list" type="object list">
@@ -637,7 +637,7 @@ cmac to define the branches that 'collect' the traffic to the sink)
 //-----------------------------------------------
 
 #define		DEBUG_STATE_MACHINE				0
-//(my_address == 405)
+//(my_address == 403)
 
 
 
@@ -770,7 +770,7 @@ int 	WLANC_ACT_MGMT_CAT_ACT_FD, WLANC_ACT_MGMT_TID_FD, WLANC_ACT_MGMT_PARAMS_FD;
 
 
 //this node has the priority to sends its packets
-#define		IS_NODE_PRIO					((next_frame_to_send.type == CTS_PK_TYPE) || (next_frame_to_send.type == ACK_PK_TYPE) || (next_frame_to_send.type == DATA_UNICAST_PK_TYPE))
+#define		IS_NODE_PRIO					((next_frame_to_send.type == CTS_PK_TYPE) || (next_frame_to_send.type == ACK_PK_TYPE) || (next_frame_to_send.type == DATA_UNICAST_PK_TYPE && next_frame_to_send.pk_size  >= RTS_PK_SIZE))
 
 
 //Collision: we have the priority to send a reply, but the medium is busy (another node is not aware of the current communication)
@@ -1487,18 +1487,20 @@ void print_unicast_frame_buffer(int debug_type){
 	//info
 	char			msg[100];
 	int				i;
+	int				data_id;
 
 	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
 	debug_print(LOW , debug_type , "			Unicast Frame Buffer of %d (size %d)\n" , my_address , op_prg_list_size(unicast_frame_buffer));
 	debug_print(LOW , debug_type , "-------------------------------------------------------------\n");
-	debug_print(LOW , debug_type , "DEST	|	TYPE		| 	ID		|	NB_RETRY	|	MIN_TRANSMISSION\n");
+	debug_print(LOW , debug_type , "DEST	|	TYPE		|     ID    | NB_RETRY | MIN_TRANSMISSION\n");
 
 
 	
 	for(i=op_prg_list_size(unicast_frame_buffer)-1 ; i>=0 ; i--){
 		ptr = op_prg_list_access(unicast_frame_buffer , i);
 
-		debug_print(LOW , debug_type , "%5d	|	%s	|	%d		|	%d		|	%f\n", ptr->destination ,  pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id , ptr->nb_retry , ptr->time_transmission_min);
+		op_pk_fd_get(ptr->payload, FIELD_PAYLOAD_ID, &data_id);
+		debug_print(LOW , debug_type , "%5d	|	%s	| %5d/%5d | %8d | %f\n", ptr->destination ,  pk_type_to_str(ptr->type , msg, 100) , ptr->frame_id , data_id, ptr->nb_retry , ptr->time_transmission_min);
 	}
 	FOUT;
 }
@@ -3429,8 +3431,8 @@ void update_neighborhood_table(int source , Boolean bidirect, int sink_dist , in
 	neigh_struct	*neigh_ptr;
 	Boolean	neighbor_updated 				= OPC_FALSE;
 	Boolean	hello_required 					= OPC_FALSE;
-	Boolean	update_cmac_children_required 	= OPC_FALSE;	
-	
+	Boolean	update_cmac_children_required 	= OPC_FALSE;
+		
 	//---------------------------
 	//		LIST UPDATE
 	//---------------------------
@@ -3689,6 +3691,8 @@ Packet* create_packet(frame_struct frame){
 			pk = op_pk_create_fmt("cmac_frame");
 			op_pk_nfd_set(pk , FIELD_PK_DATA_PAYLOAD , 	op_pk_copy(frame.payload));
 			op_pk_nfd_set(pk , FIELD_PK_POWER_RATIO , 	frame.power_ratio);
+		
+			print_unicast_frame_buffer(DEBUG_CONTROL);
 		break;
 		case HELLO_PK_TYPE:
 			pk = op_pk_create_fmt("cmac_hello");
@@ -4363,18 +4367,21 @@ void receive_packet_from_radio(){
 	int				channel;
 	double			t_slot;
 	double			offset;	
-	short			branch_id;
+	int				branch_id;
 	//data frame
 	frame_struct	*frame_ptr;
 	//hellos
 	int				sink_dist , ktree_dist , branch;
 	List			*cmac_children_tmp;
 	double			sync_power;
-	uint32_t		parent;
-	short			subtree_size;
+	int				parent;
+	int				subtree_size;
 	short			*savings_tmp;
 	//RTS / CTS / DATA / ACK for nav
 	int				nav_duration = 0;
+	//to detect changes
+	Boolean 		prev_is_ktree_node;
+	int				prev_nb_children;
 	//next hello
 	double			next_hello;
 	//Control
@@ -4703,12 +4710,14 @@ void receive_packet_from_radio(){
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_SYNC_POWER, 	&sync_power);
 				op_pk_nfd_get(frame , FIELD_PK_HELLO_PARENT, 		&parent);
 				cmac_children_tmp = create_my_cmac_children_from_packet(frame);
-				
+							
 				//k-tree construction
-				if (op_pk_nfd_is_set(frame , FIELD_PK_HELLO_SUBTREE_SIZE))
+				if (op_pk_nfd_is_set(frame , FIELD_PK_HELLO_SUBTREE_SIZE)){
 					op_pk_nfd_get(frame , FIELD_PK_HELLO_SUBTREE_SIZE, 	&subtree_size);
+				}
 				else
 					subtree_size = -1;
+				
 				if (op_pk_nfd_is_set(frame , FIELD_PK_HELLO_SAVINGS))
 					savings_tmp = create_savings_from_packet(frame);
 				else
@@ -4718,8 +4727,8 @@ void receive_packet_from_radio(){
 				bidirect = is_bidirect_from_packet(frame);
 				
 				//previous ktree values
-				Boolean prev_is_ktree_node 	= my_sink_tree.is_in_ktree;
-				int		prev_nb_children 	= op_prg_list_size(my_sink_tree.cmac_children);
+				prev_is_ktree_node 	= my_sink_tree.is_in_ktree;
+				prev_nb_children 	= op_prg_list_size(my_sink_tree.cmac_children);
 				
 				//changes the values in the neighborhood table
 				update_neighborhood_table(source , bidirect, sink_dist , ktree_dist , sync_power , parent, subtree_size, savings_tmp, branch , cmac_children_tmp , next_hello);
@@ -5262,8 +5271,6 @@ void debug_print(const int level, const int type , const char* fmt, ...){
 	//error
 	if ((type <0) || (type > DEBUG_NODE))
 		op_sim_end("Error, you specify an unkwnown type for debug_print()", "", "", "");
-
-	printf("type %d, level %d, conf %d\n", type, level, DEBUG);
 	
 	//Prepares the args
 	va_start(argptr, fmt);	
@@ -6541,18 +6548,17 @@ if ((op_intrpt_type() == OPC_INTRPT_SELF) && (op_intrpt_code() == DEFER_CODE)){
 			my_backoff = 0;
 		}		
 	}
+	//The medium is busy and we have the priority -> that is not regular !
+	else if (PRIORITY_AND_MEDIUM_BUSY){
+		debug_print(LOW , DEBUG_DATA , "a collision occurred (we have the priority and the medium is busy, we discard the current transmission (this was a reply)\n");
+		debug_print(LOW , DEBUG_DATA , "%d %d %d %d\n",  CTS_PK_TYPE, ACK_PK_TYPE, DATA_UNICAST_PK_TYPE, next_frame_to_send.type);
+
+		//Discard the current packet
+		set_next_frame_null();		
+	}	
+	//We have to wait (another node is transmitting something)
 	else
 		debug_print(MEDIUM , DEBUG_DATA , "the medium is busy, we must wait\n");
-
-
-	//The medium is busy and we have the priority -> that is not regular !
-	if (PRIORITY_AND_MEDIUM_BUSY){
-		debug_print(LOW , DEBUG_DATA , "a collision occurred (we have the priority and the medium is busy, we discard the current flow\n");
-		
-		//Discard the current packet
-		set_next_frame_null();
-		
-	}
 }
 
 

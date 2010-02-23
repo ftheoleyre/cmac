@@ -89,7 +89,9 @@
 
 
 //A data frame is deleted if not sent after TIMEOUT seconds
-#define		TIMEOUT_DATA_FRAME				0.5
+//#define		TIMEOUT_DATA_FRAME				0.5
+//I can miss one privileged slot, not two!
+#define		TIMEOUT_DATA_FRAME				(2 * NB_BRANCHES * TIME_MAX_PRIVILEGED * CTR_HOP_SPACING)
 
 
 
