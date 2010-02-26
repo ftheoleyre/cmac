@@ -1,4 +1,4 @@
-Packet_Interarrival_Time=0.02
+Packet_Interarrival_Time=0.075
 Mac_layer=1 2
 # 1=cmac, 2=80211
 Ktree_algo=2
@@ -12,5 +12,5 @@ X_MAX=400
 sink_address=404
 #static=0, random rectangle=1, random disk=2, conf_file=3, regular grid=4
 Positions_Method=4
-#the filename where to save results
+#the opnet scenario
 Net_name=grid_7x7

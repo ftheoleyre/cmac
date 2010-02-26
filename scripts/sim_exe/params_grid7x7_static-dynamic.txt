@@ -1,12 +1,12 @@
-Packet_Interarrival_Time=0.2 0.11 0.12 0.13 0.15 0.17 0.1 0.075 0.06 0.05 0.04 0.03 0.02
+Packet_Interarrival_Time=0.075
 Mac_layer=1 2
 # 1=cmac, 2=80211
-Ktree_algo=2
+Ktree_algo=2 3
 # MTree=2, Static=3, SYNC=1
 Nb_channels=1
 Nb_branches=5
 CTR_hop_spacing=3
-Max_priv_duration=0.005
+Max_priv_duration=0.017 0.015 0.0125 0.01 0.009 0.008 0.007 0.006 0.005 0.004 0.003 0.002 0.001
 X_MAX=400
 #the destination
 sink_address=404
