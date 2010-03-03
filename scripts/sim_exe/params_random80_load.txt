@@ -1,0 +1,16 @@
+Packet_Interarrival_Time=0.3 0.275 0.25 0.225 0.2 0.18 0.16 0.14 0.12 0.1 0.09 0.08 0.07 0.06 0.05
+Mac_layer=1 2
+# 1=cmac, 2=80211
+Ktree_algo=2
+# MTree=2, Static=3, SYNC=1
+Nb_channels=1
+Nb_branches=5
+CTR_hop_spacing=3
+Max_priv_duration=0.005
+X_MAX=3000
+#the destination
+sink_address=404
+#static=0, random rectangle=1, random disk=2, conf_file=3, regular grid=4
+Positions_Method=2
+#the opnet scenario
+Net_name=random80
