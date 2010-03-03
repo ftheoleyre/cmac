@@ -11,5 +11,8 @@ nohup nice -n 20 ./cmac_sim.sh grid7x7_privtime &
 #proof of correctness for the k-tree algo
 nohup nice -n 20 ./cmac_sim.sh grid7x7_static-dynamic &
 
+# multichannel feature
+nohup nice -n 20 ./cmac_sim.sh grid7x7_load_channels &
+
 #random disks
 nohup nice -n 20 ./cmac_sim.sh random80_load &
