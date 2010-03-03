@@ -32,7 +32,7 @@ typedef struct{
 #define		GRAPH_LINK_RADIO			1
 
 //log file
-#define	FILENAME_LOG_MAX	50
+#define	FILENAME_LOG_MAX	200
 
 
 //-------------------------  FREQUENCIES  -----------------------------------

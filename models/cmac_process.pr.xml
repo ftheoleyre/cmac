@@ -5611,6 +5611,7 @@ if (nb_channels == 0)
 if (op_ima_sim_attr_exists("Result_Directory")){
 	op_ima_sim_attr_get_str("Result_Directory", 	FILENAME_LOG_MAX, log_dir_tmp);
 	set_log_dir(log_dir_tmp);
+	//printf("LOGS in %s\n", log_dir_tmp);
 }
 	
 //No RTS / CTS -> pk_size set to the infinity value

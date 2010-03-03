@@ -1,5 +1,5 @@
 Packet_Interarrival_Time=0.075
-Mac_layer=1 2
+Mac_layer=1
 # 1=cmac, 2=80211
 Ktree_algo=2
 # MTree=2, Static=3, SYNC=1

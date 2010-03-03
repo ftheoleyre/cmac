@@ -65,7 +65,7 @@ void tools_fig_write_xfig_file(graph_struct **graph, pos_struct *positions, int 
 	int			radius;
 	//Figure file
 	FILE*		pfile;
-	char		filename[200];
+	char		filename[FILENAME_LOG_MAX];
 	//tmp
 	int			x1 , y1 , x2 , y2;
 	//Control
@@ -77,10 +77,11 @@ void tools_fig_write_xfig_file(graph_struct **graph, pos_struct *positions, int 
 
 	//Opens the associated file and 
 	//Initialization
-	snprintf(filename , 200, "%s/topology.fig", get_log_dir());
+	snprintf(filename , FILENAME_LOG_MAX, "%s/topology.fig", get_log_dir());
 	pfile = fopen(filename , "w");
 	if (pfile==NULL){
 		printf("Error : we cannot create the file %s\n", filename);
+		printf("%s\n", strerror(errno));
 		exit(-1);
 	}		
 

@@ -115,6 +115,7 @@ do
 										SEED=`hexdump -n4 -e\"%u\" /dev/random`
 										RES_TMP_DIR="$HOME/debug/$TOPO/$SEED"
 										mkdir -p $RES_TMP_DIR
+										echo "mkdir -p $RES_TMP_DIR"
 
 										#simulation arguments for this run
 										CMD="op_runsim -mac_layer $MAC_LAYER -seed $SEED -Result_Directory $RES_TMP_DIR"

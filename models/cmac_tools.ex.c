@@ -314,7 +314,7 @@ Boolean cmac_tools_graph_is_connected(Boolean *connectivity){
 	
 
 //The directory (for logs and results)
-char log_dir[FILENAME_LOG_MAX];
+char log_dir[FILENAME_LOG_MAX] = "";
 
 //get the name
 char *get_log_dir(){
@@ -332,5 +332,6 @@ void set_log_dir(char *name){
 		op_sim_end(msg, "", "", "");
 	}
 	strncpy(log_dir, name, FILENAME_LOG_MAX);	
+	
 	FOUT;
 }

@@ -24,6 +24,7 @@ SIM_LENGTH=`cat $MAC_FILE |  grep "X_MAX"  |cut -d ":" -f 2`
 INTER_PK_T=`cat $MAC_FILE |  grep "Inter Packet Time"  |cut -d ":" -f 2`
 DEGREE=`cat $MAC_FILE |  grep "Average degree"  |cut -d ":" -f 2`
 BEB=`cat $MAC_FILE |  grep "Exponential backoff"  |cut -d ":" -f 2`
+PRIVTIME=`cat $MAC_FILE |  grep "Max privileged duration"  |cut -d ":" -f 2`
 
 #MAC parameters
 NB_CHANNELS=`cat $MAC_FILE |  grep "Number of channels"  |cut -d ":" -f 2`
@@ -50,7 +51,7 @@ then
 	echo $FILE_RESULT_AGGREG
 	
 	#all the stats
-	echo "$NB_NODES	$SIM_LENGTH	$INTER_PK_T	$DEGREE	$NB_CHANNELS	$NB_BRANCHES	$CTR_HOPS	$DRATIO_DATA	$DELAY_AVG	$DELAY_STDDEV	$DELAY_MAX	$JAIN_DRATIO	$GOODPUT_MBPS	$RLENGTH	$SEED" >> $FILE_RESULT_AGGREG
+	echo "$NB_NODES	$SIM_LENGTH	$INTER_PK_T	$PRIVTIME	$DEGREE	$NB_CHANNELS	$NB_BRANCHES	$CTR_HOPS	$DRATIO_DATA	$DELAY_AVG	$DELAY_STDDEV	$DELAY_MAX	$JAIN_DRATIO	$GOODPUT_MBPS	$RLENGTH	$SEED" >> $FILE_RESULT_AGGREG
 fi
 
 
