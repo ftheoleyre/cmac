@@ -3,11 +3,11 @@ Mac_layer=1
 # 1=cmac, 2=80211
 Ktree_algo=2
 # MTree=2, Static=3, SYNC=1
-Nb_channels=1 4 5 6
+Nb_channels=2 3
 Nb_branches=5
 CTR_hop_spacing=3
 Max_priv_duration=0.005
-X_MAX=400
+X_MAX=235
 #the destination
 sink_address=404
 #static=0, random rectangle=1, random disk=2, conf_file=3, regular grid=4

@@ -444,6 +444,8 @@ if (((POSITION_METHOD == POS_RANDOM_DISK) || (POSITION_METHOD == POS_RANDOM_RECT
 	if (*is_sink_ptr == OPC_TRUE){
 		op_ima_obj_attr_set(node_id , "x position" , (double)XMAX/2);
 		op_ima_obj_attr_set(node_id , "y position" , (double)XMAX/2);
+		
+		printf("node %d is a sink -> placed in the simulation center\n", (int)mac_id);
 	}
 }
 

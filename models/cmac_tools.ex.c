@@ -40,18 +40,25 @@ int get_nb_of_channels(){
 double channel_to_freq(int channel){
 	FIN(channel_to_freq(int channel));
 
-	//802.11bg
+/*	//802.11bg
 	switch(channel){
 		case 0 :
 			FRET(2412);
 		case 1 :
 			FRET(2437);
 		case 2 :
-			FRET(2472);
+			FRET(2462);
+		//case 3 :
+		//	FRET(2487);
+		//case 4 :
+		//	FRET(2512);
+		//case 5 :
+		//	FRET(2537);
+
 		default :
 			op_sim_end("Error, this channel number is unknown", "","","");
 	}
-/*
+*/
 	//802.11a
 	switch(channel){
 		case 0 :
@@ -83,7 +90,7 @@ double channel_to_freq(int channel){
 		default :
 			op_sim_end("Error, this channel number is unknown", "","","");
 	}
-*/
+
 	FRET(-1);
 }
 
