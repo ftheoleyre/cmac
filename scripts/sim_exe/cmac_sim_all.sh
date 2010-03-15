@@ -16,4 +16,5 @@ nohup nice -n 20 ./cmac_sim.sh grid7x7_load_channels &
 
 #random disks
 nohup nice -n 20 ./cmac_sim.sh random80_load &
+nohup nice -n 20 ./cmac_sim.sh random60_load &
 nohup nice -n 20 ./cmac_sim.sh random40_load &
