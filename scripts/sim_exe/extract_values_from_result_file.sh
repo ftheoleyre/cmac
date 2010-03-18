@@ -47,7 +47,7 @@ NB_PKTS=`cat $MAC_FILE |  grep "Nb packets sent"  |cut -d ":" -f 2`
 if [ $NB_PKTS \> 0 ]
 then
 	#file to save results
-	FILE_RESULT_AGGREG="$3/nodes=`echo $NB_NODES`_length=`echo $SIM_LENGTH`_algo=`echo $MAC_LAYER`-`echo $KTREE_ALGO`_nbchannels=`echo $NB_CHANNELS`_beb=`echo $BEB`.txt"
+	FILE_RESULT_AGGREG="$3/nodes=`echo $NB_NODES`_algo=`echo $MAC_LAYER`-`echo $KTREE_ALGO`_nbchannels=`echo $NB_CHANNELS`_beb=`echo $BEB`.txt"
 	echo $FILE_RESULT_AGGREG
 	
 	#all the stats
