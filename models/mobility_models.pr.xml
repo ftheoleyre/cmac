@@ -420,8 +420,8 @@ if (POSITION_METHOD == POS_GRID){
 	op_ima_obj_attr_get_str((node_id), "name", 100, name);
 	address = atoi(name);
 
-	y_int = address /  1000;
-	x_int = address - y_int * 1000;
+	y_int = address /  100;
+	x_int = address - y_int * 100;
 
 	x_pos = (double)x_int * XMAX;
 	y_pos = (double)y_int * XMAX;
