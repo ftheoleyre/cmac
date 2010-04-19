@@ -2232,10 +2232,15 @@ void update_sink_tree_infos_dynamic(){
 	for(i=0 ; i<op_prg_list_size(my_neighborhood_table); i++){
 		neigh_ptr = op_prg_list_access(my_neighborhood_table, i);
 		
-		if 	((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->bidirect)){// && (neigh_ptr->address == my_sink_tree.parent)){
+		if 	((stability_get(neigh_ptr) > STAB_MIN) && (neigh_ptr->bidirect)){
 			best_sink_dist	= neigh_ptr->sink_dist + 1;
 			best_parent		= neigh_ptr->address;
 		}
+	}
+	
+	//particular case
+	if (my_sink_tree.is_in_ktree){
+		best_ktree_dist = 0;
 	}
 			
 	//Update the distance to the sink and to the ktree
@@ -2252,20 +2257,30 @@ void update_sink_tree_infos_dynamic(){
 			//Distance to the sink (the parent is the next hop toward the sink)
 			//NB: tree of shortest paths toward the sink (and I try to maintain the same parent)
 			//NB2: if our parent is among the best parents, let keep it!
-			if ((best_sink_dist > neigh_ptr->sink_dist + 1) || ((neigh_ptr->address == my_sink_tree.parent) && (best_sink_dist == neigh_ptr->sink_dist) && (best_sink_dist == neigh_ptr->sink_dist + 1))){
-				best_sink_dist = neigh_ptr->sink_dist + 1;
-				best_parent		= neigh_ptr->address;
+			if ((KTREE_ALGO == KTREE_ALGO_MAXTREE) || (best_ktree_dist == 0)){
+				if ((best_sink_dist > neigh_ptr->sink_dist + 1) || ((neigh_ptr->address == my_sink_tree.parent) && (best_sink_dist == neigh_ptr->sink_dist) && (best_sink_dist == neigh_ptr->sink_dist + 1))){
+					best_sink_dist = neigh_ptr->sink_dist + 1;
+					best_parent		= neigh_ptr->address;
+				}
+			}
+			//Else, I keep as next hop the node that is closest to the k-tree (for normal nodes)
+			else if (KTREE_ALGO == KTREE_ALGO_SYNC)
+				if (best_ktree_dist == neigh_ptr->ktree_dist + 1){
+					best_sink_dist 	= neigh_ptr->sink_dist + 1;
+					best_parent		= neigh_ptr->address;
+			
 			}
 		}		
 	}
-	
+		
 	//no parent -> exit
 	if (best_parent == ADDR_INVALID)
 		FOUT;
 	
+	//TODO: this line can be moved safely up
 	//particular case
-	if (my_sink_tree.is_in_ktree)
-		best_ktree_dist = 0;
+	//if (my_sink_tree.is_in_ktree)
+	//	best_ktree_dist = 0;
 	
 	//debug
 	if ((my_sink_tree.sink_dist != best_sink_dist) || (my_sink_tree.ktree_dist != best_ktree_dist))
@@ -2683,9 +2698,18 @@ void update_current_cmac_children_sync(){
 		//--------------------------------------------------
 		//			No node in the list
 		//--------------------------------------------------
+		// avoids any further selection in the if/then/else
 		if (op_prg_list_size(max_sync_rx_power) == 0){
 		}
 	
+		//--------------------------------------------------
+		//			MAX depth
+		//--------------------------------------------------
+		// avoids any further selection in the if/then/else
+		else if ((KTREE_ALGO == KTREE_ALGO_SYNC) && (sqrt( (double)get_nb_nodes()) / 2 < (double) my_sink_tree.sink_dist)){
+			printf("%f > %f\n", sqrt(get_nb_nodes()) / 2, (double)my_sink_tree.sink_dist);
+		}
+		
 		//--------------------------------------------------
 		//		For the sink -> places the N min power
 		//--------------------------------------------------
