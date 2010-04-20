@@ -1,20 +1,14 @@
 #!/bin/bash
 
-#grid 7x7
-nohup nice -n 20  ./cmac_sim.sh grid7x7_load &
+#classical grid
+nohup nice -n 20  ./cmac_sim.sh conf_grid7x7_load &
+nohup nice -n 20  ./cmac_sim.sh conf_grid10x10_load &
+nohup nice -n 20  ./cmac_sim.sh conf_grid13x13_load &
 
 #tuning parameter's values
-nohup nice -n 20 ./cmac_sim.sh grid7x7_ctrhop &
-nohup nice -n 20 ./cmac_sim.sh grid7x7_branches &
-nohup nice -n 20 ./cmac_sim.sh grid7x7_privtime &
-
-#proof of correctness for the k-tree algo
-nohup nice -n 20 ./cmac_sim.sh grid7x7_static-dynamic &
+nohup nice -n 20 ./cmac_sim.sh conf_grid7x7_privtime &
 
 # multichannel feature
-nohup nice -n 20 ./cmac_sim.sh grid7x7_load_channels &
+nohup nice -n 20 ./cmac_sim.sh conf_grid7x7_load_channels &
+nohup nice -n 20 ./cmac_sim.sh conf_grid13x13_load_channels &
 
-#random disks
-nohup nice -n 20 ./cmac_sim.sh random80_load &
-nohup nice -n 20 ./cmac_sim.sh random60_load &
-nohup nice -n 20 ./cmac_sim.sh random60_density &
