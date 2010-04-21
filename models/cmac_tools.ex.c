@@ -39,6 +39,8 @@ int get_nb_of_channels(){
 //list of channels and their associated frequency
 double channel_to_freq(int channel){
 	FIN(channel_to_freq(int channel));
+	
+	char	msg[200];
 
 /*	//802.11bg
 	switch(channel){
@@ -88,7 +90,8 @@ double channel_to_freq(int channel){
 		case 12 :
 			FRET(5825);
 		default :
-			op_sim_end("Error, this channel number is unknown", "","","");
+			snprintf(msg, 200, "the channel %d", channel);
+			op_sim_end("Error", msg,"is unkown","");
 	}
 
 	FRET(-1);

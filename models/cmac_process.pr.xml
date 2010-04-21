@@ -12,7 +12,7 @@
 							<attribute creation-mechanics="Model" name="list" type="object list">
 								<object-list>
 									<sub-object>
-										<attribute creation-mechanics="Model" name="Channel Settings" type="compound">
+										<attribute creation-mechanics="Model" name="Channel Settings" type="compound" spectype="0">
 											<sub-object>
 												<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
 												<attribute creation-mechanics="Model" name="list" type="object list">
@@ -3767,7 +3767,7 @@ Packet* create_packet(frame_struct frame){
 			op_pk_nfd_set(pk , FIELD_PK_CTR_CHANNEL, 	my_privileged_channel);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_TSLOT , 	slot_privileged_duration);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_BRANCHID,	ctr_last_branch);
-			debug_print(LOW, DEBUG_NODE , "offset sent %f\n", op_sim_time() - frame.time_added);
+			debug_print(LOW, DEBUG_NODE , "offset sent %f on privileged channel %d\n", op_sim_time() - frame.time_added, my_privileged_channel);
 			op_pk_nfd_set(pk , FIELD_PK_CTR_OFFSET , 	op_sim_time() - frame.time_added);
 		
 			//the offset is too large, discard this CTR!
@@ -4623,6 +4623,7 @@ void receive_packet_from_radio(){
 			//We become privileged node
 			//-> automatically, we will send a DATA_PK (or a CTR if we have none)
 			case CTR_PK_TYPE:
+			
 				op_pk_nfd_get(frame , FIELD_PK_CTR_CHANNEL, &channel);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_TSLOT, 	&t_slot);
 				op_pk_nfd_get(frame , FIELD_PK_CTR_OFFSET, 	&offset);
@@ -4646,7 +4647,7 @@ void receive_packet_from_radio(){
 					slot_privileged_offset		= offset;
 					my_privileged_channel	 	= channel;
 					ctr_last_branch				= branch_id;
-					
+						
 					//Error
 					if (!my_sink_tree.is_in_ktree){
 						if (!neighborhood_table_cmac_children_replace_for_node(source, branch_id, my_address))
@@ -4673,8 +4674,8 @@ void receive_packet_from_radio(){
 						op_intrpt_schedule_self(op_sim_time() , PRIVILEGED_MAX_CODE);
 						debug_print(LOW, DEBUG_CONTROL, "The CTR is late, we have to forward it immediately\n");
 					}
-					debug_print(LOW, DEBUG_CONTROL, "I become privileged for the duration: %f (offset %f) -> min %f max %f\n",  slot_privileged_duration , slot_privileged_offset  , (slot_privileged_duration - offset) * PRIVILEGED_MIN_TIME_RATIO , (slot_privileged_duration - offset) );
-					
+					debug_print(LOW, DEBUG_CONTROL, "I become privileged on channel %d for the duration: %f (offset %f) -> min %f max %f\n",  my_privileged_channel, slot_privileged_duration , slot_privileged_offset  , (slot_privileged_duration - offset) * PRIVILEGED_MIN_TIME_RATIO , (slot_privileged_duration - offset) );
+					//op_pk_print(frame);
 					
 					//Multi channel case (CTR_ACK -> in F1+F2 if no data)
 					if (nb_channels > 1){
@@ -6229,7 +6230,7 @@ if (!is_tx_busy){
 		//CTR sent -> changes to the privileged channel
 		if (last_frame_sent.type == CTR_PK_TYPE){
 			debug_print(LOW, DEBUG_CONTROL, "CTR sent, go to the privileged channel for the reply\n");
-			change_tx_rx_phy(my_privileged_channel );
+			change_tx_rx_phy(my_privileged_channel);
 			
 			if (op_ev_valid(main_channel_return_intrpt))
 				op_ev_cancel(main_channel_return_intrpt);
@@ -6242,7 +6243,7 @@ if (!is_tx_busy){
 		if ((last_frame_sent.type == CTR_ACK_PK_TYPE) && (is_main_channel_active()) && (last_frame_sent.nb_retry == 0)){
 		
 			//Channel change
-			debug_print(MEDIUM, DEBUG_CONTROL, "the CTR-ACK was sent\n");
+			debug_print(MEDIUM, DEBUG_CONTROL, "the CTR-ACK was sent, go to the privileged channel %d\n", my_privileged_channel);
 			change_tx_rx_phy(my_privileged_channel);
 			
 			//sends a CTR-END through the privileged channel if no data frame to send
