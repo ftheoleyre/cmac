@@ -3,7 +3,7 @@ Mac_layer=1
 # 1=cmac, 2=80211
 Ktree_algo=3
 # MTree=2, Static=3, SYNC=1
-Nb_channels=1 2 3 4 5 6
+Nb_channels=1 2 3 4 5
 Nb_branches=4
 CTR_hop_spacing=3
 Max_priv_duration=0.010
