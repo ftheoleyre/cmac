@@ -43,9 +43,17 @@ extern int nb_channels;
 //-----------------------------------------------
 
 typedef struct{
+	int			nb;
+	long int	bits;
+}stats_oh;
+
+
+
+typedef struct{
 	int		address;
 	short	*current_channel;
 	Boolean	*channel_status_notif;
+	stats_oh **stats_pk_tx;
 }mac_info;
 
 
@@ -218,7 +226,6 @@ Boolean is_cmac_child_of(neigh_struct *neigh_ptr, int my_address_tmp);
 
 //debug
 void	debug_print(const int level, const int type , const char* fmt, ...);
-char* 	pk_type_to_str(short pk_type , char *msg, int length);
 double 	convert_double(double value);
 int	 	convert_int(int value);
 
@@ -243,7 +250,7 @@ double 	stability_get(neigh_struct *neigh_ptr);
 
 void 	print_neighborhood_table(int debug_type);
 void  	generate_hello(double next_hello);
-void 	update_neighborhood_table(int source , Boolean bidirect, int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, int branch , List *my_ktree_children_tmp , double next_hello);
+void 	update_neighborhood_table(int source , Boolean bidirect, int sink_dist , int ktree_dist, double sync_rx_power, int parent, short subtree_size, short *savings, List *my_ktree_children_tmp , double next_hello);
 char* 	print_ktree_cildren(char *msg, int length);
 
 

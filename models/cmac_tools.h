@@ -53,6 +53,15 @@ Boolean cmac_tools_graph_is_connected(Boolean *connectivity);
 
 
 
+
+//-------------------------  TOOLS  -----------------------------------
+
+//Converts a pk_type in string
+char* pk_type_to_str(short pk_type , char *msg, int length, Boolean fixed_length);
+
+
+
+
 //-------------------------  LOGS  -----------------------------------
 
 

@@ -313,8 +313,61 @@ Boolean cmac_tools_graph_is_connected(Boolean *connectivity){
 	FRET(res);
 }
 
+		
+//-----------------------------------------------------------------------------
+//						TOOLS
+//-----------------------------------------------------------------------------
 	
 	
+//Converts a pk_type in string
+char* pk_type_to_str(short pk_type , char *msg, int length, Boolean fixed_length){
+	FIN(pk_type_to_str(short pk_type , char *msg, int length, Boolean fixed_length));
+
+	switch(pk_type){
+		case RTS_PK_TYPE:
+			strncpy(msg, "RTS", length);
+		break;
+		case CTS_PK_TYPE:
+			strncpy(msg, "CTS", length);
+		break;
+		case CTR_PK_TYPE:
+			strncpy(msg, "CTR", length);
+		break;
+		case CTR_ACK_PK_TYPE:
+			strncpy(msg, "CT-CK", length);
+		break;
+		case CTR_END_PK_TYPE:
+			strncpy(msg, "CT-END", length);
+		break;
+		case ACK_PK_TYPE:
+			strncpy(msg, "ACK", length);
+		break;
+		case DATA_UNICAST_PK_TYPE:
+			strncpy(msg, "DATA-UNI", length);
+		break;
+		case DATA_MULTICAST_PK_TYPE:
+			strncpy(msg, "DATA-MULTI", length);
+		break;
+		case HELLO_PK_TYPE:
+			strncpy(msg, "HELLO", length);
+		break;
+		case SYNC_PK_TYPE:
+			strncpy(msg, "SYNC", length);
+		break;
+		default:
+			snprintf(msg, length, "%d unknown", pk_type);
+		break;
+	}
+	
+	//padds to have fixed length strings
+	if (fixed_length)
+		while((strlen(msg) < strlen("DATA-MULTI")) && (strlen(msg) < length))
+		strncat(msg, " ", length);
+
+
+	FRET(msg);
+}
+
 	
 	
 //-----------------------------------------------------------------------------

@@ -226,6 +226,7 @@
 #define		HELLO_PK_TYPE					8
 #define		SYNC_PK_TYPE					9
 #define		CTR_ACK_PK_TYPE					10
+#define		MAX_PK_TYPE						11
 
 
 //Preamble + 2*addresses + Type + FCS

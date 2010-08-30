@@ -829,10 +829,14 @@ nb_nodes++;
 			<attribute name="Exit Execs" type="textlist">
 				<value-text>
 <![CDATA[
+
+
+
 /* Schedule a self interrupt to wait for lower layer	*/
 /* wlan MAC process to initialize and register itself in*/
 /* the model-wide process registry.						*/
 op_intrpt_schedule_self (op_sim_time (), 0);
+
 
 ]]>
 				</value-text>
@@ -1136,6 +1140,38 @@ if (my_stat_id == 0){
 	delay_stddev = sqrt(delay_stddev / nb_pk_received);
 	
 	
+	
+	//-------------------------------------------
+	//				OVERHEAD
+	//-------------------------------------------
+
+	Objid		macid;
+	mac_info	*mac_ptr;
+	
+	//info from the MAC layer 
+	macid 		= op_topo_assoc(op_id_self() , OPC_TOPO_ASSOC_OUT , OPC_OBJTYPE_PROC , STREAM_TO_MAC);
+	mac_ptr 	= op_ima_obj_state_get(macid);
+	stats_oh	*stats_oh_avg;
+	
+	//error
+	if ((mac_ptr->stats_pk_tx) == OPC_NIL)
+		printf("Error: unassigned pointer for overheads\n");
+	
+	//initialization
+	stats_oh_avg = op_prg_mem_alloc(sizeof(stats_oh) * nb_nodes);
+	for(i=0; i<=MAX_PK_TYPE; i++){
+		stats_oh_avg[i].bits = 0;
+		stats_oh_avg[i].nb = 0;
+	}
+	
+	//overead average values
+	for(i=0;i<nb_nodes; i++)	
+		for(j=1; j<=MAX_PK_TYPE; j++){
+			stats_oh_avg[j].bits += (mac_ptr->stats_pk_tx)[i][j].bits;
+			stats_oh_avg[j].nb += (mac_ptr->stats_pk_tx)[i][j].nb;
+		}
+	
+	
 	//-------------------------------------------
 	//				JAIN INDEX
 	//-------------------------------------------
@@ -1223,7 +1259,14 @@ if (my_stat_id == 0){
 
 	
 	fprintf(pfile, "\n\n--------------------  ROUTE ---------------------------------\n");
-	fprintf(pfile, "Average route length                : %f\n", route_length_cumulated / nb_pk_received);
+	fprintf(pfile, "Average route length                 : %f\n", route_length_cumulated / nb_pk_received);
+	fprintf(pfile, "\n");
+	
+	fprintf(pfile, "\n\n--------------------  OVERHEAD ---------------------------------\n");
+	for(i=1; i<MAX_PK_TYPE; i++){
+		fprintf(pfile, "Number of %s (bits)          : %ld\n", pk_type_to_str(i, msg, 100, OPC_TRUE), stats_oh_avg[i].bits);
+		fprintf(pfile, "Number of %s (nb pkts)       : %d\n", pk_type_to_str(i, msg, 100, OPC_TRUE), stats_oh_avg[i].nb);
+	}
 	fprintf(pfile, "\n");
 
 	
