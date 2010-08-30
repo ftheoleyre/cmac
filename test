@@ -1,5 +1,0 @@
-#!/bin/bash
-
-#op_runsim -net_name cmac-line -ef cmac-line-DES-1 -noprompt
-op_runsim -net_name cmac-small_square_25 -ef cmac-small_square_25-DES-1 -noprompt
-#op_runsim -net_name cmac-pseudo_grid_13 -ef cmac-pseudo_grid_13-DES-1 -noprompt
