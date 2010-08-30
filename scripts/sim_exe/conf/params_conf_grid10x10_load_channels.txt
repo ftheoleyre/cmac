@@ -6,7 +6,7 @@ Ktree_algo=3
 Nb_channels=1 2 3 4 5
 Nb_branches=4
 CTR_hop_spacing=3
-Max_priv_duration=0.010
+Max_priv_duration=0.005
 X_MAX=235
 #the destination
 sink_address=505
