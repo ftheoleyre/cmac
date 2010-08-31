@@ -1023,6 +1023,7 @@ int			nb_bits_received = 0;
 int			*tab_pk_rec;
 int			*tab_pk_sent;
 int			nb_pk_sent = 0;
+int			nb_bits_sent = 0;
 //delay
 double		delay_tmp;
 double		delay_avg, delay_cumulated = 0, delay_max = 0, delay_stddev = 0;
@@ -1107,6 +1108,7 @@ if (my_stat_id == 0){
 		
 		if (elem->time_sent <= op_sim_time() - TIME_GUARD_END_DATA){
 			nb_pk_sent ++;
+			nb_bits_sent += elem->pk_size;
 			tab_pk_sent[addr_to_nodeid(elem->source)]++;
 	
 			//Received !!
@@ -1239,7 +1241,9 @@ if (my_stat_id == 0){
 	fprintf(pfile, "|                          TRAFFIC                               |\n");
 	fprintf(pfile, " ----------------------------------------------------------------\n");
 	fprintf(pfile, "Nb packets sent                      : %d\n", nb_pk_sent);
+	fprintf(pfile, "Nb bits sent                         : %d\n", nb_bits_sent);
 	fprintf(pfile, "Nb packets received                  : %d\n", nb_pk_received);
+	fprintf(pfile, "Nb bits received                     : %d\n", nb_bits_received);
 	fprintf(pfile, "Delivery Ratio (data)                : %f\n", (double)nb_pk_received / nb_pk_sent);
 	fprintf(pfile, "Goodput (in Mbps)                    : %f\n", (double) nb_bits_received / (op_sim_time() - TIME_START_DATA) * 1e-6);
 	fprintf(pfile, "Goodput (in pps)                     : %f\n", (double) nb_pk_received / (op_sim_time() - TIME_START_DATA));

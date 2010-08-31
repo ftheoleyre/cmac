@@ -40,21 +40,86 @@ JAIN_DRATIO=`cat $MAC_FILE |  grep "Delivery Ratio Jain Index"  |cut -d ":" -f 2
 GOODPUT_MBPS=`cat $MAC_FILE |  grep "Goodput (in Mbps)"  |cut -d ":" -f 2`
 RLENGTH=`cat $MAC_FILE |  grep "Average route length"  |cut -d ":" -f 2`
 
+#Overhead
+OH_BITS_RTS=`cat $MAC_FILE |  grep "RTS"  | grep "bits"	| cut -d ":" -f 2`
+OH_BITS_CTS=`cat $MAC_FILE |  grep "CTS"  | grep "bits"	| cut -d ":" -f 2`
+OH_BITS_CTR=`cat $MAC_FILE |  grep "CTR"  | grep "bits"	| cut -d ":" -f 2`
+OH_BITS_CTR_END=`cat $MAC_FILE |  grep "CT-END"  | grep "bits"	| cut -d ":" -f 2`
+OH_BITS_DATA=`cat $MAC_FILE |  grep "DATA-UNI"  | grep "bits"	| cut -d ":" -f 2`
+OH_BITS_MULTI=`cat $MAC_FILE |  grep "DATA-MULTI"  | grep "bits"	| cut -d ":" -f 2`
+OH_BITS_ACK=`cat $MAC_FILE |  grep "ACK"  | grep "bits"	| cut -d ":" -f 2`
+OH_BITS_HELLO=`cat $MAC_FILE |  grep "HELLO"  | grep "bits"	| cut -d ":" -f 2`
+OH_BITS_CTR_ACK=`cat $MAC_FILE |  grep "CT-CK"  | grep "bits"	| cut -d ":" -f 2`
+OH_PK_RTS=`cat $MAC_FILE |  grep "RTS"  | grep "pkts"	| cut -d ":" -f 2`
+OH_PK_CTS=`cat $MAC_FILE |  grep "CTS"  | grep "pkts"	| cut -d ":" -f 2`
+OH_PK_CTR=`cat $MAC_FILE |  grep "CTR"  | grep "pkts"	| cut -d ":" -f 2`
+OH_PK_CTR_END=`cat $MAC_FILE |  grep "CT-END"  | grep "pkts"	| cut -d ":" -f 2`
+OH_PK_DATA=`cat $MAC_FILE |  grep "DATA-UNI"  | grep "pkts"	| cut -d ":" -f 2`
+OH_PK_MULTI=`cat $MAC_FILE |  grep "DATA-MULTI"  | grep "pkts"	| cut -d ":" -f 2`
+OH_PK_ACK=`cat $MAC_FILE |  grep "ACK"  | grep "pkts"	| cut -d ":" -f 2`
+OH_PK_HELLO=`cat $MAC_FILE |  grep "HELLO"  | grep "pkts"	| cut -d ":" -f 2`
+OH_PK_CTR_ACK=`cat $MAC_FILE |  grep "CT-CK"  | grep "pkts"	| cut -d ":" -f 2`
+
 #Error detection
 NB_PKTS=`cat $MAC_FILE |  grep "Nb packets sent"  |cut -d ":" -f 2`
+NB_BITS=`cat $MAC_FILE |  grep "Nb bits sent"  |cut -d ":" -f 2`
+NB_BITS_RCVD=`cat $MAC_FILE |  grep "Nb bits received"  |cut -d ":" -f 2`
 
 # stat file (discard bad networks with a null reliability)
-if [ $NB_PKTS \> 0 ]
-then
+#if [ $NB_PKTS \> 0 ]
+#then
 	#file to save results
 	FILE_RESULT_AGGREG="$3/nodes=`echo $NB_NODES`_algo=`echo $MAC_LAYER`-`echo $KTREE_ALGO`_nbchannels=`echo $NB_CHANNELS`_beb=`echo $BEB`.txt"
 	echo $FILE_RESULT_AGGREG
 	
 	#all the stats
-	echo "$NB_NODES	$SIM_LENGTH	$INTER_PK_T	$PRIVTIME	$DEGREE	$NB_CHANNELS	$NB_BRANCHES	$CTR_HOPS	$DRATIO_DATA	$DELAY_AVG	$DELAY_STDDEV	$DELAY_MAX	$JAIN_DRATIO	$GOODPUT_MBPS	$RLENGTH	$SEED" >> $FILE_RESULT_AGGREG
-fi
+	echo "$NB_NODES	$SIM_LENGTH	$INTER_PK_T	$PRIVTIME	$DEGREE	$NB_CHANNELS	$NB_BRANCHES	$CTR_HOPS	$DRATIO_DATA	$DELAY_AVG	$DELAY_STDDEV	$DELAY_MAX	$JAIN_DRATIO	$GOODPUT_MBPS	$RLENGTH\
+	$SEED	$NB_PKTS	$NB_BITS	$NB_BITS_RCVD\
+	$OH_BITS_RTS $OH_BITS_CTS $OH_BITS_CTR $OH_BITS_CTR_END $OH_BITS_DATA $OH_BITS_MULTI $OH_BITS_ACK $OH_BITS_HELLO $OH_BITS_CTR_ACK\
+	$OH_PK_RTS $OH_PK_CTS $OH_PK_CTR $OH_PK_CTR_END $OH_PK_DATA $OH_PK_MULTI $OH_PK_ACK $OH_PK_HELLO $OH_PK_CTR_ACK\
+	" >> $FILE_RESULT_AGGREG
+	
+	#debug
+	echo "$NB_NODES	$SIM_LENGTH	$INTER_PK_T	$PRIVTIME	$DEGREE	$NB_CHANNELS	$NB_BRANCHES	$CTR_HOPS	$DRATIO_DATA	$DELAY_AVG	$DELAY_STDDEV	$DELAY_MAX	$JAIN_DRATIO	$GOODPUT_MBPS	$RLENGTH\
+	$SEED	$NB_PKTS	$NB_BITS	$NB_BITS_RCVD\
+	$OH_BITS_RTS $OH_BITS_CTS $OH_BITS_CTR $OH_BITS_CTR_END $OH_BITS_DATA $OH_BITS_MULTI $OH_BITS_ACK $OH_BITS_HELLO $OH_BITS_CTR_ACK\
+	$OH_PK_RTS $OH_PK_CTS $OH_PK_CTR $OH_PK_CTR_END $OH_PK_DATA $OH_PK_MULTI $OH_PK_ACK $OH_PK_HELLO $OH_PK_CTR_ACK"
+#fi
 
-
-#delete unused temporary files
-#rm $FILE_OUT
-
+#1 NB_NODES	
+#2 $SIM_LENGTH	
+#3 $INTER_PK_T	
+#4 $PRIVTIME	
+#5 $DEGREE	
+#6 $NB_CHANNELS	
+#7 $NB_BRANCHES	
+#8 $CTR_HOPS	
+#9 $DRATIO_DATA	
+#10 $DELAY_AVG	
+# $DELAY_STDDEV	
+# $DELAY_MAX	
+# $JAIN_DRATIO	
+# $GOODPUT_MBPS	
+#15 $RLENGTH	
+# $SEED
+# NB_PKTS
+# NB_BITS
+# NB_BITS_RCVD
+#20 OH_BITS_RTS 
+# OH_BITS_CTS 
+# OH_BITS_CTR 
+# OH_BITS_CTR_END 
+# OH_BITS_DATA 
+#25 OH_BITS_MULTI 
+# OH_BITS_ACK 
+# OH_BITS_HELLO 
+# OH_BITS_CTR_ACK
+# OH_PK_RTS 
+#30 OH_PK_CTS 
+# OH_PK_CTR 
+# OH_PK_CTR_END 
+# OH_PK_DATA 
+# OH_PK_MULTI 
+#35 OH_PK_ACK 
+# OH_PK_HELLO 
+# OH_PK_CTR_ACK
