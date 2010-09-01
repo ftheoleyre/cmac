@@ -1,34 +1,34 @@
 <?xml version="1.0"?>
 <process-model model-name="cmac_process" code-language="C" tv-in-db="yes" tv-in-tb="yes">
-	<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
-	<model-attributes>
-		<attribute name="Wireless LAN Parameters" type="compound">
-			<properties type="compound" auto-assign="no" symbolic-only="no">
-				<default-value value-symbol="Default"/>
-				<symbol-map>
-					<symbol name="Default">
-						<sub-object>
-							<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
-							<attribute creation-mechanics="Model" name="list" type="object list">
-								<object-list>
-									<sub-object>
-										<attribute creation-mechanics="Model" name="Channel Settings" type="compound" spectype="0">
-											<sub-object>
-												<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
-												<attribute creation-mechanics="Model" name="list" type="object list">
-													<object-list>
-														<sub-object/>
-													</object-list>
-												</attribute>
-											</sub-object>
-										</attribute>
-									</sub-object>
-								</object-list>
-							</attribute>
-						</sub-object>
-					</symbol>
-				</symbol-map>
-				<comments>
+<OPNET-info OPNET-release="12.0.A" OPNET-patchlevel="5" OPNET-model-data-version="10.7.A"/>
+<model-attributes>
+<attribute name="Wireless LAN Parameters" type="compound">
+<properties type="compound" auto-assign="no" symbolic-only="no">
+<default-value value-symbol="Default"/>
+<symbol-map>
+<symbol name="Default">
+<sub-object>
+<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+<attribute creation-mechanics="Model" name="list" type="object list">
+<object-list>
+<sub-object>
+<attribute creation-mechanics="Model" name="Channel Settings" type="compound" spectype="0">
+<sub-object>
+<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+<attribute creation-mechanics="Model" name="list" type="object list">
+<object-list>
+<sub-object/>
+</object-list>
+</attribute>
+</sub-object>
+</attribute>
+</sub-object>
+</object-list>
+</attribute>
+</sub-object>
+</symbol>
+</symbol-map>
+<comments>
 <![CDATA[
 Specifies parameters used by 
 the Wireless LAN Protocol 
@@ -43,50 +43,50 @@ surrounding node.
 
 
 ]]>
-				</comments>
-				<count-properties name="count" type="integer">
-					<properties type="integer" auto-assign="yes" symbolic-only="no">
-						<default-value value="1"/>
-						<lower-limit value="1" exclusive="no"/>
-						<upper-limit value="1" exclusive="no"/>
-						<comments>
+</comments>
+<count-properties name="count" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="no">
+<default-value value="1"/>
+<lower-limit value="1" exclusive="no"/>
+<upper-limit value="1" exclusive="no"/>
+<comments>
 <![CDATA[
 
 
 ]]>
-						</comments>
-					</properties>
-				</count-properties>
-				<list-properties name="list" type="object list">
-					<properties type="object list" auto-assign="yes" symbolic-only="no">
-						<object-list>
-							<sub-object name="Data Rate" type="double">
-								<properties type="double" units="bps" auto-assign="yes" symbolic-only="yes">
-									<default-value value-symbol="11 Mbps"/>
-									<symbol-map>
-										<symbol name="1 Mbps" value="1,000,000"/>
-										<symbol name="2 Mbps" value="2,000,000"/>
-										<symbol name="5.5 Mbps" value="5,500,000"/>
-										<symbol name="11 Mbps" value="11,000,000"/>
-									</symbol-map>
-									<comments>
+</comments>
+</properties>
+</count-properties>
+<list-properties name="list" type="object list">
+<properties type="object list" auto-assign="yes" symbolic-only="no">
+<object-list>
+<sub-object name="Data Rate" type="double">
+<properties type="double" units="bps" auto-assign="yes" symbolic-only="yes">
+<default-value value-symbol="11 Mbps"/>
+<symbol-map>
+<symbol name="1 Mbps" value="1,000,000"/>
+<symbol name="2 Mbps" value="2,000,000"/>
+<symbol name="5.5 Mbps" value="5,500,000"/>
+<symbol name="11 Mbps" value="11,000,000"/>
+</symbol-map>
+<comments>
 <![CDATA[
 1 Mbps, 2 Mbps, 5.5 Mbps and 
 11 Mbps  data rates 
 supported by the wlan model. 
    
 ]]>
-									</comments>
-								</properties>
-							</sub-object>
-							<sub-object name="Packet Reception-Power Threshold" type="double">
-								<properties type="double" units="W" auto-assign="yes" symbolic-only="no">
-									<default-value value="7.33E-14"/>
-									<lower-limit value="0.0" exclusive="yes"/>
-									<symbol-map>
-										<symbol name="7.33E-14" value="7.33E-14"/>
-									</symbol-map>
-									<comments>
+</comments>
+</properties>
+</sub-object>
+<sub-object name="Packet Reception-Power Threshold" type="double">
+<properties type="double" units="W" auto-assign="yes" symbolic-only="no">
+<default-value value="7.33E-14"/>
+<lower-limit value="0.0" exclusive="yes"/>
+<symbol-map>
+<symbol name="7.33E-14" value="7.33E-14"/>
+</symbol-map>
+<comments>
 <![CDATA[
 Defines the received power 
 threshold value in Watts at the 
@@ -123,22 +123,22 @@ model will be overwritten by the
 value of this attribute.
 
 ]]>
-									</comments>
-								</properties>
-							</sub-object>
-							<sub-object name="Channel Settings" type="compound">
-								<properties type="compound" auto-assign="yes" symbolic-only="no">
-									<default-value>
-										<sub-object>
-											<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
-											<attribute creation-mechanics="Model" name="list" type="object list">
-												<object-list>
-													<sub-object/>
-												</object-list>
-											</attribute>
-										</sub-object>
-									</default-value>
-									<comments>
+</comments>
+</properties>
+</sub-object>
+<sub-object name="Channel Settings" type="compound">
+<properties type="compound" auto-assign="yes" symbolic-only="no">
+<default-value>
+<sub-object>
+<attribute creation-mechanics="Model" name="count" type="integer" value="1"/>
+<attribute creation-mechanics="Model" name="list" type="object list">
+<object-list>
+<sub-object/>
+</object-list>
+</attribute>
+</sub-object>
+</default-value>
+<comments>
 <![CDATA[
 In the wlan model there are 
 4 transmitting and receiving 
@@ -156,31 +156,31 @@ they belong to same station.
 
 
 ]]>
-									</comments>
-									<count-properties name="count" type="integer">
-										<properties type="integer" auto-assign="yes" symbolic-only="no">
-											<default-value value="1"/>
-											<lower-limit value="1" exclusive="no"/>
-											<upper-limit value="1" exclusive="no"/>
-											<comments>
+</comments>
+<count-properties name="count" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="no">
+<default-value value="1"/>
+<lower-limit value="1" exclusive="no"/>
+<upper-limit value="1" exclusive="no"/>
+<comments>
 <![CDATA[
 
 
 ]]>
-											</comments>
-										</properties>
-									</count-properties>
-									<list-properties name="list" type="object list">
-										<properties type="object list" auto-assign="yes" symbolic-only="no">
-											<object-list>
-												<sub-object name="Bandwidth" type="double">
-													<properties type="double" units="Khz" auto-assign="yes" symbolic-only="no">
-														<default-value value="1,000"/>
-														<lower-limit value="0.0" exclusive="no"/>
-														<symbol-map>
-															<symbol name="10" value="10"/>
-														</symbol-map>
-														<comments>
+</comments>
+</properties>
+</count-properties>
+<list-properties name="list" type="object list">
+<properties type="object list" auto-assign="yes" symbolic-only="no">
+<object-list>
+<sub-object name="Bandwidth" type="double">
+<properties type="double" units="Khz" auto-assign="yes" symbolic-only="no">
+<default-value value="1,000"/>
+<lower-limit value="0.0" exclusive="no"/>
+<symbol-map>
+<symbol name="10" value="10"/>
+</symbol-map>
+<comments>
 <![CDATA[
 This attribute specifies the 
 bandwidth of the channel. 
@@ -192,30 +192,30 @@ bandwidth of the channel.
 
 
 ]]>
-														</comments>
-													</properties>
-												</sub-object>
-												<sub-object name="Min frequency" type="double">
-													<properties type="double" units="MHz" auto-assign="yes" symbolic-only="no">
-														<default-value value="2,405"/>
-													</properties>
-												</sub-object>
-											</object-list>
-										</properties>
-									</list-properties>
-								</properties>
-							</sub-object>
-							<sub-object name="Max Receive Lifetime" type="double">
-								<properties type="double" units="secs" auto-assign="yes" symbolic-only="no">
-									<default-value value-symbol="0.5"/>
-									<lower-limit value="0.0" exclusive="yes"/>
-									<symbol-map>
-										<symbol name="0.5" value="0.5"/>
-										<symbol name="1.0" value="1.0"/>
-										<symbol name="1.5" value="1.5"/>
-										<symbol name="2.0" value="2.0"/>
-									</symbol-map>
-									<comments>
+</comments>
+</properties>
+</sub-object>
+<sub-object name="Min frequency" type="double">
+<properties type="double" units="MHz" auto-assign="yes" symbolic-only="no">
+<default-value value="2,405"/>
+</properties>
+</sub-object>
+</object-list>
+</properties>
+</list-properties>
+</properties>
+</sub-object>
+<sub-object name="Max Receive Lifetime" type="double">
+<properties type="double" units="secs" auto-assign="yes" symbolic-only="no">
+<default-value value-symbol="0.5"/>
+<lower-limit value="0.0" exclusive="yes"/>
+<symbol-map>
+<symbol name="0.5" value="0.5"/>
+<symbol name="1.0" value="1.0"/>
+<symbol name="1.5" value="1.5"/>
+<symbol name="2.0" value="2.0"/>
+</symbol-map>
+<comments>
 <![CDATA[
 Maximum time after the 
 initial reception of the 
@@ -224,22 +224,22 @@ further attempts to
 reassemble the MSDU will be 
 terminated.	 
 ]]>
-									</comments>
-								</properties>
-							</sub-object>
-						</object-list>
-					</properties>
-				</list-properties>
-			</properties>
-		</attribute>
-		<attribute name="Address" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="no">
-				<default-value value-symbol="From MAC Intf"/>
-				<lower-limit value="0" exclusive="no"/>
-				<symbol-map>
-					<symbol name="From MAC Intf" value="-2"/>
-				</symbol-map>
-				<comments>
+</comments>
+</properties>
+</sub-object>
+</object-list>
+</properties>
+</list-properties>
+</properties>
+</attribute>
+<attribute name="Address" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value-symbol="From MAC Intf"/>
+<lower-limit value="0" exclusive="no"/>
+<symbol-map>
+<symbol name="From MAC Intf" value="-2"/>
+</symbol-map>
+<comments>
 <![CDATA[
 MAC layer address of the 
 surrounding node.  This 
@@ -248,95 +248,95 @@ across all stations in the
 network. 
 
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="Transmission Power" type="double">
-			<properties type="double" auto-assign="no" symbolic-only="no">
-				<default-value value="0.001"/>
-			</properties>
-		</attribute>
-	</model-attributes>
-	<simulation-attributes>
-		<attribute name="debug_level" group="debug" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="yes">
-				<default-value value-symbol="NO"/>
-				<symbol-map>
-					<symbol name="NO" value="0"/>
-					<symbol name="LOW" value="1"/>
-					<symbol name="MEDIUM" value="2"/>
-					<symbol name="MAX" value="3"/>
-				</symbol-map>
-				<comments>
+</comments>
+</properties>
+</attribute>
+<attribute name="Transmission Power" type="double">
+<properties type="double" auto-assign="no" symbolic-only="no">
+<default-value value="0.001"/>
+</properties>
+</attribute>
+</model-attributes>
+<simulation-attributes>
+<attribute name="debug_level" group="debug" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="yes">
+<default-value value-symbol="NO"/>
+<symbol-map>
+<symbol name="NO" value="0"/>
+<symbol name="LOW" value="1"/>
+<symbol name="MEDIUM" value="2"/>
+<symbol name="MAX" value="3"/>
+</symbol-map>
+<comments>
 <![CDATA[
 
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="RTS" group="cmac" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="no">
-				<default-value value-symbol="NO"/>
-				<symbol-map>
-					<symbol name="NO" value="-1"/>
-				</symbol-map>
-			</properties>
-		</attribute>
-		<attribute name="mac_layer" group="cmac" type="integer">
-			<properties type="integer" auto-assign="yes" symbolic-only="yes">
-				<default-value value-symbol="CMAC"/>
-				<symbol-map>
-					<symbol name="CMAC" value="1"/>
-					<symbol name="IEEE80211" value="2"/>
-				</symbol-map>
-				<comments>
+</comments>
+</properties>
+</attribute>
+<attribute name="RTS" group="cmac" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value-symbol="NO"/>
+<symbol-map>
+<symbol name="NO" value="-1"/>
+</symbol-map>
+</properties>
+</attribute>
+<attribute name="mac_layer" group="cmac" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="yes">
+<default-value value-symbol="CMAC"/>
+<symbol-map>
+<symbol name="CMAC" value="1"/>
+<symbol name="IEEE80211" value="2"/>
+</symbol-map>
+<comments>
 <![CDATA[
 The CTR are activated (optimization 
 in order to improve the capacity of 
 convergecast networks) 
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="max_priv_duration" group="cmac" type="double">
-			<properties type="double" auto-assign="no" symbolic-only="no">
-				<default-value value="0.01"/>
-				<comments>
+</comments>
+</properties>
+</attribute>
+<attribute name="max_priv_duration" group="cmac" type="double">
+<properties type="double" auto-assign="no" symbolic-only="no">
+<default-value value="0.01"/>
+<comments>
 <![CDATA[
 The maximum time during which a node keeps to be privileged (after that, it forward the privilege to its child in the ktree)
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="CTR_hop_spacing" group="cmac" type="integer">
-			<properties type="integer" auto-assign="yes" symbolic-only="no">
-				<default-value value="4"/>
-				<comments>
+</comments>
+</properties>
+</attribute>
+<attribute name="CTR_hop_spacing" group="cmac" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="no">
+<default-value value="4"/>
+<comments>
 <![CDATA[
 The number of hops that separate two consecutive CTR sent by the sinks
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="nb_channels" group="cmac" type="integer">
-			<properties type="integer" auto-assign="yes" symbolic-only="no">
-				<default-value value="1"/>
-				<comments>
+</comments>
+</properties>
+</attribute>
+<attribute name="nb_channels" group="cmac" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="no">
+<default-value value="1"/>
+<comments>
 <![CDATA[
 number of channels
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="ktree_algo" group="cmac" type="integer">
-			<properties type="integer" auto-assign="yes" symbolic-only="yes">
-				<default-value value-symbol="SYNC"/>
-				<symbol-map>
-					<symbol name="SYNC" value="1"/>
-					<symbol name="MTree" value="2"/>
-					<symbol name="Static" value="3"/>
-				</symbol-map>
-				<comments>
+</comments>
+</properties>
+</attribute>
+<attribute name="ktree_algo" group="cmac" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="yes">
+<default-value value-symbol="SYNC"/>
+<symbol-map>
+<symbol name="SYNC" value="1"/>
+<symbol name="MTree" value="2"/>
+<symbol name="Static" value="3"/>
+</symbol-map>
+<comments>
 <![CDATA[
 The algorithm used to select the k-tree nodes:
 
@@ -344,80 +344,80 @@ SYNC: a SYNC packets is sent by the sink, with a maximum power. Any node receive
 
 MTree: firstly, a tree which maximizes the leaves is constructed. Then, we construct a node-disjoint k-tree core (i.e. selection of the k different branches which maximizes the number of descendants)
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="nb_branches" group="cmac" type="integer">
-			<properties type="integer" auto-assign="yes" symbolic-only="no">
-				<default-value value="4"/>
-				<comments>
+</comments>
+</properties>
+</attribute>
+<attribute name="nb_branches" group="cmac" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="no">
+<default-value value="4"/>
+<comments>
 <![CDATA[
 The number of leaves for the k-tree core (in our case, the number of branches starting from the sink) 
 ]]>
-				</comments>
-			</properties>
-		</attribute>
-		<attribute name="sink_address" group="traffic" type="integer">
-			<properties type="integer" auto-assign="no" symbolic-only="no">
-				<default-value value="0"/>
-			</properties>
-		</attribute>
-		<attribute name="exponential_backoff" group="cmac" type="integer">
-			<properties type="integer" auto-assign="yes" symbolic-only="yes">
-				<default-value value-symbol="FALSE"/>
-				<symbol-map>
-					<symbol name="FALSE" value="0"/>
-					<symbol name="TRUE" value="1"/>
-				</symbol-map>
-			</properties>
-		</attribute>
-	</simulation-attributes>
-	<attribute-assignments>
-		<assignment attribute-name="Address" type="integer" status="promoted"/>
-		<assignment attribute-name="Transmission Power" type="double" status="promoted"/>
-		<assignment attribute-name="Wireless LAN Parameters" type="compound" status="promoted"/>
-		<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
-		<assignment attribute-name="doc file" type="string" status="hidden"/>
-		<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="1"/>
-		<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
-		<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
-		<assignment attribute-name="priority" type="integer" status="hidden"/>
-		<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
-		<assignment attribute-name="subqueue" type="compound" status="hidden">
-			<sub-object>
-				<attribute creation-mechanics="EMA" name="count" type="integer" value="4"/>
-				<attribute creation-mechanics="EMA" name="list" type="object list">
-					<object-list>
-						<sub-object/>
-						<sub-object/>
-						<sub-object/>
-						<sub-object/>
-					</object-list>
-				</attribute>
-			</sub-object>
-		</assignment>
-		<assignment attribute-name="super priority" type="toggle" status="hidden"/>
-	</attribute-assignments>
-	<interfaces>
-		<interface promoted-name="subqueue" type="compound" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
-			<attribute-names>
+</comments>
+</properties>
+</attribute>
+<attribute name="sink_address" group="traffic" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value="0"/>
+</properties>
+</attribute>
+<attribute name="exponential_backoff" group="cmac" type="integer">
+<properties type="integer" auto-assign="yes" symbolic-only="yes">
+<default-value value-symbol="FALSE"/>
+<symbol-map>
+<symbol name="FALSE" value="0"/>
+<symbol name="TRUE" value="1"/>
+</symbol-map>
+</properties>
+</attribute>
+</simulation-attributes>
+<attribute-assignments>
+<assignment attribute-name="Address" type="integer" status="promoted"/>
+<assignment attribute-name="Transmission Power" type="double" status="promoted"/>
+<assignment attribute-name="Wireless LAN Parameters" type="compound" status="promoted"/>
+<assignment attribute-name="begsim intrpt" type="toggle" status="hidden" value="1"/>
+<assignment attribute-name="doc file" type="string" status="hidden"/>
+<assignment attribute-name="endsim intrpt" type="toggle" status="hidden" value="1"/>
+<assignment attribute-name="failure intrpts" type="enumerated" status="hidden"/>
+<assignment attribute-name="intrpt interval" type="toggle double" status="hidden"/>
+<assignment attribute-name="priority" type="integer" status="hidden"/>
+<assignment attribute-name="recovery intrpts" type="enumerated" status="hidden"/>
+<assignment attribute-name="subqueue" type="compound" status="hidden">
+<sub-object>
+<attribute creation-mechanics="EMA" name="count" type="integer" value="4"/>
+<attribute creation-mechanics="EMA" name="list" type="object list">
+<object-list>
+<sub-object/>
+<sub-object/>
+<sub-object/>
+<sub-object/>
+</object-list>
+</attribute>
+</sub-object>
+</assignment>
+<assignment attribute-name="super priority" type="toggle" status="hidden"/>
+</attribute-assignments>
+<interfaces>
+<interface promoted-name="subqueue" type="compound" inherit-limits="yes" inherit-symbol-only="yes" inherit-comments="yes" inherit-units="yes" inherit-default-value="yes">
+<attribute-names>
 <![CDATA[
 subqueue
 ]]>
-			</attribute-names>
-			<properties type="compound" auto-assign="no" symbolic-only="no">
-				<count-properties name="count" type="integer">
-					<properties type="integer" auto-assign="no" symbolic-only="no">
-						<default-value value="1"/>
-					</properties>
-				</count-properties>
-				<list-properties name="list" type="object list">
-					<properties type="object list" auto-assign="no" symbolic-only="no"/>
-				</list-properties>
-			</properties>
-		</interface>
-	</interfaces>
-	<state-variables>
+</attribute-names>
+<properties type="compound" auto-assign="no" symbolic-only="no">
+<count-properties name="count" type="integer">
+<properties type="integer" auto-assign="no" symbolic-only="no">
+<default-value value="1"/>
+</properties>
+</count-properties>
+<list-properties name="list" type="object list">
+<properties type="object list" auto-assign="no" symbolic-only="no"/>
+</list-properties>
+</properties>
+</interface>
+</interfaces>
+<state-variables>
 <![CDATA[
 /* Station's own address */
 int	\my_address;
@@ -599,8 +599,8 @@ int	\sink_address;
 mac_info*	\my_mac_info;
 
 ]]>
-	</state-variables>
-	<header-block>
+</state-variables>
+<header-block>
 <![CDATA[
 /*
  *  cmac_process.c
@@ -905,8 +905,8 @@ stats_oh **stats_pk_tx;
 int		nb_channels = 0;
 
 ]]>
-	</header-block>
-	<function-block>
+</header-block>
+<function-block>
 <![CDATA[
 
 //---------------------------------------------------------------------------------------
@@ -4938,12 +4938,12 @@ void interrupt_process(){
 					if (new_rx_power > rx_power_threshold){
 						is_rx_busy 		= OPC_TRUE;
 						last_rx_power 	= new_rx_power;
-						//debug_print(MAX, DEBUG_RADIO , "last_rx_power %f -> %f\n", last_rx_power , new_rx_power);
+						debug_print(MAX, DEBUG_RADIO , "last_rx_power %f -> %f\n", last_rx_power , new_rx_power);
 					}
 					else
 						is_rx_busy 		= OPC_FALSE;
 				
-					//debug_print(MEDIUM , DEBUG_RADIO , "rx_busy %d -> %d (rx pow %f)\n", old , is_rx_busy , new_rx_power * 1E14);
+					debug_print(MEDIUM , DEBUG_RADIO , "rx_busy %d -> %d (rx pow %f)\n", old , is_rx_busy , new_rx_power * 1E14);
 				break;
 				
 				//2 transmitters but considered logicaly as one single transmitter with a different antenna
@@ -5430,17 +5430,17 @@ void end_sim(){
 
 
 ]]>
-	</function-block>
-	<termination-block>
+</function-block>
+<termination-block>
 <![CDATA[
 
 ]]>
-	</termination-block>
-	<states initial-state-id="40">
-		<state id="40" x="90" y="90">
-			<attribute name="name" type="string" value="INIT"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</termination-block>
+<states initial-state-id="40">
+<state id="40" x="90" y="90">
+<attribute name="name" type="string" value="INIT"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 //Ids
 Objid	mac_params_comp_attr_objid;
@@ -5934,10 +5934,10 @@ op_intrpt_schedule_self (op_sim_time (), 0);
 
 
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 //position in the grid
 int	x_int = get_x_coord_in_grid(my_address);
@@ -5956,23 +5956,23 @@ if (y_int > y_sink_int)
 
 
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="41" x="450" y="90">
-			<attribute name="name" type="string" value="IDLE"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="41" x="450" y="90">
+<attribute name="name" type="string" value="IDLE"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 
 
 
 
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 if (DEBUG_STATE_MACHINE)
 	debug_print(LOW , DEBUG_GLOBAL , "ENTER - IDLE2 - %d\n", my_address);
@@ -5986,22 +5986,22 @@ if (DEBUG_STATE_MACHINE){
 	debug_print(LOW , DEBUG_GLOBAL , "DTA_OK: %d | (%d & %d) | %d | %d | %d\n", !strict_privileged_mode, is_hello_to_send, !IS_BROADCAST_FORBIDDEN, !my_sink_tree.is_in_ktree, is_node_privileged, is_sink);
 }
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="52" x="270" y="90">
-			<attribute name="name" type="string" value="INFO_SYNCHRO"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="52" x="270" y="90">
+<attribute name="name" type="string" value="INFO_SYNCHRO"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 /* Schedule a self interrupt to wait for mac interface 	*/
 /* to move to next state after registering				*/
 op_intrpt_schedule_self (op_sim_time (), 0);
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 int		i;
 
@@ -6080,13 +6080,13 @@ if (is_sink)
 //periodical hello for everyone (initally, shorter hello_interval to decrease convergence delays)
 op_intrpt_schedule_self(op_sim_time() + 5.0 + op_dist_uniform(3.0) , HELLO_PK_CODE);
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="54" x="690" y="510">
-			<attribute name="name" type="string" value="EMISSION"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="54" x="690" y="510">
+<attribute name="name" type="string" value="EMISSION"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 //----------------------------------------------------------------
 //
@@ -6181,10 +6181,10 @@ if (!is_tx_busy){
 if (DEBUG_STATE_MACHINE)
 	debug_print(LOW , DEBUG_GLOBAL , "EXIT - EMISSION1 - %d\n", my_address);
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 char	str[20];
 
@@ -6355,13 +6355,13 @@ if (!is_tx_busy){
 if (DEBUG_STATE_MACHINE)
 	debug_print(LOW , DEBUG_GLOBAL , "EXIT - EMISSION2 - %d\n", my_address);
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="56" x="510" y="270">
-			<attribute name="name" type="string" value="DEFER"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="56" x="510" y="270">
+<attribute name="name" type="string" value="DEFER"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 //Next data frame to send
 frame_struct	*frame_ptr;
@@ -6523,10 +6523,10 @@ if (DEBUG_STATE_MACHINE){
 	print_nav_list(DEBUG_GLOBAL);
 }
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 //The inter-frame time
 //double		time_to_wait;
@@ -6626,13 +6626,13 @@ if (DEBUG_STATE_MACHINE)
 //debug_print(MAX , DEBUG_DATA , "busy -> rx_busy %d tx_busy %d nav %f -> %d medium busy %d\n", is_rx_busy , is_tx_busy , get_nav_main_freq() , get_nav_main_freq() > op_sim_time() , IS_MEDIUM_BUSY);
 
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="58" x="270" y="510">
-			<attribute name="name" type="string" value="BACKOFF"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="58" x="270" y="510">
+<attribute name="name" type="string" value="BACKOFF"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 
 if (DEBUG_STATE_MACHINE)
@@ -6640,10 +6640,10 @@ if (DEBUG_STATE_MACHINE)
 
 
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 //Inter frame time
 //double		time_to_wait;
@@ -6796,13 +6796,13 @@ if ((IS_BACK_TO_DEFER) || (TRANSMISSION_CANCELED))
 if (DEBUG_STATE_MACHINE)
 	debug_print(LOW , DEBUG_GLOBAL , "EXIT - BACKOFF2 - %d\n", my_address);
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-		<state id="62" x="810" y="150">
-			<attribute name="name" type="string" value="END_TRANSMIT"/>
-			<attribute name="Enter Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+</state>
+<state id="62" x="810" y="150">
+<attribute name="name" type="string" value="END_TRANSMIT"/>
+<attribute name="Enter Execs" type="textlist">
+<value-text>
 <![CDATA[
 //Control
 char	msg[100];
@@ -6819,14 +6819,14 @@ if (is_reply_to_receive){
 	is_reply_received = OPC_FALSE;
 }
 ]]>
-				</value-text>
-			</attribute>
-			<attribute name="status" type="toggle" value="1"/>
-		</state>
-		<state id="63" x="1050" y="90">
-			<attribute name="name" type="string" value="WAIT_NEXT"/>
-			<attribute name="Exit Execs" type="textlist">
-				<value-text>
+</value-text>
+</attribute>
+<attribute name="status" type="toggle" value="1"/>
+</state>
+<state id="63" x="1050" y="90">
+<attribute name="name" type="string" value="WAIT_NEXT"/>
+<attribute name="Exit Execs" type="textlist">
+<value-text>
 <![CDATA[
 //Control
 char		msg[100];
@@ -6893,139 +6893,139 @@ if (DEBUG_STATE_MACHINE)
 	debug_print(LOW , DEBUG_GLOBAL , "EXIT - WAIT_NEXT2 - %d\n", my_address);
 
 ]]>
-				</value-text>
-			</attribute>
-		</state>
-	</states>
-	<transitions>
-		<transition source-state-id="40" destination-state-id="52" label-x="181" label-y="88">
-			<path-point x="116" y="88"/>
-			<path-point x="243" y="88"/>
-			<attribute name="name" type="string" value="tr_292"/>
-		</transition>
-		<transition source-state-id="52" destination-state-id="41" label-x="360" label-y="88">
-			<path-point x="297" y="90"/>
-			<path-point x="428" y="90"/>
-			<attribute name="name" type="string" value="tr_293"/>
-		</transition>
-		<transition source-state-id="41" destination-state-id="56" label-x="484" label-y="167">
-			<path-point x="436" y="94"/>
-			<path-point x="506" y="265"/>
-			<attribute name="name" type="string" value="tr_307"/>
-			<attribute name="condition" type="string" value="IS_PK_TO_SEND || PRIVILEGED_END"/>
-		</transition>
-		<transition source-state-id="56" destination-state-id="54" label-x="600" label-y="416">
-			<path-point x="506" y="268"/>
-			<path-point x="687" y="509"/>
-			<attribute name="name" type="string" value="tr_308"/>
-			<attribute name="condition" type="string" value="GO_TO_SEND"/>
-		</transition>
-		<transition source-state-id="56" destination-state-id="58" label-x="409" label-y="391">
-			<path-point x="510" y="274"/>
-			<path-point x="274" y="501"/>
-			<attribute name="name" type="string" value="tr_309"/>
-			<attribute name="condition" type="string" value="GO_TO_BACKOFF"/>
-		</transition>
-		<transition source-state-id="58" destination-state-id="54" label-x="485" label-y="565">
-			<path-point x="278" y="513"/>
-			<path-point x="666" y="515"/>
-			<attribute name="name" type="string" value="tr_310"/>
-			<attribute name="condition" type="string" value="!IS_BACK_TO_DEFER &amp;&amp; !TRANSMISSION_CANCELED  &amp;&amp; (my_backoff == 0)"/>
-		</transition>
-		<transition source-state-id="58" destination-state-id="56" label-x="291" label-y="324">
-			<path-point x="267" y="503"/>
-			<path-point x="300" y="334"/>
-			<path-point x="480" y="277"/>
-			<attribute name="name" type="string" value="tr_312"/>
-			<attribute name="condition" type="string" value="!TRANSMISSION_CANCELED &amp;&amp; IS_BACK_TO_DEFER"/>
-		</transition>
-		<transition source-state-id="54" destination-state-id="62" label-x="755" label-y="323">
-			<path-point x="692" y="497"/>
-			<path-point x="817" y="149"/>
-			<attribute name="name" type="string" value="tr_314"/>
-			<attribute name="condition" type="string" value="!is_tx_busy"/>
-		</transition>
-		<transition source-state-id="62" destination-state-id="63" label-x="918" label-y="85">
-			<path-point x="807" y="134"/>
-			<path-point x="1042" y="82"/>
-			<attribute name="name" type="string" value="tr_315"/>
-			<attribute name="condition" type="string" value="is_reply_to_receive"/>
-		</transition>
-		<transition source-state-id="63" destination-state-id="62" label-x="1013" label-y="162">
-			<path-point x="1047" y="99"/>
-			<path-point x="827" y="151"/>
-			<attribute name="name" type="string" value="tr_316"/>
-			<attribute name="condition" type="string" value="is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad"/>
-		</transition>
-		<transition source-state-id="62" destination-state-id="41" label-x="681" label-y="66">
-			<path-point x="794" y="147"/>
-			<path-point x="444" y="73"/>
-			<attribute name="name" type="string" value="tr_317"/>
-			<attribute name="condition" type="string" value="!is_reply_to_receive &amp;&amp; !IS_PK_TO_SEND &amp;&amp; ! PRIVILEGED_END"/>
-		</transition>
-		<transition source-state-id="62" destination-state-id="56" label-x="671" label-y="212">
-			<path-point x="817" y="159"/>
-			<path-point x="520" y="266"/>
-			<attribute name="name" type="string" value="tr_318"/>
-			<attribute name="condition" type="string" value="!is_reply_to_receive &amp;&amp; (IS_PK_TO_SEND || PRIVILEGED_END)"/>
-		</transition>
-		<transition source-state-id="54" destination-state-id="54" label-x="821" label-y="512">
-			<path-point x="704" y="507"/>
-			<path-point x="791" y="499"/>
-			<path-point x="781" y="534"/>
-			<path-point x="705" y="517"/>
-			<attribute name="name" type="string" value="tr_321"/>
-			<attribute name="condition" type="string" value="default"/>
-		</transition>
-		<transition source-state-id="58" destination-state-id="58" label-x="238" label-y="587">
-			<path-point x="257" y="518"/>
-			<path-point x="236" y="553"/>
-			<path-point x="257" y="573"/>
-			<path-point x="259" y="525"/>
-			<attribute name="name" type="string" value="tr_323"/>
-			<attribute name="condition" type="string" value="default"/>
-		</transition>
-		<transition source-state-id="41" destination-state-id="41" label-x="457" label-y="10">
-			<path-point x="452" y="78"/>
-			<path-point x="424" y="29"/>
-			<path-point x="476" y="28"/>
-			<path-point x="446" y="65"/>
-			<attribute name="name" type="string" value="tr_327"/>
-			<attribute name="condition" type="string" value="default"/>
-		</transition>
-		<transition source-state-id="56" destination-state-id="56" label-x="611" label-y="280">
-			<path-point x="527" y="276"/>
-			<path-point x="579" y="292"/>
-			<path-point x="580" y="260"/>
-			<path-point x="529" y="273"/>
-			<attribute name="name" type="string" value="tr_329"/>
-			<attribute name="condition" type="string" value="default"/>
-		</transition>
-		<transition source-state-id="56" destination-state-id="41" label-x="279" label-y="223">
-			<path-point x="497" y="255"/>
-			<path-point x="282" y="224"/>
-			<path-point x="439" y="106"/>
-			<attribute name="name" type="string" value="tr_332"/>
-			<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
-		</transition>
-		<transition source-state-id="58" destination-state-id="41" label-x="91" label-y="251">
-			<path-point x="261" y="501"/>
-			<path-point x="106" y="279"/>
-			<path-point x="206" y="172"/>
-			<path-point x="440" y="97"/>
-			<attribute name="name" type="string" value="tr_337"/>
-			<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
-		</transition>
-		<transition source-state-id="63" destination-state-id="63" label-x="1176" label-y="93">
-			<path-point x="1064" y="78"/>
-			<path-point x="1137" y="88"/>
-			<path-point x="1124" y="142"/>
-			<path-point x="1062" y="94"/>
-			<attribute name="name" type="string" value="tr_322"/>
-			<attribute name="condition" type="string" value="default"/>
-		</transition>
-	</transitions>
-	<external-sources>
+</value-text>
+</attribute>
+</state>
+</states>
+<transitions>
+<transition source-state-id="40" destination-state-id="52" label-x="181" label-y="88">
+<path-point x="116" y="88"/>
+<path-point x="243" y="88"/>
+<attribute name="name" type="string" value="tr_292"/>
+</transition>
+<transition source-state-id="52" destination-state-id="41" label-x="360" label-y="88">
+<path-point x="297" y="90"/>
+<path-point x="428" y="90"/>
+<attribute name="name" type="string" value="tr_293"/>
+</transition>
+<transition source-state-id="41" destination-state-id="56" label-x="484" label-y="167">
+<path-point x="436" y="94"/>
+<path-point x="506" y="265"/>
+<attribute name="name" type="string" value="tr_307"/>
+<attribute name="condition" type="string" value="IS_PK_TO_SEND || PRIVILEGED_END"/>
+</transition>
+<transition source-state-id="56" destination-state-id="54" label-x="600" label-y="416">
+<path-point x="506" y="268"/>
+<path-point x="687" y="509"/>
+<attribute name="name" type="string" value="tr_308"/>
+<attribute name="condition" type="string" value="GO_TO_SEND"/>
+</transition>
+<transition source-state-id="56" destination-state-id="58" label-x="409" label-y="391">
+<path-point x="510" y="274"/>
+<path-point x="274" y="501"/>
+<attribute name="name" type="string" value="tr_309"/>
+<attribute name="condition" type="string" value="GO_TO_BACKOFF"/>
+</transition>
+<transition source-state-id="58" destination-state-id="54" label-x="485" label-y="565">
+<path-point x="278" y="513"/>
+<path-point x="666" y="515"/>
+<attribute name="name" type="string" value="tr_310"/>
+<attribute name="condition" type="string" value="!IS_BACK_TO_DEFER &amp;&amp; !TRANSMISSION_CANCELED  &amp;&amp; (my_backoff == 0)"/>
+</transition>
+<transition source-state-id="58" destination-state-id="56" label-x="291" label-y="324">
+<path-point x="267" y="503"/>
+<path-point x="300" y="334"/>
+<path-point x="480" y="277"/>
+<attribute name="name" type="string" value="tr_312"/>
+<attribute name="condition" type="string" value="!TRANSMISSION_CANCELED &amp;&amp; IS_BACK_TO_DEFER"/>
+</transition>
+<transition source-state-id="54" destination-state-id="62" label-x="755" label-y="323">
+<path-point x="692" y="497"/>
+<path-point x="817" y="149"/>
+<attribute name="name" type="string" value="tr_314"/>
+<attribute name="condition" type="string" value="!is_tx_busy"/>
+</transition>
+<transition source-state-id="62" destination-state-id="63" label-x="918" label-y="85">
+<path-point x="807" y="134"/>
+<path-point x="1042" y="82"/>
+<attribute name="name" type="string" value="tr_315"/>
+<attribute name="condition" type="string" value="is_reply_to_receive"/>
+</transition>
+<transition source-state-id="63" destination-state-id="62" label-x="1013" label-y="162">
+<path-point x="1047" y="99"/>
+<path-point x="827" y="151"/>
+<attribute name="name" type="string" value="tr_316"/>
+<attribute name="condition" type="string" value="is_reply_received || IS_FRAME_TIMEOUT || is_reply_bad"/>
+</transition>
+<transition source-state-id="62" destination-state-id="41" label-x="681" label-y="66">
+<path-point x="794" y="147"/>
+<path-point x="444" y="73"/>
+<attribute name="name" type="string" value="tr_317"/>
+<attribute name="condition" type="string" value="!is_reply_to_receive &amp;&amp; !IS_PK_TO_SEND &amp;&amp; ! PRIVILEGED_END"/>
+</transition>
+<transition source-state-id="62" destination-state-id="56" label-x="671" label-y="212">
+<path-point x="817" y="159"/>
+<path-point x="520" y="266"/>
+<attribute name="name" type="string" value="tr_318"/>
+<attribute name="condition" type="string" value="!is_reply_to_receive &amp;&amp; (IS_PK_TO_SEND || PRIVILEGED_END)"/>
+</transition>
+<transition source-state-id="54" destination-state-id="54" label-x="821" label-y="512">
+<path-point x="704" y="507"/>
+<path-point x="791" y="499"/>
+<path-point x="781" y="534"/>
+<path-point x="705" y="517"/>
+<attribute name="name" type="string" value="tr_321"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="58" destination-state-id="58" label-x="238" label-y="587">
+<path-point x="257" y="518"/>
+<path-point x="236" y="553"/>
+<path-point x="257" y="573"/>
+<path-point x="259" y="525"/>
+<attribute name="name" type="string" value="tr_323"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="41" destination-state-id="41" label-x="457" label-y="10">
+<path-point x="452" y="78"/>
+<path-point x="424" y="29"/>
+<path-point x="476" y="28"/>
+<path-point x="446" y="65"/>
+<attribute name="name" type="string" value="tr_327"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="56" destination-state-id="56" label-x="611" label-y="280">
+<path-point x="527" y="276"/>
+<path-point x="579" y="292"/>
+<path-point x="580" y="260"/>
+<path-point x="529" y="273"/>
+<attribute name="name" type="string" value="tr_329"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+<transition source-state-id="56" destination-state-id="41" label-x="279" label-y="223">
+<path-point x="497" y="255"/>
+<path-point x="282" y="224"/>
+<path-point x="439" y="106"/>
+<attribute name="name" type="string" value="tr_332"/>
+<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
+</transition>
+<transition source-state-id="58" destination-state-id="41" label-x="91" label-y="251">
+<path-point x="261" y="501"/>
+<path-point x="106" y="279"/>
+<path-point x="206" y="172"/>
+<path-point x="440" y="97"/>
+<attribute name="name" type="string" value="tr_337"/>
+<attribute name="condition" type="string" value="TRANSMISSION_CANCELED"/>
+</transition>
+<transition source-state-id="63" destination-state-id="63" label-x="1176" label-y="93">
+<path-point x="1064" y="78"/>
+<path-point x="1137" y="88"/>
+<path-point x="1124" y="142"/>
+<path-point x="1062" y="94"/>
+<attribute name="name" type="string" value="tr_322"/>
+<attribute name="condition" type="string" value="default"/>
+</transition>
+</transitions>
+<external-sources>
 <![CDATA[
 ams_basetraf_supp
 ams_support_v2
@@ -7049,23 +7049,23 @@ oms_tan
 tools_fig
 wlan_support
 ]]>
-	</external-sources>
-	<packet-formats>
+</external-sources>
+<packet-formats>
 <![CDATA[
 wlan_control
 wlan_mac
 ]]>
-	</packet-formats>
-	<local-statistics>
-		<statistic name="Backoff Slots (slots)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</packet-formats>
+<local-statistics>
+<statistic name="Backoff Slots (slots)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Number of slots station needs to backoff before transmission while contenting for the medium, and the number of slots in the contention windows after station's successful transmissions.
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Channel Reservation (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Channel Reservation (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 The amount of time the channel will be 
 busy (network allocation vector). 
@@ -7073,144 +7073,144 @@ busy (network allocation vector).
 
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Control Traffic Rcvd (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Control Traffic Rcvd (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Wlan control (Rts,Cts or Ack) traffic 
 received by the station in bits/sec 
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Control Traffic Rcvd (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Control Traffic Rcvd (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Wlan control (Rts,Cts or Ack( traffic 
 received by the station in packets/sec 
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Control Traffic Sent (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Control Traffic Sent (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Wlan control (Rts,Cts or Ack) traffic 
 transmitted by the station in bits/sec 
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Control Traffic Sent (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Control Traffic Sent (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Wlan control (Rts,Cts or Ack) traffic 
 transmitted by the station in 
 packets/sec 
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Data Traffic Rcvd (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Data Traffic Rcvd (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Wlan data traffic received by the 
 station in bits/sec 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Data Traffic Rcvd (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Data Traffic Rcvd (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Wlan data traffic rcvd by the station 
 from the network.  
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Data Traffic Sent (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Data Traffic Sent (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Wlan data traffic transmitted by the 
 station in bits/sec  
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Data Traffic Sent (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Data Traffic Sent (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Wlan data traffic transmitted by the 
 station. 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Delay (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Delay (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Represents the end to end delay of all the packets received by the wireless LAN MAC of this node and forwarded to the higher layer.
 
 This delay includes medium access delay at the source MAC, reception of all the fragments individually, and the transfer of the frame via AP, if acccess point functionality is enabled.
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Dropped Data Packets (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Dropped Data Packets (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 The packets dropped in bits by the WLAN MAC due to 
 a) the overflow of higher layer buffer, or
 b) failure of all retransmissions until retry limit.
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Dropped Data Packets (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Dropped Data Packets (packets/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 The packets dropped by the WLAN MAC due to 
 a) the overflow of higher layer buffer, or
 b) failure of all retransmissions until retry limit.
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Hld Queue Size (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/time average" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Hld Queue Size (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/time average" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Size of the queue that holds the frames received from higher layer until they are forwarded to the physical layer by the MAC for transmission.   
 
 
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Load (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Load (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Load (in bits/sec) submitted to wlan 
 layer by all other higher layers in 
 this node. 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Load (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Load (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Load (in packets) submitted to wlan 
 layer by all other higher layers in 
 this node. 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Media Access Delay (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Media Access Delay (sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 The total of queue and contention delays of data packets received by WLAN MAC from higher layer. For each packet, the delay is recorded when the packet is sent to the physical layer for the first time. 
 Hence, it also includes the period for the successful RTS/CTS exchange, if this exchange is used for that packet.
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Retransmission Attempts (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Retransmission Attempts (packets)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Number of retransmission attempts 
 before the packet was successfully 
@@ -7219,61 +7219,61 @@ transmitted.
 
 
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Throughput (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Throughput (bits/sec)" group="Wireless Lan" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Number of bits sent to the higher layer.
 
 ]]>
-			</description>
-		</statistic>
-	</local-statistics>
-	<global-statistics>
-		<statistic name="Data Dropped (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+</local-statistics>
+<global-statistics>
+<statistic name="Data Dropped (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 The total size of higher layer data packets (in bits/sec) dropped by all the WLAN MACs in the network due to: 
 a) the overflow of higher layer buffer, or
 b) failure of all retransmissions until retry limit.
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Delay (sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Delay (sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Represents the end to end delay of all the packets received by the wireless LAN MACs of all WLAN nodes in the network and forwarded to the higher layer. 
 
 This delay includes medium access delay at the source MAC, reception of all the fragments individually, and transfer of the frames via AP, if acccess point functionality is enabled.
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Load (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Load (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Represents the total load (in bits/sec) submitted to wireless LAN layers by all other higher layers in all WLAN nodes of the network.
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Media Access Delay (sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Media Access Delay (sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sample mean" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Represents the global statistic for the total of queue and contention delays of data packets received by all WLAN MACs in the network from higher layer.
 
 For each packet, the delay is recorded when the packet is sent to the physical layer for the first time. Hence, it also includes the period for the successful RTS/CTS exchange, if this exchange is used for that packet.
 ]]>
-			</description>
-		</statistic>
-		<statistic name="Throughput (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
-			<description>
+</description>
+</statistic>
+<statistic name="Throughput (bits/sec)" group="Wireless LAN" dimension="0" capture-mode="bucket/default total/sum_time" display-mode="linear" low-bound="0.0" high-bound="disabled">
+<description>
 <![CDATA[
 Represents the total number of bits (in bits/sec) forwarded from wireless LAN layers to higher layers in all WLAN nodes of the network.
 ]]>
-			</description>
-		</statistic>
-	</global-statistics>
-	<comments>
+</description>
+</statistic>
+</global-statistics>
+<comments>
 <![CDATA[
 General Process Description:
 
@@ -7345,5 +7345,5 @@ use these stream numbers to process incoming and outgoing packets.
 
 
 ]]>
-	</comments>
+</comments>
 </process-model>
