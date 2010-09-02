@@ -112,7 +112,7 @@ do
 								do
 							
 										#one random seed
-										SEED=`hexdump -n4 -e\"%u\" /dev/random`
+										SEED=`hexdump -n3 -e\"%u\" /dev/random`
 										RES_TMP_DIR="$HOME/debug/$TOPO/$SEED"
 										mkdir -p $RES_TMP_DIR
 										echo "mkdir -p $RES_TMP_DIR"
